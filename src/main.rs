@@ -7,6 +7,7 @@ pub mod cli;
 mod configuration;
 mod manifest;
 mod project;
+use cli::clean::{CleanArgs, command_clean};
 use cli::doctor::command_doctor;
 
 use crate::app_error::AppError;
@@ -15,6 +16,7 @@ use crate::app_error::AppError;
 #[command(version, about, long_about = None)]
 #[command(propagate_version = true)]
 struct Cli {
+  /// Increase verbosity (-v, -vv, -vvv)
   #[arg(short = 'v', long = "verbose", action = clap::ArgAction::Count, global = true)]
   verbosity: u8,
 
@@ -24,15 +26,12 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-  /// Adds files to myapp
-  // Add(AddArgs),
+  /// Clean build and cache directories
+  Clean(CleanArgs),
+
+  /// Validate project configuration and sources
   Doctor,
 }
-
-// #[derive(Args)]
-// struct AddArgs {
-//   name: Option<String>,
-// }
 
 fn main() -> ExitCode {
   let cli = Cli::parse();
@@ -44,7 +43,7 @@ fn main() -> ExitCode {
   match run(cli) {
     Ok(()) => ExitCode::SUCCESS,
     Err(err) => {
-      error!("{err}");
+      error!("✗ {err}");
       // eprintln!("{err}");
       err.into()
     }
@@ -53,6 +52,7 @@ fn main() -> ExitCode {
 
 fn run(cli: Cli) -> Result<(), AppError> {
   match &cli.command {
+    Commands::Clean(args) => command_clean(args)?,
     Commands::Doctor => command_doctor()?,
   };
 

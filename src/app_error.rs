@@ -8,6 +8,7 @@ pub(crate) enum AppError {
   ManifestFileJson(serde_json::Error),
   SourceFileIo(PathBuf, std::io::Error),
   SourceFileMismatch(PathBuf, String, String),
+  CleanIo(PathBuf, std::io::Error),
   // Io(std::io::Error),
 }
 
@@ -27,7 +28,8 @@ impl Display for AppError {
           expected,
           actual
         )
-      } // AppError::Io(e) => write!(f, "I/O Error ({})", e),
+      }
+      AppError::CleanIo(p, e) => write!(f, "Could not clean {}: {}", p.display(), e), // AppError::Io(e) => write!(f, "I/O Error ({})", e),
     }
   }
 }
