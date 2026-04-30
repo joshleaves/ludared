@@ -1,11 +1,14 @@
+use std::path::PathBuf;
 use std::{fmt::Display, process::ExitCode};
 
 pub(crate) enum AppError {
   ConfigurationFileIo(std::io::Error),
   ConfigurationFileToml(toml::de::Error),
-
-  Io(std::io::Error),
-  Toml(toml::de::Error),
+  ManifestFileIo(std::io::Error),
+  ManifestFileJson(serde_json::Error),
+  SourceFileIo(PathBuf, std::io::Error),
+  SourceFileMismatch(PathBuf, String, String),
+  // Io(std::io::Error),
 }
 
 impl Display for AppError {
@@ -13,26 +16,30 @@ impl Display for AppError {
     match &self {
       AppError::ConfigurationFileIo(e) => write!(f, "Could not open ludared.toml: {}", e),
       AppError::ConfigurationFileToml(e) => write!(f, "Could not parse ludared.toml:\n {}", e),
-      AppError::Io(e) => write!(f, "I/O Error ({})", e),
-      AppError::Toml(e) => write!(f, "TOML Error ({}", e),
+      AppError::ManifestFileIo(e) => write!(f, "Could not open manifest: {}", e),
+      AppError::ManifestFileJson(e) => write!(f, "Could not parse manifest:\n {}", e),
+      AppError::SourceFileIo(p, e) => write!(f, "Could not open '{}: {}", p.display(), e),
+      AppError::SourceFileMismatch(p, expected, actual) => {
+        write!(
+          f,
+          "Invalid SHA256 for source file '{}'\n  expected: {}\n       got: {}",
+          p.display(),
+          expected,
+          actual
+        )
+      } // AppError::Io(e) => write!(f, "I/O Error ({})", e),
     }
   }
 }
 
-impl Into<ExitCode> for AppError {
-  fn into(self) -> ExitCode {
+impl From<AppError> for ExitCode {
+  fn from(_err: AppError) -> Self {
     ExitCode::FAILURE
   }
 }
 
-impl From<std::io::Error> for AppError {
-  fn from(e: std::io::Error) -> Self {
-    AppError::Io(e)
-  }
-}
-
-impl From<toml::de::Error> for AppError {
-  fn from(e: toml::de::Error) -> Self {
-    AppError::Toml(e)
-  }
-}
+// impl From<std::io::Error> for AppError {
+//   fn from(e: std::io::Error) -> Self {
+//     AppError::Io(e)
+//   }
+// }

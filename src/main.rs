@@ -1,9 +1,12 @@
 use clap::{Parser, Subcommand};
+use log::*;
 use std::process::ExitCode;
 //use clap::Args;
 mod app_error;
 pub mod cli;
 mod configuration;
+mod manifest;
+mod project;
 use cli::doctor::command_doctor;
 
 use crate::app_error::AppError;
@@ -12,6 +15,9 @@ use crate::app_error::AppError;
 #[command(version, about, long_about = None)]
 #[command(propagate_version = true)]
 struct Cli {
+  #[arg(short = 'v', long = "verbose", action = clap::ArgAction::Count, global = true)]
+  verbosity: u8,
+
   #[command(subcommand)]
   command: Commands,
 }
@@ -29,18 +35,23 @@ enum Commands {
 // }
 
 fn main() -> ExitCode {
-  match run() {
+  let cli = Cli::parse();
+  stderrlog::new()
+    .verbosity(cli.verbosity as usize)
+    .init()
+    .unwrap();
+
+  match run(cli) {
     Ok(()) => ExitCode::SUCCESS,
     Err(err) => {
-      eprintln!("{err}");
+      error!("{err}");
+      // eprintln!("{err}");
       err.into()
     }
   }
 }
 
-fn run() -> Result<(), AppError> {
-  let cli = Cli::parse();
-
+fn run(cli: Cli) -> Result<(), AppError> {
   match &cli.command {
     Commands::Doctor => command_doctor()?,
   };

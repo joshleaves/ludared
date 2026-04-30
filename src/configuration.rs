@@ -17,6 +17,12 @@ pub(crate) struct ProjectConfiguration {
   pub manifest: PathBuf,
 }
 
+// impl ProjectConfiguration {
+//   pub fn new(name: String, manifest: PathBuf) -> Self {
+//     Self { name, manifest }
+//   }
+// }
+
 #[derive(Debug, Deserialize)]
 pub(crate) struct PathsConfiguration {
   #[serde(default = "default_sources_path")]
