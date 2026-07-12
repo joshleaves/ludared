@@ -43,4 +43,11 @@ impl Project {
   pub fn name(&self) -> &String {
     &self.configuration.project.name
   }
+
+  pub fn source_path(&self, source_name: &Path) -> PathBuf {
+    self
+      .root
+      .join(&self.configuration.paths.sources)
+      .join(source_name)
+  }
 }

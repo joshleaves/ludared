@@ -5,12 +5,15 @@ use std::process::ExitCode;
 mod app_error;
 pub mod cli;
 mod configuration;
+mod formatting;
 mod manifest;
 mod project;
 use cli::clean::{CleanArgs, command_clean};
 use cli::doctor::command_doctor;
+use cli::sources::SourcesArgs;
 
 use crate::app_error::AppError;
+use crate::cli::sources::command_sources;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -31,6 +34,9 @@ enum Commands {
 
   /// Validate project configuration and sources
   Doctor,
+
+  /// Manage source files
+  Sources(SourcesArgs),
 }
 
 fn main() -> ExitCode {
@@ -54,6 +60,7 @@ fn run(cli: Cli) -> Result<(), AppError> {
   match &cli.command {
     Commands::Clean(args) => command_clean(args)?,
     Commands::Doctor => command_doctor()?,
+    Commands::Sources(args) => command_sources(args)?,
   };
 
   Ok(())

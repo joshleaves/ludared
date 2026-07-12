@@ -21,9 +21,8 @@ pub(crate) struct Source {
 impl Manifest {
   pub(crate) fn load(path: &Path) -> Result<Self, AppError> {
     let content = std::fs::read_to_string(path).map_err(AppError::ManifestFileIo)?;
-
-    let manifest: Self = serde_json::from_str(&content).map_err(AppError::ManifestFileJson)?; // you may want a Json variant later
-
+    // you may want a Json variant later
+    let manifest: Self = serde_json::from_str(&content).map_err(AppError::ManifestFileJson)?;
     Ok(manifest)
   }
 }
