@@ -50,4 +50,17 @@ impl Project {
       .join(&self.configuration.paths.sources)
       .join(source_name)
   }
+
+  pub fn save_manifest(&self) -> Result<(), AppError> {
+    trace!("Saving project manifest");
+    let manifest_path = self.root.join(&self.configuration.project.manifest);
+    self.manifest.save(&manifest_path)?;
+
+    debug!(
+      "Saved manifest: {}",
+      &self.configuration.project.manifest.display()
+    );
+    trace!("{:?}", self.manifest);
+    Ok(())
+  }
 }

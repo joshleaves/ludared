@@ -8,6 +8,7 @@ mod configuration;
 mod formatting;
 mod manifest;
 mod project;
+mod source;
 use cli::clean::{CleanArgs, command_clean};
 use cli::doctor::command_doctor;
 use cli::sources::SourcesArgs;

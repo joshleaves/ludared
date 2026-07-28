@@ -6,8 +6,10 @@ pub(crate) enum AppError {
   ConfigurationFileToml(toml::de::Error),
   ManifestFileIo(std::io::Error),
   ManifestFileJson(serde_json::Error),
+  SourceFileAlreadyExists(PathBuf),
   SourceFileIo(PathBuf, std::io::Error),
   SourceFileMismatch(PathBuf, String, String),
+  NoSuchFile(PathBuf),
   CleanIo(PathBuf, std::io::Error),
   // Io(std::io::Error),
 }
@@ -19,6 +21,8 @@ impl Display for AppError {
       AppError::ConfigurationFileToml(e) => write!(f, "Could not parse ludared.toml:\n {}", e),
       AppError::ManifestFileIo(e) => write!(f, "Could not open manifest: {}", e),
       AppError::ManifestFileJson(e) => write!(f, "Could not parse manifest:\n {}", e),
+      AppError::NoSuchFile(p) => write!(f, "File missing: {}", p.display()),
+      AppError::SourceFileAlreadyExists(p) => write!(f, "Source already exists: {}", p.display()),
       AppError::SourceFileIo(p, e) => write!(f, "Could not open '{}: {}", p.display(), e),
       AppError::SourceFileMismatch(p, expected, actual) => {
         write!(
@@ -29,7 +33,8 @@ impl Display for AppError {
           actual
         )
       }
-      AppError::CleanIo(p, e) => write!(f, "Could not clean {}: {}", p.display(), e), // AppError::Io(e) => write!(f, "I/O Error ({})", e),
+      AppError::CleanIo(p, e) => write!(f, "Could not clean {}: {}", p.display(), e),
+      // AppError::Io(e) => write!(f, "I/O Error ({})", e),
     }
   }
 }

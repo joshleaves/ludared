@@ -1,21 +1,13 @@
 use crate::app_error::AppError;
-use serde::Deserialize;
+use crate::source::Source;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct Manifest {
   #[serde(default)]
   pub sources: HashMap<PathBuf, Source>,
-}
-
-#[derive(Debug, Deserialize)]
-pub(crate) struct Source {
-  pub sha256: String,
-  #[serde(default)]
-  pub size: Option<u64>,
-  #[serde(default)]
-  pub label: Option<String>,
 }
 
 impl Manifest {
@@ -24,5 +16,11 @@ impl Manifest {
     // you may want a Json variant later
     let manifest: Self = serde_json::from_str(&content).map_err(AppError::ManifestFileJson)?;
     Ok(manifest)
+  }
+
+  pub(crate) fn save(&self, path: &Path) -> Result<(), AppError> {
+    let json = serde_json::to_string_pretty(self).map_err(AppError::ManifestFileJson)?;
+    std::fs::write(path, json).map_err(AppError::ManifestFileIo)?;
+    Ok(())
   }
 }
