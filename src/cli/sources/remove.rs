@@ -9,8 +9,10 @@ pub(crate) struct SourcesRemoveArgs {
   file: PathBuf,
 }
 
-pub(crate) fn command_sources_remove(args: &SourcesRemoveArgs) -> Result<(), AppError> {
-  let mut project = Project::load_default()?;
+pub(crate) fn command_sources_remove(
+  project: &mut Project,
+  args: &SourcesRemoveArgs,
+) -> Result<(), AppError> {
   if project.manifest.sources.remove(&args.file).is_none() {
     warn!("Source not found in manifest: {}", &args.file.display());
     return Err(AppError::SourceNotFound(args.file.clone()));

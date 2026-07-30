@@ -12,8 +12,10 @@ pub(crate) struct SourcesListArgs {
   status: bool,
 }
 
-pub(crate) fn command_sources_list(args: &SourcesListArgs) -> Result<(), AppError> {
-  let project = Project::load_default()?;
+pub(crate) fn command_sources_list(
+  project: Project,
+  args: &SourcesListArgs,
+) -> Result<(), AppError> {
   info!("Listing sources for project {}", project.name());
   if project.manifest.sources.is_empty() {
     warn!("No source files defined in project");

@@ -6,6 +6,7 @@ use crate::app_error::AppError;
 use crate::cli::sources::add::SourcesAddArgs;
 use crate::cli::sources::list::SourcesListArgs;
 use crate::cli::sources::remove::SourcesRemoveArgs;
+use crate::project::Project;
 
 #[derive(Args)]
 pub(crate) struct SourcesArgs {
@@ -25,10 +26,10 @@ enum SourcesCommands {
   Remove(SourcesRemoveArgs),
 }
 
-pub(crate) fn command_sources(args: &SourcesArgs) -> Result<(), AppError> {
+pub(crate) fn command_sources(mut project: Project, args: &SourcesArgs) -> Result<(), AppError> {
   match &args.command {
-    SourcesCommands::List(args) => list::command_sources_list(args),
-    SourcesCommands::Add(args) => add::command_sources_add(args),
-    SourcesCommands::Remove(args) => remove::command_sources_remove(args),
+    SourcesCommands::List(args) => list::command_sources_list(project, args),
+    SourcesCommands::Add(args) => add::command_sources_add(&mut project, args),
+    SourcesCommands::Remove(args) => remove::command_sources_remove(&mut project, args),
   }
 }

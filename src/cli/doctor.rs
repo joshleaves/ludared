@@ -3,8 +3,7 @@ use std::path::PathBuf;
 
 use crate::{app_error::AppError, project::Project, source::Source};
 
-pub(crate) fn command_doctor() -> Result<(), AppError> {
-  let project = Project::load_default()?;
+pub(crate) fn command_doctor(project: Project) -> Result<(), AppError> {
   info!("Verifying sources for project {}", project.name());
   if project.manifest.sources.is_empty() {
     warn!("No source files defined in project");

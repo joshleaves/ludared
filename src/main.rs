@@ -15,6 +15,7 @@ use cli::sources::SourcesArgs;
 
 use crate::app_error::AppError;
 use crate::cli::sources::command_sources;
+use crate::project::Project;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -58,10 +59,11 @@ fn main() -> ExitCode {
 }
 
 fn run(cli: Cli) -> Result<(), AppError> {
+  let project = Project::load_default()?;
   match &cli.command {
     Commands::Clean(args) => command_clean(args)?,
-    Commands::Doctor => command_doctor()?,
-    Commands::Sources(args) => command_sources(args)?,
+    Commands::Doctor => command_doctor(project)?,
+    Commands::Sources(args) => command_sources(project, args)?,
   };
 
   Ok(())

@@ -9,8 +9,10 @@ pub(crate) struct SourcesAddArgs {
   file: PathBuf,
 }
 
-pub(crate) fn command_sources_add(args: &SourcesAddArgs) -> Result<(), AppError> {
-  let mut project = Project::load_default()?;
+pub(crate) fn command_sources_add(
+  project: &mut Project,
+  args: &SourcesAddArgs,
+) -> Result<(), AppError> {
   let source_path = project.source_path(&args.file);
   if !source_path.is_file() {
     warn!("File missing: {}", source_path.display());
