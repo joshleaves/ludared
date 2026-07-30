@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::{fmt::Display, process::ExitCode};
 
+#[derive(Debug)]
 pub(crate) enum AppError {
   ConfigurationFileIo(std::io::Error),
   ConfigurationFileToml(toml::de::Error),

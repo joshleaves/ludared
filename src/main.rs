@@ -3,12 +3,14 @@ use log::*;
 use std::process::ExitCode;
 //use clap::Args;
 mod app_error;
-pub mod cli;
+mod cli;
 mod configuration;
 mod formatting;
 mod manifest;
 mod project;
 mod source;
+#[cfg(test)]
+mod testing;
 use cli::clean::{CleanArgs, command_clean};
 use cli::doctor::command_doctor;
 use cli::sources::SourcesArgs;
