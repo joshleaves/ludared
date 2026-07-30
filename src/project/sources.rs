@@ -1,7 +1,6 @@
 use crate::app_error::AppError;
 use crate::source::Source;
 
-use log::*;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -32,12 +31,10 @@ impl Project {
   pub(crate) fn add_source(&mut self, source_name: &Path) -> Result<(), AppError> {
     let source_path = self.source_path(source_name);
     if !source_path.is_file() {
-      warn!("File missing: {}", source_path.display());
       return Err(AppError::NoSuchFile(source_name.to_path_buf()));
     };
 
     if self.manifest.sources.contains_key(source_name) {
-      warn!("File already in manifest: {}", &source_name.display());
       return Err(AppError::SourceAlreadyExists(source_name.to_path_buf()));
     }
     let new_source = Source::new_from_file(&source_path)?;
@@ -62,7 +59,6 @@ impl Project {
   /// - the manifest cannot be written.
   pub(crate) fn remove_source(&mut self, source_name: &Path) -> Result<(), AppError> {
     if self.manifest.sources.remove(source_name).is_none() {
-      warn!("Source not found in manifest: {}", &source_name.display());
       return Err(AppError::SourceNotFound(source_name.to_path_buf()));
     };
     self.save_manifest()?;
@@ -75,33 +71,25 @@ impl Project {
 mod tests {
   use super::*;
   use crate::testing::fixtures::project::ProjectFixture;
-  use uuid::Uuid;
 
   #[test]
   fn add_source_adds_source_to_manifest() {
     let mut fixture = ProjectFixture::new();
-    let file = format!("{}.sfc", Uuid::new_v4());
-    let path = PathBuf::from(&file);
-    fixture.create_source_file(&file, b"hello world");
-    fixture.project.add_source(&path.clone()).unwrap();
+    let (file, path) = ProjectFixture::random_source_name();
 
-    assert!(
-      fixture
-        .reload()
-        .project
-        .manifest
-        .sources
-        .contains_key(&path)
-    );
+    fixture.create_source_file(&file, b"hello world");
+    fixture.project.add_source(&path).unwrap();
+
+    fixture.reload();
+    assert!(fixture.project.manifest.sources.contains_key(&path));
   }
 
   #[test]
   fn add_source_fails_if_file_missing() {
     let mut fixture = ProjectFixture::new();
-    let file = format!("{}.sfc", Uuid::new_v4());
-    let path = PathBuf::from(&file);
+    let (_, path) = ProjectFixture::random_source_name();
 
-    match fixture.project.add_source(&path.clone()).unwrap_err() {
+    match fixture.project.add_source(&path).unwrap_err() {
       AppError::NoSuchFile(p) => assert_eq!(p, path),
       err => panic!("Unexpected error: {err:?}"),
     }
@@ -110,14 +98,38 @@ mod tests {
   #[test]
   fn add_source_fails_if_file_already_in_manifest() {
     let mut fixture = ProjectFixture::new();
-    let file = format!("{}.sfc", Uuid::new_v4());
-    let path = PathBuf::from(&file);
+    let (file, path) = ProjectFixture::random_source_name();
+
     fixture.create_source_file(&file, b"hello world");
-    fixture.project.add_source(&path.clone()).unwrap();
+    fixture.project.add_source(&path).unwrap();
     fixture.reload();
 
-    match fixture.project.add_source(&path.clone()).unwrap_err() {
+    match fixture.project.add_source(&path).unwrap_err() {
       AppError::SourceAlreadyExists(p) => assert_eq!(p, path),
+      err => panic!("Unexpected error: {err:?}"),
+    }
+  }
+
+  #[test]
+  fn remove_source_removes_source_from_manifest() {
+    let mut fixture = ProjectFixture::new();
+    let (file, path) = ProjectFixture::random_source_name();
+
+    fixture.register_source_file(&file, b"hello world");
+
+    fixture.project.remove_source(&path).unwrap();
+
+    fixture.reload();
+    assert!(!fixture.project.manifest.sources.contains_key(&path));
+  }
+
+  #[test]
+  fn remove_source_fails_if_source_not_in_manifest() {
+    let mut fixture = ProjectFixture::new();
+    let (_, path) = ProjectFixture::random_source_name();
+
+    match fixture.project.remove_source(&path).unwrap_err() {
+      AppError::SourceNotFound(p) => assert_eq!(p, path),
       err => panic!("Unexpected error: {err:?}"),
     }
   }
