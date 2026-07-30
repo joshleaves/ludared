@@ -19,7 +19,7 @@ pub(crate) fn command_sources_add(args: &SourcesAddArgs) -> Result<(), AppError>
 
   if project.manifest.sources.contains_key(&args.file) {
     warn!("File already in manifest: {}", &args.file.display());
-    return Err(AppError::SourceFileAlreadyExists(args.file.clone()));
+    return Err(AppError::SourceAlreadyExists(args.file.clone()));
   }
   let new_source = Source::new_from_file(&source_path)?;
   project
