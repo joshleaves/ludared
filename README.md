@@ -1,6 +1,6 @@
 # Ludared
 
-Ludared (Ludus Archive Editor) is a command-line tool to help build and maintain ROM hacking and game modding projects.
+Ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain ROM hacking and game modding projects.
 
 > **Status:** Early development.
 
@@ -9,8 +9,8 @@ Ludared (Ludus Archive Editor) is a command-line tool to help build and maintain
 - [x] `doctor` — Verify project configuration and source files.
 - [x] `clean` — Remove generated build and cache artifacts.
 - [x] `sources list` — List configured source files.
-- [ ] `sources add` — Add a source file to the manifest.
-- [ ] `sources remove` — Remove a source file from the manifest.
+- [x] `sources add` — Add a source file to the manifest.
+- [x] `sources remove` — Remove a source file from the manifest.
 
 ## Planned commands
 
@@ -25,4 +25,4 @@ Ludared (Ludus Archive Editor) is a command-line tool to help build and maintain
 
 ## Notes
 
-Use this document as a lightweight roadmap while the CLI evolves.
+This document is a lightweight roadmap while the CLI evolves.

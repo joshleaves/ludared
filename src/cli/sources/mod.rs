@@ -26,6 +26,7 @@ enum SourcesCommands {
   Remove(SourcesRemoveArgs),
 }
 
+/// Dispatches execution to the requested `sources` subcommand.
 pub(crate) fn command_sources(mut project: Project, args: &SourcesArgs) -> Result<(), AppError> {
   match &args.command {
     SourcesCommands::List(args) => list::command_sources_list(project, args),

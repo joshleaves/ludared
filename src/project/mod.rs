@@ -5,6 +5,8 @@ use crate::app_error::AppError;
 use crate::configuration::Configuration;
 use crate::manifest::Manifest;
 
+mod sources;
+
 #[derive(Debug)]
 pub(crate) struct Project {
   pub(crate) root: PathBuf,
@@ -42,13 +44,6 @@ impl Project {
 
   pub fn name(&self) -> &String {
     &self.configuration.project.name
-  }
-
-  pub fn source_path(&self, source_name: &Path) -> PathBuf {
-    self
-      .root
-      .join(&self.configuration.paths.sources)
-      .join(source_name)
   }
 
   pub fn save_manifest(&self) -> Result<(), AppError> {

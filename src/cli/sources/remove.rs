@@ -1,6 +1,5 @@
 use crate::{app_error::AppError, project::Project};
 use clap::Args;
-use log::*;
 use std::path::PathBuf;
 
 #[derive(Args)]
@@ -9,16 +8,13 @@ pub(crate) struct SourcesRemoveArgs {
   file: PathBuf,
 }
 
+/// Removes a source file from the project and reports success to the user.
 pub(crate) fn command_sources_remove(
   project: &mut Project,
   args: &SourcesRemoveArgs,
 ) -> Result<(), AppError> {
-  if project.manifest.sources.remove(&args.file).is_none() {
-    warn!("Source not found in manifest: {}", &args.file.display());
-    return Err(AppError::SourceNotFound(args.file.clone()));
-  };
-  project.save_manifest()?;
-  println!("✓ Removed source {}", &args.file.display());
+  project.remove_source(&args.file)?;
 
+  println!("✓ Removed source {}", args.file.display());
   Ok(())
 }
