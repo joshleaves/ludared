@@ -1,9 +1,10 @@
 use crate::app_error::AppError;
 use serde::Deserialize;
+use serde::Serialize;
 use std::path::Path;
 use std::path::PathBuf;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct Configuration {
   pub project: ProjectConfiguration,
 
@@ -11,19 +12,13 @@ pub(crate) struct Configuration {
   pub paths: PathsConfiguration,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct ProjectConfiguration {
   pub name: String,
   pub manifest: PathBuf,
 }
 
-// impl ProjectConfiguration {
-//   pub fn new(name: String, manifest: PathBuf) -> Self {
-//     Self { name, manifest }
-//   }
-// }
-
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct PathsConfiguration {
   #[serde(default = "default_sources_path")]
   pub sources: PathBuf,
@@ -54,7 +49,7 @@ fn default_builds_path() -> PathBuf {
 }
 
 fn default_cache_path() -> PathBuf {
-  "build/ludared".into()
+  "builds/cache".into()
 }
 
 impl Configuration {
@@ -64,7 +59,13 @@ impl Configuration {
 
   pub fn load(path: &Path) -> Result<Self, AppError> {
     let content = std::fs::read_to_string(path).map_err(AppError::ConfigurationFileIo)?;
-    let config = toml::from_str(&content).map_err(AppError::ConfigurationFileToml)?;
+    let config = toml::from_str(&content).map_err(AppError::ConfigurationFileDeserialize)?;
     Ok(config)
+  }
+
+  pub fn save(&self, path: &Path) -> Result<(), AppError> {
+    let toml = toml::to_string_pretty(self).map_err(AppError::ConfigurationFileSerialize)?;
+    std::fs::write(path, toml).map_err(AppError::ConfigurationFileIo)?;
+    Ok(())
   }
 }

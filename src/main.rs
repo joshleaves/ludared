@@ -11,13 +11,11 @@ mod project;
 mod source;
 #[cfg(test)]
 mod testing;
+use crate::app_error::AppError;
 use cli::clean::{CleanArgs, command_clean};
 use cli::doctor::command_doctor;
-use cli::sources::SourcesArgs;
-
-use crate::app_error::AppError;
-use crate::cli::sources::command_sources;
-use crate::project::Project;
+use cli::init::{InitArgs, command_init};
+use cli::sources::{SourcesArgs, command_sources};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -33,14 +31,17 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-  /// Clean build and cache directories
-  Clean(CleanArgs),
+  /// Initialize a new project
+  Init(InitArgs),
+
+  /// Manage source files
+  Sources(SourcesArgs),
 
   /// Validate project configuration and sources
   Doctor,
 
-  /// Manage source files
-  Sources(SourcesArgs),
+  /// Clean build and cache directories
+  Clean(CleanArgs),
 }
 
 fn main() -> ExitCode {
@@ -61,12 +62,12 @@ fn main() -> ExitCode {
 }
 
 fn run(cli: Cli) -> Result<(), AppError> {
-  let project = Project::load_default()?;
-  match &cli.command {
-    Commands::Clean(args) => command_clean(args)?,
-    Commands::Doctor => command_doctor(project)?,
-    Commands::Sources(args) => command_sources(project, args)?,
-  };
+  match cli.command {
+    Commands::Clean(args) => command_clean(&args)?,
+    Commands::Doctor => command_doctor()?,
+    Commands::Init(mut args) => command_init(&mut args)?,
+    Commands::Sources(args) => command_sources(&args)?,
+  }
 
   Ok(())
 }

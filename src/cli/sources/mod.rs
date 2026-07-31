@@ -27,7 +27,8 @@ enum SourcesCommands {
 }
 
 /// Dispatches execution to the requested `sources` subcommand.
-pub(crate) fn command_sources(mut project: Project, args: &SourcesArgs) -> Result<(), AppError> {
+pub(crate) fn command_sources(args: &SourcesArgs) -> Result<(), AppError> {
+  let mut project = Project::load_default()?;
   match &args.command {
     SourcesCommands::List(args) => list::command_sources_list(project, args),
     SourcesCommands::Add(args) => add::command_sources_add(&mut project, args),
