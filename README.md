@@ -1,8 +1,16 @@
-# Ludared
+# ludared
 
-Ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain ROM hacking and game modding projects.
+ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain ROM hacking and game modding projects.
 
+## Shell completions
+
+ludared provides dynamic shell completions, including project-aware completion for sources and other project resources.
+
+Use `ludared completions [SHELL] | source`. If you don't provide a shell, it will be identified best-effort from your `$SHELL`environment variable.
+
+# Current status
 > **Status:** Early development.
+
 
 ## Available commands
 
