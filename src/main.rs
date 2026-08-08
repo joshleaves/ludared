@@ -1,7 +1,9 @@
+use clap::CommandFactory as _;
 use clap::{Parser, Subcommand};
+use clap_complete::CompleteEnv;
 use log::*;
 use std::process::ExitCode;
-//use clap::Args;
+
 mod app_error;
 mod cli;
 mod configuration;
@@ -45,6 +47,8 @@ enum Commands {
 }
 
 fn main() -> ExitCode {
+  CompleteEnv::with_factory(Cli::command).complete();
+
   let cli = Cli::parse();
   stderrlog::new()
     .verbosity(cli.verbosity as usize)
