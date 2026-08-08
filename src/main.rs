@@ -6,6 +6,7 @@ use std::process::ExitCode;
 
 mod app_error;
 mod cli;
+mod codecs;
 mod configuration;
 mod formatting;
 mod manifest;
@@ -15,6 +16,7 @@ mod source;
 mod testing;
 use crate::app_error::AppError;
 use cli::clean::{CleanArgs, command_clean};
+use cli::codecs::{CodecsArgs, command_codecs};
 use cli::completions::{CompletionsArgs, command_completions};
 use cli::doctor::command_doctor;
 use cli::init::{InitArgs, command_init};
@@ -40,6 +42,8 @@ enum Commands {
   /// Manage source files
   Sources(SourcesArgs),
 
+  /// Manage codecs
+  Codecs(CodecsArgs),
   /// Validate project configuration and sources
   Doctor,
 
@@ -73,6 +77,7 @@ fn run(cli: Cli) -> Result<(), AppError> {
   match cli.command {
     Commands::Completions(args) => command_completions(&args)?,
     Commands::Clean(args) => command_clean(&args)?,
+    Commands::Codecs(args) => command_codecs(&args)?,
     Commands::Doctor => command_doctor()?,
     Commands::Init(mut args) => command_init(&mut args)?,
     Commands::Sources(args) => command_sources(&args)?,

@@ -3,6 +3,7 @@ use std::{fmt::Display, process::ExitCode};
 
 #[derive(Debug)]
 pub(crate) enum AppError {
+  CodecUnavailable(String),
   ConfigurationFileAlreadyExists(),
   ConfigurationFileIo(std::io::Error),
   ConfigurationFileDeserialize(toml::de::Error),
@@ -21,6 +22,7 @@ pub(crate) enum AppError {
 impl Display for AppError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match &self {
+      AppError::CodecUnavailable(s) => write!(f, "Unavailable codec: {}", s),
       AppError::ConfigurationFileAlreadyExists() => write!(f, "Configuration file already exists"),
       AppError::ConfigurationFileIo(e) => write!(f, "Could not open ludared.toml: {}", e),
       AppError::ConfigurationFileDeserialize(e) => {

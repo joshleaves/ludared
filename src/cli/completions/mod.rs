@@ -4,6 +4,7 @@ use std::env::current_exe;
 use std::path::Path;
 use std::process::Command;
 
+pub(crate) mod codecs;
 pub(crate) mod sources;
 
 #[derive(Args)]

@@ -1,12 +1,13 @@
-use clap::{Args, Subcommand};
-pub(crate) mod add;
-pub(crate) mod list;
-pub(crate) mod remove;
 use crate::app_error::AppError;
 use crate::cli::sources::add::SourcesAddArgs;
 use crate::cli::sources::list::SourcesListArgs;
 use crate::cli::sources::remove::SourcesRemoveArgs;
 use crate::project::Project;
+use clap::{Args, Subcommand};
+
+pub(crate) mod add;
+pub(crate) mod list;
+pub(crate) mod remove;
 
 #[derive(Args)]
 pub(crate) struct SourcesArgs {
