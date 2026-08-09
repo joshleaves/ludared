@@ -63,9 +63,3 @@ impl From<AppError> for ExitCode {
     ExitCode::FAILURE
   }
 }
-
-// impl From<std::io::Error> for AppError {
-//   fn from(e: std::io::Error) -> Self {
-//     AppError::Io(e)
-//   }
-// }

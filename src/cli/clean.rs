@@ -1,4 +1,4 @@
-use crate::{app_error::AppError, configuration::Configuration};
+use crate::{configuration::Configuration, errors::app_error::AppError};
 use clap::Args;
 use log::*;
 use std::path::{Path, PathBuf};

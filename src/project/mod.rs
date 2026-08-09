@@ -1,8 +1,8 @@
 use log::*;
 use std::path::{Path, PathBuf};
 
-use crate::app_error::AppError;
 use crate::configuration::Configuration;
+use crate::errors::app_error::AppError;
 use crate::manifest::Manifest;
 
 mod sources;

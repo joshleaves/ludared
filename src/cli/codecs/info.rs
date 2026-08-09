@@ -1,6 +1,6 @@
-use crate::app_error::AppError;
 use crate::cli::completions::codecs::complete_codecs_info;
 use crate::codecs::registry::CodecRegistry;
+use crate::errors::app_error::AppError;
 use clap::Args;
 use clap_complete::ArgValueCompleter;
 

@@ -1,5 +1,5 @@
 use crate::cli::completions::sources::complete_source_add;
-use crate::{app_error::AppError, project::Project};
+use crate::{errors::app_error::AppError, project::Project};
 use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
 use std::path::PathBuf;

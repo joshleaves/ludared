@@ -1,4 +1,4 @@
-use crate::app_error::AppError;
+use crate::errors::app_error::AppError;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs::File;

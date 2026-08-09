@@ -4,17 +4,17 @@ use clap_complete::CompleteEnv;
 use log::*;
 use std::process::ExitCode;
 
-mod app_error;
 mod cli;
 mod codecs;
 mod configuration;
+mod errors;
 mod formatting;
 mod manifest;
 mod project;
 mod source;
 #[cfg(test)]
 mod testing;
-use crate::app_error::AppError;
+use crate::errors::app_error::AppError;
 use cli::clean::{CleanArgs, command_clean};
 use cli::codecs::{CodecsArgs, command_codecs};
 use cli::completions::{CompletionsArgs, command_completions};

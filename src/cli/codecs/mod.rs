@@ -1,6 +1,6 @@
-use crate::app_error::AppError;
 use crate::cli::codecs::detect::CodecsDetectArgs;
 use crate::cli::codecs::info::CodecsInfoArgs;
+use crate::errors::app_error::AppError;
 use clap::{Args, Subcommand};
 
 pub(crate) mod detect;

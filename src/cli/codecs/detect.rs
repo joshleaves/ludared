@@ -1,12 +1,13 @@
 use std::path::PathBuf;
 
-use crate::app_error::AppError;
 use crate::codecs::registry::CodecRegistry;
+use crate::errors::app_error::AppError;
 use clap::Args;
 
 #[derive(Args)]
 pub(crate) struct CodecsDetectArgs {
   /// File
+  #[arg(value_hint = clap::ValueHint::FilePath)]
   file: PathBuf,
 }
 

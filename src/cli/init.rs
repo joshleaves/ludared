@@ -1,7 +1,7 @@
-use crate::app_error::AppError;
 use crate::configuration::Configuration;
 use crate::configuration::PathsConfiguration;
 use crate::configuration::ProjectConfiguration;
+use crate::errors::app_error::AppError;
 use crate::manifest::Manifest;
 use clap::Args;
 use std::path::PathBuf;

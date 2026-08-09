@@ -1,7 +1,7 @@
-use crate::app_error::AppError;
 use crate::cli::sources::add::SourcesAddArgs;
 use crate::cli::sources::list::SourcesListArgs;
 use crate::cli::sources::remove::SourcesRemoveArgs;
+use crate::errors::app_error::AppError;
 use crate::project::Project;
 use clap::{Args, Subcommand};
 

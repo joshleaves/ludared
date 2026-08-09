@@ -1,4 +1,4 @@
-use crate::app_error::AppError;
+use crate::errors::app_error::AppError;
 use clap::Args;
 use std::env::current_exe;
 use std::path::Path;
