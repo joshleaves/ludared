@@ -14,13 +14,15 @@ mod project;
 mod source;
 #[cfg(test)]
 mod testing;
-use crate::errors::app_error::AppError;
+mod virtual_path;
 use cli::clean::{CleanArgs, command_clean};
 use cli::codecs::{CodecsArgs, command_codecs};
 use cli::completions::{CompletionsArgs, command_completions};
+use cli::decode::{DecodeArgs, command_decode};
 use cli::doctor::command_doctor;
 use cli::init::{InitArgs, command_init};
 use cli::sources::{SourcesArgs, command_sources};
+use errors::app_error::AppError;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -44,6 +46,10 @@ enum Commands {
 
   /// Manage codecs
   Codecs(CodecsArgs),
+
+  /// Decode files
+  Decode(DecodeArgs),
+
   /// Validate project configuration and sources
   Doctor,
 
@@ -78,6 +84,7 @@ fn run(cli: Cli) -> Result<(), AppError> {
     Commands::Completions(args) => command_completions(&args)?,
     Commands::Clean(args) => command_clean(&args)?,
     Commands::Codecs(args) => command_codecs(&args)?,
+    Commands::Decode(args) => command_decode(&args)?,
     Commands::Doctor => command_doctor()?,
     Commands::Init(mut args) => command_init(&mut args)?,
     Commands::Sources(args) => command_sources(&args)?,

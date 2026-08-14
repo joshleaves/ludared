@@ -1,4 +1,4 @@
-use crate::cli::completions::codecs::complete_codecs_info;
+use crate::cli::completions::codecs::complete_codecs_list;
 use crate::codecs::registry::CodecRegistry;
 use crate::errors::app_error::AppError;
 use clap::Args;
@@ -7,7 +7,7 @@ use clap_complete::ArgValueCompleter;
 #[derive(Args)]
 pub(crate) struct CodecsInfoArgs {
   /// Codec name
-  #[arg(add = ArgValueCompleter::new(complete_codecs_info))]
+  #[arg(add = ArgValueCompleter::new(complete_codecs_list))]
   codec: String,
 }
 

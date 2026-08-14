@@ -24,6 +24,10 @@ impl CodecRegistry {
     BUILTINS
   }
 
+  pub fn get(name: &str) -> Option<&'static dyn Codec> {
+    BUILTINS.iter().copied().find(|codec| codec.id() == name)
+  }
+
   pub fn detect(data: &[u8]) -> Vec<(&dyn Codec, CodecHandlingConfidence)> {
     let mut codecs = BUILTINS
       .iter()

@@ -29,17 +29,20 @@ Use `ludared completions [SHELL] | source`. If you don't provide a shell, it wil
 - [x] `completions` - Generate completions for your shell
 
 ## Available completions
-- [x] `codecs info` - Available codecs
-- [x] `sources add` - Available files in `sources/` folder, and not in manifest
-- [x] `sources remove` - Files in manifest
+- [x] `codecs info => complete_codecs_list` - Available codecs
+- [x] `sources add => complete_source_add` - Available files in `sources/` folder, and not in manifest
+- [x] `sources remove => complete_source_remove` - Sources declared in manifest
 
 ## Planned commands
 
+- [ ] `decode`
+  - [ ] `list` - `list [VPATH]`
+  - [ ] `add` - `add <VPATH> <CODEC> [NAME] [ARGS]`
+  - [ ] `remove` - `remove <VPATH> <NAME> `
+
 - [ ] `unpack`
-- [ ] `repack`
 - [ ] `build`
-- [ ] `extract`
-- [ ] `edit`
+
 - [ ] `archive`
 - [ ] `tool`
 
@@ -51,3 +54,35 @@ Use `ludared completions [SHELL] | source`. If you don't provide a shell, it wil
 ## Notes
 
 This document is a lightweight roadmap while the CLI evolves.
+
+
+```json
+{
+  "unpacks": [
+    {
+      "input": "DBZ.sfc",
+      "codec": {
+        "id": "std/nintendo/snes/cart/lorom",
+        "args": {}
+      },
+      "outputs": [
+        "rom_00.bin",
+        "rom_01.bin"
+      ],
+      "unpacks": [
+        {
+          "input": "rom_00.bin",
+          "codec": {
+            "id": "srd/extract_texture",
+            "args": {}
+          },
+          "outputs": [
+            "screen_title.bmp",
+            "screen_title.colors.tex"
+          ]
+        }
+      ]
+    }
+  ]
+}
+```

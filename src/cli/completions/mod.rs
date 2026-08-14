@@ -6,6 +6,7 @@ use std::process::Command;
 
 pub(crate) mod codecs;
 pub(crate) mod sources;
+pub(crate) mod virtual_path;
 
 #[derive(Args)]
 pub(crate) struct CompletionsArgs {
