@@ -11,7 +11,7 @@ const CODEC_DESC: &str = "SNES ExHiROM extractor
 
 Separates a ExHiROM into 64KiB banks.
 
-Available options:
+Available arguments:
   bank_numbers
     mapped      Use mapped SNES bank numbers
     sequential  Use sequential physical bank numbers (default)
@@ -34,8 +34,8 @@ impl Codec for SnesExHiRom {
     super::common::can_handle(data, EXHIROM_HEADER_OFFSET, &SnesRomMapType::ExHiROM)
   }
 
-  fn decode(&self, data: &[u8], options: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
+  fn decode(&self, data: &[u8], args: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
     // trace!("Decoding SNES ExHiRom ROM");
-    super::common::extractor::extract_extended_rom_banks(data, options)
+    super::common::extractor::extract_extended_rom_banks(data, args)
   }
 }

@@ -6,7 +6,7 @@ use crate::codecs::snes::common::BANK_SIZE;
 use crate::codecs::snes::common::LOROM_HEADER_OFFSET;
 use crate::codecs::snes::common::SnesRomMapType;
 use crate::codecs::snes::common::extractor::BankNumbers;
-use crate::codecs::snes::common::extractor::SnesCodecOptions;
+use crate::codecs::snes::common::extractor::SnesCodecArgs;
 use crate::codecs::snes::common::extractor::SnesRomExtractor;
 
 const CODEC_ID: &str = "std/nintendo/snes/cart/lorom";
@@ -15,7 +15,7 @@ const CODEC_DESC: &str = "SNES LoROM extractor
 
 Separates a LoROM into 32KiB banks.
 
-Available options:
+Available arguments:
   bank_numbers
     mapped      Use mapped SNES bank numbers
     sequential  Use sequential physical bank numbers (default)
@@ -38,7 +38,7 @@ impl Codec for SnesLoRom {
     super::common::can_handle(data, LOROM_HEADER_OFFSET, &SnesRomMapType::LoROM)
   }
 
-  fn decode(&self, data: &[u8], options: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
+  fn decode(&self, data: &[u8], args: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
     // trace!(format!("Decoding {}:", CODEC_ID))
     let mut results: Vec<DecodedArtifact> = vec![];
 
@@ -58,8 +58,8 @@ impl Codec for SnesLoRom {
       )));
     }
 
-    let options = SnesCodecOptions::from_options(options)?;
-    let mut rom_bank = match options.bank_numbers {
+    let args = SnesCodecArgs::from_args(args)?;
+    let mut rom_bank = match args.bank_numbers {
       BankNumbers::Mapped => 0x80,
       BankNumbers::Sequential => 0x00,
     };

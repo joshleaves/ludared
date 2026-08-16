@@ -12,14 +12,14 @@ pub(crate) enum BankNumbers {
 }
 
 #[derive(Debug, Default, Deserialize)]
-pub(crate) struct SnesCodecOptions {
+pub(crate) struct SnesCodecArgs {
   #[serde(default)]
   pub(crate) bank_numbers: BankNumbers,
 }
 
-impl SnesCodecOptions {
-  pub(crate) fn from_options(options: Option<&str>) -> Result<Self, serde_json::Error> {
-    match options {
+impl SnesCodecArgs {
+  pub(crate) fn from_args(args: Option<&str>) -> Result<Self, serde_json::Error> {
+    match args {
       None => Ok(Self::default()),
       Some(s) => serde_json::from_str(s),
     }
@@ -74,7 +74,7 @@ impl<'a> SnesRomExtractor<'a> {
 
 pub fn extract_extended_rom_banks(
   data: &[u8],
-  options: Option<&str>,
+  args: Option<&str>,
 ) -> Result<Vec<DecodedArtifact>, CodecError> {
   let mut results: Vec<DecodedArtifact> = vec![];
   let mut extractor = SnesRomExtractor::new(data, common::BANK_SIZE * 2);
@@ -94,8 +94,8 @@ pub fn extract_extended_rom_banks(
     )));
   }
 
-  let options = SnesCodecOptions::from_options(options)?;
-  let mut rom_bank = match options.bank_numbers {
+  let args = SnesCodecArgs::from_args(args)?;
+  let mut rom_bank = match args.bank_numbers {
     BankNumbers::Mapped => 0xC0,
     BankNumbers::Sequential => 0x00,
   };
@@ -108,7 +108,7 @@ pub fn extract_extended_rom_banks(
     rom_bank += 1;
   });
 
-  rom_bank = match options.bank_numbers {
+  rom_bank = match args.bank_numbers {
     BankNumbers::Mapped => 0x40,
     BankNumbers::Sequential => rom_bank,
   };
@@ -121,7 +121,7 @@ pub fn extract_extended_rom_banks(
     rom_bank += 1;
   });
 
-  rom_bank = match options.bank_numbers {
+  rom_bank = match args.bank_numbers {
     BankNumbers::Mapped => 0x3E,
     BankNumbers::Sequential => rom_bank,
   };

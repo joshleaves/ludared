@@ -19,8 +19,8 @@ pub(crate) struct DecodeArgs {
   #[arg(add = ArgValueCompleter::new(complete_codecs_list))]
   codec: String,
 
-  /// Codec options
-  options: Option<String>,
+  /// Codec args
+  args: Option<String>,
 
   /// Force usage of non-working codec
   #[arg(long)]
@@ -45,7 +45,7 @@ pub(crate) fn command_decode(args: &DecodeArgs) -> Result<(), AppError> {
     }
     CodecHandlingConfidence::Likely | CodecHandlingConfidence::Certain => {}
   }
-  let artifacts = codec.decode(&data, args.options.as_deref())?;
+  let artifacts = codec.decode(&data, args.args.as_deref())?;
   for artifact in artifacts {
     println!("Found artifact: {}: {}", artifact.name, artifact.data.len());
   }

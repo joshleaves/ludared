@@ -44,6 +44,6 @@ pub trait Codec: Send + Sync {
   fn decode(
     &self,
     data: &[u8],
-    options: Option<&str>,
+    args: Option<&str>,
   ) -> Result<Vec<DecodedArtifact>, errors::CodecError>;
 }
