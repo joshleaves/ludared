@@ -4,34 +4,37 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub(crate) enum AppError {
   // Domain-specific errors
-  #[error("I/O Error (`{0}`)")]
+  #[error("I/O Error: {0}")]
   Io(#[from] std::io::Error),
 
-  #[error("Virtual Path Error (`{0}`)")]
+  #[error("Codec Error: {0}")]
+  CodecError(#[from] crate::codecs::errors::CodecError),
+
+  #[error("Virtual Path Error: {0}")]
   VirtualPathError(#[from] crate::virtual_path::errors::VirtualPathError),
 
-  #[error("Unavailable codec `{0}`")]
+  #[error("Unavailable codec {0}")]
   CodecUnavailable(String),
 
-  #[error("Incompatible codec: `{0}`. Use --force to continue anyway.")]
+  #[error("Incompatible codec: {0}. Use --force to continue anyway.")]
   CodecIncompatible(String),
 
   #[error("Configuration file already exists")]
   ConfigurationFileAlreadyExists(),
 
-  #[error("Could not open ludared.toml: `{0}`")]
+  #[error("Could not open ludared.toml: {0}")]
   ConfigurationFileIo(std::io::Error),
 
-  #[error("Could not parse ludared.toml:\n `{0}`")]
+  #[error("Could not parse ludared.toml:\n{0}")]
   ConfigurationFileDeserialize(toml::de::Error),
 
-  #[error("Could not serialize ludared.toml:\n `{0}`")]
+  #[error("Could not serialize ludared.toml:\n{0}")]
   ConfigurationFileSerialize(toml::ser::Error),
 
-  #[error("Could not open manifest: `{0}`")]
+  #[error("Could not open manifest: {0}")]
   ManifestFileIo(std::io::Error),
 
-  #[error("Could not parse manifest:\n `{0}`")]
+  #[error("Could not parse manifest:\n {0}")]
   ManifestFileJson(serde_json::Error),
 
   #[error("Source already exists: {}", .0.display())]

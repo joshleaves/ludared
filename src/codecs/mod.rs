@@ -30,10 +30,20 @@ impl std::fmt::Display for CodecHandlingConfidence {
   }
 }
 
+pub struct DecodedArtifact {
+  pub name: String,
+  pub data: Vec<u8>,
+}
+
 pub trait Codec: Send + Sync {
   fn id(&self) -> &'static str;
   fn name(&self) -> &'static str;
   fn description(&self) -> &'static str;
 
   fn can_handle(&self, data: &[u8]) -> CodecHandlingConfidence;
+  fn decode(
+    &self,
+    data: &[u8],
+    options: Option<&str>,
+  ) -> Result<Vec<DecodedArtifact>, errors::CodecError>;
 }

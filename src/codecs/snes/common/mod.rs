@@ -3,6 +3,7 @@ use checksum::SnesChecksum;
 use log::*;
 
 pub mod checksum;
+pub mod extractor;
 
 pub const BANK_SIZE: usize = 0x8000;
 pub const COPIER_HEADER_SIZE: usize = 0x200;
