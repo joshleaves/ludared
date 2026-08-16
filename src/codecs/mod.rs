@@ -7,6 +7,7 @@ macro_rules! debug_result {
   }};
 }
 
+pub mod errors;
 pub(crate) mod registry;
 pub(crate) mod snes;
 

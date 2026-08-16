@@ -1,27 +1,26 @@
-use std::fmt::Display;
 use std::path::PathBuf;
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub(crate) enum VirtualPathError {
+  #[error("Empty path")]
   EmptyPath,
-  StartsWithSlash(String),
-  EndsWithSlash(String),
-  EmptyComponent(String),
-  ContainsReferenceComponent(String),
-  ContainsBackslash(String),
-  MissingFile(PathBuf),
-}
 
-impl Display for VirtualPathError {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match &self {
-      Self::EmptyPath => write!(f, "Empty path"),
-      Self::StartsWithSlash(s) => write!(f, "Path begins with a slash: {}", s),
-      Self::EndsWithSlash(s) => write!(f, "Path ends with a slash: {}", s),
-      Self::EmptyComponent(s) => write!(f, "Path contains empty component(s): {}", s),
-      Self::ContainsReferenceComponent(s) => write!(f, "Path contains ./..: {}", s),
-      Self::ContainsBackslash(s) => write!(f, "Path contains backslash character: {}", s),
-      Self::MissingFile(p) => write!(f, "Missing file: {}", p.display()),
-    }
-  }
+  #[error("Path begins with a slash: `{0}`")]
+  StartsWithSlash(String),
+
+  #[error("Path ends with a slash: `{0}`")]
+  EndsWithSlash(String),
+
+  #[error("Path contains empty component(s): `{0}`")]
+  EmptyComponent(String),
+
+  #[error("Path contains ./..: `{0}`")]
+  ContainsReferenceComponent(String),
+
+  #[error("Path contains backslash character: `{0}`")]
+  ContainsBackslash(String),
+
+  #[error("Missing file: {}", .0.display())]
+  MissingFile(PathBuf),
 }
