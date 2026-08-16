@@ -4,12 +4,13 @@ use crate::codecs::DecodedArtifact;
 use crate::codecs::errors::CodecError;
 use crate::codecs::snes::common::EXHIROM_HEADER_OFFSET;
 use crate::codecs::snes::common::SnesRomMapType;
+use log::*;
 
 const CODEC_ID: &str = "std/nintendo/snes/cart/exhirom";
 const CODEC_NAME: &str = "SNES ExHiROM";
-const CODEC_DESC: &str = "SNES ExHiROM extractor
+const CODEC_DESC: &str = "SNES ExHiROM decoder
 
-Separates a ExHiROM into 64KiB banks.
+Separates a Super Nintendo Entertainment System/Super Famicom ExHiROM into 64 KiB banks, plus a copier header if present.
 
 Available arguments:
   bank_numbers
@@ -34,8 +35,12 @@ impl Codec for SnesExHiRom {
     super::common::can_handle(data, EXHIROM_HEADER_OFFSET, &SnesRomMapType::ExHiROM)
   }
 
+  fn decode_name(&self, _: Option<&str>) -> Result<String, CodecError> {
+    Ok("rom_banks".to_string())
+  }
+
   fn decode(&self, data: &[u8], args: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
-    // trace!("Decoding SNES ExHiRom ROM");
+    trace!("Decoding SNES ExHiROM");
     super::common::extractor::extract_extended_rom_banks(data, args)
   }
 }

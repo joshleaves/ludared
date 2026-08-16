@@ -1,6 +1,7 @@
 use crate::codecs::Codec;
 use crate::codecs::CodecHandlingConfidence;
 use crate::codecs::DecodedArtifact;
+use crate::codecs::LudaredCodecArgs;
 use crate::codecs::errors::CodecError;
 use crate::codecs::snes::common::BANK_SIZE;
 use crate::codecs::snes::common::HIROM_HEADER_OFFSET;
@@ -8,12 +9,13 @@ use crate::codecs::snes::common::SnesRomMapType;
 use crate::codecs::snes::common::extractor::BankNumbers;
 use crate::codecs::snes::common::extractor::SnesCodecArgs;
 use crate::codecs::snes::common::extractor::SnesRomExtractor;
+use log::*;
 
 const CODEC_ID: &str = "std/nintendo/snes/cart/hirom";
 const CODEC_NAME: &str = "SNES HiROM";
-const CODEC_DESC: &str = "SNES HiROM extractor
+const CODEC_DESC: &str = "SNES HiROM decoder
 
-Separates a HiROM into 64KiB banks.
+Separates a Super Nintendo Entertainment System/Super Famicom HiROM into 64 KiB banks, plus a copier header if present.
 
 Available arguments:
   bank_numbers
@@ -38,13 +40,17 @@ impl Codec for SnesHiRom {
     super::common::can_handle(data, HIROM_HEADER_OFFSET, &SnesRomMapType::HiROM)
   }
 
+  fn decode_name(&self, _: Option<&str>) -> Result<String, CodecError> {
+    Ok("rom_banks".to_string())
+  }
+
   fn decode(&self, data: &[u8], args: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
-    // trace!(format!("Decoding {}:", CODEC_ID))
+    trace!("Decodig HiROM");
     let mut results: Vec<DecodedArtifact> = vec![];
 
     let mut extractor = SnesRomExtractor::new(data, BANK_SIZE * 2);
     if let Some(copier_header) = extractor.extract_copier_header()? {
-      // trace!("  Found copier header")
+      trace!("  Found copier header");
       let result = DecodedArtifact {
         name: "copier_header.bin".to_owned(),
         data: copier_header.to_vec(),

@@ -1,6 +1,7 @@
 use crate::codecs::Codec;
 use crate::codecs::CodecHandlingConfidence;
 use crate::codecs::DecodedArtifact;
+use crate::codecs::LudaredCodecArgs;
 use crate::codecs::errors::CodecError;
 use crate::codecs::snes::common::BANK_SIZE;
 use crate::codecs::snes::common::LOROM_HEADER_OFFSET;
@@ -8,12 +9,13 @@ use crate::codecs::snes::common::SnesRomMapType;
 use crate::codecs::snes::common::extractor::BankNumbers;
 use crate::codecs::snes::common::extractor::SnesCodecArgs;
 use crate::codecs::snes::common::extractor::SnesRomExtractor;
+use log::*;
 
 const CODEC_ID: &str = "std/nintendo/snes/cart/lorom";
 const CODEC_NAME: &str = "SNES LoROM";
-const CODEC_DESC: &str = "SNES LoROM extractor
+const CODEC_DESC: &str = "SNES LoROM decoder
 
-Separates a LoROM into 32KiB banks.
+Separates a Super Nintendo Entertainment System/Super Famicom LoROM into 32 KiB banks, plus a copier header if present.
 
 Available arguments:
   bank_numbers
@@ -38,13 +40,17 @@ impl Codec for SnesLoRom {
     super::common::can_handle(data, LOROM_HEADER_OFFSET, &SnesRomMapType::LoROM)
   }
 
+  fn decode_name(&self, _: Option<&str>) -> Result<String, CodecError> {
+    Ok("rom_banks".to_string())
+  }
+
   fn decode(&self, data: &[u8], args: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
-    // trace!(format!("Decoding {}:", CODEC_ID))
+    trace!("Decoding LoROM");
     let mut results: Vec<DecodedArtifact> = vec![];
 
     let mut extractor = SnesRomExtractor::new(data, BANK_SIZE);
     if let Some(copier_header) = extractor.extract_copier_header()? {
-      // trace!("  Found copier header")
+      trace!("  Found copier header");
       results.push(DecodedArtifact {
         name: "copier_header.bin".to_owned(),
         data: copier_header.to_vec(),

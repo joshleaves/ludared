@@ -22,6 +22,10 @@ pub(crate) struct DecodeArgs {
   /// Codec args
   args: Option<String>,
 
+  /// Decode node name
+  #[arg(long)]
+  name: Option<String>,
+
   /// Force usage of non-working codec
   #[arg(long)]
   force: bool,
@@ -45,10 +49,19 @@ pub(crate) fn command_decode(args: &DecodeArgs) -> Result<(), AppError> {
     }
     CodecHandlingConfidence::Likely | CodecHandlingConfidence::Certain => {}
   }
+
+  let decode_name = match &args.name {
+    Some(name) => name.clone(),
+    None => codec.decode_name(args.args.as_deref())?,
+  };
   let artifacts = codec.decode(&data, args.args.as_deref())?;
-  for artifact in artifacts {
-    println!("Found artifact: {}: {}", artifact.name, artifact.data.len());
-  }
+  // project.manifest.add_decode(
+  //   &vpath,
+  //   codec.id(),
+  //   &args.args,
+  //   &decode_name,
+  //   artifacts
+  // )?;
 
   Ok(())
 }

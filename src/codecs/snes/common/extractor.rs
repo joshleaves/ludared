@@ -1,4 +1,5 @@
 use crate::codecs::DecodedArtifact;
+use crate::codecs::LudaredCodecArgs;
 use crate::codecs::errors::CodecError;
 use crate::codecs::snes::common;
 use serde::Deserialize;
@@ -17,14 +18,7 @@ pub(crate) struct SnesCodecArgs {
   pub(crate) bank_numbers: BankNumbers,
 }
 
-impl SnesCodecArgs {
-  pub(crate) fn from_args(args: Option<&str>) -> Result<Self, serde_json::Error> {
-    match args {
-      None => Ok(Self::default()),
-      Some(s) => serde_json::from_str(s),
-    }
-  }
-}
+impl LudaredCodecArgs for SnesCodecArgs {}
 
 pub struct SnesRomExtractor<'a> {
   data: &'a [u8],

@@ -1,3 +1,12 @@
+use errors::CodecError;
+use serde::de::DeserializeOwned;
+
+pub(crate) trait LudaredCodecArgs: Sized + DeserializeOwned {
+  fn from_args(args: Option<&str>) -> Result<Self, serde_json::Error> {
+    serde_json::from_str(args.unwrap_or("{}"))
+  }
+}
+
 macro_rules! debug_result {
   ($label:expr => $expression:expr) => {{
     let result = $expression;
@@ -8,6 +17,7 @@ macro_rules! debug_result {
 }
 
 pub mod errors;
+pub(crate) mod generic;
 pub(crate) mod registry;
 pub(crate) mod snes;
 
@@ -41,9 +51,7 @@ pub trait Codec: Send + Sync {
   fn description(&self) -> &'static str;
 
   fn can_handle(&self, data: &[u8]) -> CodecHandlingConfidence;
-  fn decode(
-    &self,
-    data: &[u8],
-    args: Option<&str>,
-  ) -> Result<Vec<DecodedArtifact>, errors::CodecError>;
+
+  fn decode_name(&self, args: Option<&str>) -> Result<String, CodecError>;
+  fn decode(&self, data: &[u8], args: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError>;
 }
