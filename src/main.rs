@@ -73,8 +73,7 @@ fn main() -> ExitCode {
     Ok(()) => ExitCode::SUCCESS,
     Err(err) => {
       error!("✗ {err}");
-      // eprintln!("{err}");
-      err.into()
+      ExitCode::FAILURE
     }
   }
 }

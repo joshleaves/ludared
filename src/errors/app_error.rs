@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::process::ExitCode;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -52,10 +51,4 @@ pub(crate) enum AppError {
 
   #[error("Could not clean {}: {}", .0.display(), .1)]
   CleanIo(PathBuf, std::io::Error),
-}
-
-impl From<AppError> for ExitCode {
-  fn from(_err: AppError) -> Self {
-    ExitCode::FAILURE
-  }
 }
