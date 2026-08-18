@@ -13,7 +13,7 @@ use crate::project::Project;
 use crate::virtual_path::VirtualPath;
 
 #[derive(Args)]
-pub(crate) struct DecodeArgs {
+pub(crate) struct DecodeAddArgs {
   /// Virtual path
   #[arg(add = ArgValueCompleter::new(complete_virtual_path))]
   virtual_path: String,
@@ -34,7 +34,7 @@ pub(crate) struct DecodeArgs {
   force: bool,
 }
 
-pub(crate) fn command_decode(args: &DecodeArgs) -> Result<(), AppError> {
+pub(crate) fn command_decode_add(args: &DecodeAddArgs) -> Result<(), AppError> {
   let codec =
     CodecRegistry::get(&args.codec).ok_or(AppError::CodecUnavailable(args.codec.clone()))?;
 

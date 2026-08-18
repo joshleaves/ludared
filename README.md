@@ -38,9 +38,15 @@ Use `ludared completions [SHELL] | source`. If you don't provide a shell, it wil
 ## Planned commands
 
 - [ ] `decode`
-  - [x] `list` - `list [VPATH]`
-  - [ ] `add` - `add <VPATH> <CODEC> [ARGS] [NAME]`
-  - [ ] `remove` - `remove <VPATH> <NAME> `
+  - [x] `add` - `decode add <VPATH> <CODEC> [ARGS] [NAME]`
+  - [ ] `list` - `decode list [VPATH]`
+  - [ ] `remove` - `decode remove <VPATH> <NAME> `
+
+- [ ] `cache`
+  - [ ] `ls` - `cache list [VPATH*]`
+  - [ ] `cat` - `cache cat <VPATH>`
+  - [ ] `path` - `cache path <VPATH>`
+
 
 - [ ] `unpack`
 - [ ] `build`
