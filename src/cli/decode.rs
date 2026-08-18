@@ -1,9 +1,12 @@
+use std::collections::HashSet;
+
 use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
 
 use crate::cli::completions::codecs::complete_codecs_list;
 use crate::cli::completions::virtual_path::complete_virtual_path;
 use crate::codecs::CodecHandlingConfidence;
+use crate::codecs::errors::CodecError;
 use crate::codecs::registry::CodecRegistry;
 use crate::errors::app_error::AppError;
 use crate::project::Project;
@@ -36,7 +39,7 @@ pub(crate) fn command_decode(args: &DecodeArgs) -> Result<(), AppError> {
     CodecRegistry::get(&args.codec).ok_or(AppError::CodecUnavailable(args.codec.clone()))?;
 
   let vpath = VirtualPath::new(&args.virtual_path)?;
-  let project = Project::load_default()?;
+  let mut project = Project::load_default()?;
   let real_path = vpath.resolve(&project)?;
 
   let data = std::fs::read(real_path)?;
@@ -55,13 +58,22 @@ pub(crate) fn command_decode(args: &DecodeArgs) -> Result<(), AppError> {
     None => codec.decode_name(args.args.as_deref())?,
   };
   let artifacts = codec.decode(&data, args.args.as_deref())?;
-  // project.manifest.add_decode(
-  //   &vpath,
-  //   codec.id(),
-  //   &args.args,
-  //   &decode_name,
-  //   artifacts
-  // )?;
+  let mut new_outputs: HashSet<&str> = HashSet::new();
+
+  for artifact in &artifacts {
+    if !new_outputs.insert(artifact.name.as_str()) {
+      return Err(CodecError::DuplicateArtifact(artifact.name.clone()).into());
+    }
+  }
+
+  project.manifest.add_decode(
+    &vpath,
+    codec.id().to_owned(),
+    &args.args,
+    decode_name,
+    artifacts,
+  )?;
+  project.save_manifest()?;
 
   Ok(())
 }

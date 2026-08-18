@@ -23,6 +23,8 @@ Use `ludared completions [SHELL] | source`. If you don't provide a shell, it wil
 - [x] `codecs info` - Get information about a specific codec
 - [x] `codecs detect` - Detect which codecs can be used on a file
 
+- [x] `decode add`  - Add a decode step
+
 - [x] `doctor` - Verify project configuration and source files
 - [x] `clean` - Remove generated build and cache artifacts
 
@@ -36,8 +38,8 @@ Use `ludared completions [SHELL] | source`. If you don't provide a shell, it wil
 ## Planned commands
 
 - [ ] `decode`
-  - [ ] `list` - `list [VPATH]`
-  - [ ] `add` - `add <VPATH> <CODEC> [NAME] [ARGS]`
+  - [x] `list` - `list [VPATH]`
+  - [ ] `add` - `add <VPATH> <CODEC> [ARGS] [NAME]`
   - [ ] `remove` - `remove <VPATH> <NAME> `
 
 - [ ] `unpack`
@@ -51,38 +53,52 @@ Use `ludared completions [SHELL] | source`. If you don't provide a shell, it wil
 ### Codecs
 - [ ] Add versioning and metadata, with an ABI-friendly key/value metadata representation for future dynamic plugins.
 
+### Configuration
+- [ ] Reconsider build/cache path configuration: use `paths.builds` as the single configurable root for all disposable/generated data, with Ludared managing internal directories such as `cache/decodes` itself. Keep separate paths only if a concrete use case requires them (shared cache, separate storage, CI, etc.).
+
 ## Notes
 
 This document is a lightweight roadmap while the CLI evolves.
 
 
+
 ```json
 {
-  "unpacks": [
-    {
-      "input": "DBZ.sfc",
-      "codec": {
-        "id": "std/nintendo/snes/cart/lorom",
-        "args": {}
-      },
-      "outputs": [
-        "rom_00.bin",
-        "rom_01.bin"
-      ],
-      "unpacks": [
-        {
-          "input": "rom_00.bin",
-          "codec": {
-            "id": "srd/extract_texture",
-            "args": {}
-          },
-          "outputs": [
-            "screen_title.bmp",
-            "screen_title.colors.tex"
+  "decodes": {
+    "my_rom.sfc": [
+      {
+        "name": "rom_banks",
+        "codec": {
+          "id": "std/nintendo/snes/cart/lorom",
+          "version": 1,
+          "args": {
+            "bank_numbers": "mapped"
+          }
+        },
+        "outputs": [
+          "rom_bank_80.bin", "etc..."
+        ],
+        "decodes": {
+          "rom_bank_80.bin": [
+            {
+              "name": "rom_name.txt",
+              "codec": {
+                "id": "std/extract_bytes",
+                "version": 1,
+                "args": {
+                  "target": "rom_name.txt",
+                  "offset": 0,
+                  "length": 21
+                }
+              },
+              "outputs": [
+                "ROM_NAME.txt"
+              ]
+            }
           ]
         }
-      ]
-    }
-  ]
+      }
+    ]
+  }
 }
 ```

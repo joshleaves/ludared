@@ -10,6 +10,9 @@ pub(crate) enum AppError {
   #[error("Codec Error: {0}")]
   CodecError(#[from] crate::codecs::errors::CodecError),
 
+  #[error("Manifest Error: {0}")]
+  ManifestError(#[from] crate::manifest::errors::ManifestError),
+
   #[error("Virtual Path Error: {0}")]
   VirtualPathError(#[from] crate::virtual_path::errors::VirtualPathError),
 
@@ -18,6 +21,12 @@ pub(crate) enum AppError {
 
   #[error("Incompatible codec: {0}. Use --force to continue anyway.")]
   CodecIncompatible(String),
+
+  #[error("Cache index JSON error: {0}")]
+  CacheIndexJson(serde_json::Error),
+
+  #[error("Cache index I/O error: {0}")]
+  CacheIndexIo(std::io::Error),
 
   #[error("Configuration file already exists")]
   ConfigurationFileAlreadyExists(),

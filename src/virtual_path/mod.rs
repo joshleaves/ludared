@@ -50,11 +50,25 @@ impl VirtualPath {
       }
       return Ok(path);
     }
-    unimplemented!("TODO: Virtual path cache")
+    let Some(path) = project.cache.get_entry(self) else {
+      unimplemented!("TODO: Missing file in Manifest");
+    };
+    if !path.exists() {
+      return Err(VirtualPathError::MissingFile(path));
+    }
+    Ok(path)
   }
 
-  // /// Appends a component to this virtual path.
-  // pub fn join(&mut self, add: &str) -> &Self;
+  /// Returns a new virtual path with `component` appended.
+  pub fn join(&self, component: &str) -> Result<Self, VirtualPathError> {
+    Self::new(
+      &[
+        &self.path,
+        component,
+      ]
+      .join("/"),
+    )
+  }
 
   // /// Returns the parent virtual path, or `None` if this path identifies a source.
   // pub fn parent(&self) -> Option<Self>;
@@ -62,8 +76,19 @@ impl VirtualPath {
   // /// Returns the final component of this virtual path.
   // pub fn filename(&self) -> &str;
 
-  // /// Returns an iterator over the components of this virtual path.
-  // pub fn components(&self) -> impl Iterator<Item = &str>;
+  /// Returns an iterator over the components of this virtual path.
+  pub fn components(&self) -> impl Iterator<Item = &str> {
+    self.path.split('/')
+  }
+
+  // pub fn consume(&mut self, components: Vec<&str>) {
+  //   // TODO: An error here at some point
+  //   let path: Vec<&str> = self.path.split('/').collect();
+
+  //   if path.starts_with(&components) {
+  //     self.path = path[components.len()..].join("/");
+  //   }
+  // }
 
   /// Returns the number of components in this virtual path.
   pub fn depth(&self) -> usize {
@@ -73,6 +98,12 @@ impl VirtualPath {
   // /// Returns whether this virtual path directly identifies a project source.
   pub fn is_source(&self) -> bool {
     self.depth() == 1
+  }
+}
+
+impl std::fmt::Display for VirtualPath {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str(&self.path)
   }
 }
 

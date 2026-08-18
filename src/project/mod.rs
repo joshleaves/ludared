@@ -4,14 +4,17 @@ use std::path::{Path, PathBuf};
 use crate::configuration::Configuration;
 use crate::errors::app_error::AppError;
 use crate::manifest::Manifest;
+use crate::project::cache::Cache;
 
-mod sources;
+pub(crate) mod cache;
+pub(crate) mod sources;
 
 #[derive(Debug)]
 pub(crate) struct Project {
   pub(crate) root: PathBuf,
   pub(crate) configuration: Configuration,
   pub(crate) manifest: Manifest,
+  pub(crate) cache: Cache,
 }
 
 impl Project {
@@ -31,10 +34,13 @@ impl Project {
     );
     trace!("{manifest:?}");
 
+    let cache = Cache::new(configuration.paths.cache.join("decodes"))?;
+
     Ok(Self {
       root: root.to_path_buf(),
       configuration,
       manifest,
+      cache,
     })
   }
 

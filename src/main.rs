@@ -9,6 +9,7 @@ mod codecs;
 mod configuration;
 mod errors;
 mod formatting;
+mod hash;
 mod manifest;
 mod project;
 mod source;
