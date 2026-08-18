@@ -23,6 +23,9 @@ pub(crate) struct PathsConfiguration {
   #[serde(default = "default_sources_path")]
   pub sources: PathBuf,
 
+  #[serde(default = "default_workspace_path")]
+  pub workspace: PathBuf,
+
   #[serde(default = "default_builds_path")]
   pub builds: PathBuf,
 
@@ -34,6 +37,7 @@ impl Default for PathsConfiguration {
   fn default() -> Self {
     Self {
       sources: default_sources_path(),
+      workspace: default_workspace_path(),
       builds: default_builds_path(),
       cache: default_cache_path(),
     }
@@ -42,6 +46,10 @@ impl Default for PathsConfiguration {
 
 fn default_sources_path() -> PathBuf {
   "sources".into()
+}
+
+fn default_workspace_path() -> PathBuf {
+  "workspace".into()
 }
 
 fn default_builds_path() -> PathBuf {

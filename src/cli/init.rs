@@ -4,6 +4,9 @@ use crate::configuration::ProjectConfiguration;
 use crate::errors::app_error::AppError;
 use crate::manifest::Manifest;
 use clap::Args;
+use std::fs::OpenOptions;
+use std::io;
+use std::io::Write;
 use std::path::PathBuf;
 
 #[derive(Args)]
@@ -19,6 +22,10 @@ pub(crate) struct InitArgs {
   /// Directory containing source files
   #[arg(long)]
   pub sources: Option<PathBuf>,
+
+  /// Directory for workspace
+  #[arg(long)]
+  pub workspace: Option<PathBuf>,
 
   /// Directory for build outputs
   #[arg(long)]
@@ -56,6 +63,13 @@ impl InitArgs {
     PathBuf::from(format!("{}.ludared", self.name_value()))
   }
 
+  pub(crate) fn workspace_value(&self) -> PathBuf {
+    if let Some(workspace) = &self.workspace {
+      return workspace.clone();
+    }
+    PathBuf::from("workspace")
+  }
+
   pub(crate) fn sources_value(&self) -> PathBuf {
     if let Some(sources) = &self.sources {
       return sources.clone();
@@ -84,15 +98,24 @@ impl InitArgs {
     };
     let paths = PathsConfiguration {
       sources: self.sources_value(),
+      workspace: self.workspace_value(),
       builds: self.builds_value(),
       cache: self.cache_value(),
     };
     let configuration = Configuration { project, paths };
     configuration.save(&PathBuf::from("ludared.toml"))?;
     std::fs::create_dir_all(self.sources_value())?;
+    std::fs::create_dir_all(self.workspace_value())?;
     std::fs::create_dir_all(self.builds_value())?;
     std::fs::create_dir_all(self.cache_value())?;
     Manifest::default().save(&self.manifest_value())?;
+    let mut file = OpenOptions::new()
+      .create(true)
+      .append(true)
+      .open(".gitignore")?;
+    writeln!(file, "{}", self.sources_value().display())?;
+    writeln!(file, "{}", self.builds_value().display())?;
+    writeln!(file, "{}", self.cache_value().display())?;
 
     Ok(())
   }
@@ -114,6 +137,9 @@ pub(crate) fn command_init(args: &mut InitArgs) -> Result<(), AppError> {
     let default = args.sources_value();
     prompt_path(&mut args.sources, "Sources directory", default)?;
 
+    let default = args.workspace_value();
+    prompt_path(&mut args.workspace, "Workspace directory", default)?;
+
     let default = args.builds_value();
     prompt_path(&mut args.builds, "Builds directory", default)?;
 
@@ -123,8 +149,6 @@ pub(crate) fn command_init(args: &mut InitArgs) -> Result<(), AppError> {
 
   args.initialize_project()
 }
-
-use std::io::{self, Write};
 
 fn prompt(label: &str, default: &str) -> Result<String, AppError> {
   print!("{} [{}]: ", label, default);
