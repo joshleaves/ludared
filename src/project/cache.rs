@@ -31,6 +31,10 @@ impl Cache {
     Ok(Self { root, index })
   }
 
+  pub fn entries(&self) -> impl Iterator<Item = &str> {
+    self.index.entries.keys().map(String::as_str)
+  }
+
   pub fn add_entry(&mut self, path: VirtualPath, bytes: &[u8]) -> Result<(), AppError> {
     let hash = sha256_bytes(bytes);
     std::fs::write(self.root.join(&hash), bytes)?;
