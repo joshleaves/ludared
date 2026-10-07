@@ -23,4 +23,7 @@ pub(crate) enum VirtualPathError {
 
   #[error("Missing file: {}", .0.display())]
   MissingFile(PathBuf),
+
+  #[error("Path is not valid UTF-8: {}", .0.display())]
+  NonUtf8Path(PathBuf),
 }

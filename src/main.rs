@@ -23,6 +23,7 @@ use cli::decode::{DecodeArgs, command_decode};
 use cli::doctor::command_doctor;
 use cli::init::{InitArgs, command_init};
 use cli::sources::{SourcesArgs, command_sources};
+use cli::unpack::command_unpack;
 use errors::app_error::AppError;
 
 #[derive(Parser)]
@@ -50,6 +51,9 @@ enum Commands {
 
   /// Decode files
   Decode(DecodeArgs),
+
+  /// Rebuild the decode cache from the manifest
+  Unpack,
 
   /// Validate project configuration and sources
   Doctor,
@@ -88,6 +92,7 @@ fn run(cli: Cli) -> Result<(), AppError> {
     Commands::Doctor => command_doctor()?,
     Commands::Init(mut args) => command_init(&mut args)?,
     Commands::Sources(args) => command_sources(&args)?,
+    Commands::Unpack => command_unpack()?,
   }
 
   Ok(())

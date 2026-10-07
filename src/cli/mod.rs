@@ -6,3 +6,4 @@ pub(crate) mod decode;
 pub(crate) mod doctor;
 pub(crate) mod init;
 pub(crate) mod sources;
+pub(crate) mod unpack;

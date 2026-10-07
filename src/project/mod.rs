@@ -8,6 +8,7 @@ use crate::project::cache::Cache;
 
 pub(crate) mod cache;
 pub(crate) mod sources;
+pub(crate) mod unpack;
 
 #[derive(Debug)]
 pub(crate) struct Project {

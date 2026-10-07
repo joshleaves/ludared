@@ -228,9 +228,8 @@ impl Manifest {
 
     let mut project = Project::load_default()?;
     for artifact in &artifacts {
-      project
-        .cache
-        .add_entry(path.join(&artifact.name)?, &artifact.data)?;
+      let artifact_path = path.join(&artifact.name)?;
+      project.cache.add_entry(&artifact_path, &artifact.data)?;
     }
     let args_json = match args {
       Some(args) => match serde_json::from_str(args) {

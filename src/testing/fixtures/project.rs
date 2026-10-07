@@ -20,7 +20,8 @@ impl ProjectFixture {
 
     fs::write(
       temp.path().join("ludared.toml"),
-      r#"
+      format!(
+        r#"
 [project]
 name = "test"
 manifest = "test.ludared"
@@ -28,8 +29,13 @@ manifest = "test.ludared"
 [paths]
 sources = "sources"
 builds = "builds"
-cache = "build/ludared"
+cache = "{}"
 "#,
+        // Absolute, because a project's cache is resolved against the working
+        // directory rather than the project root. A relative path would have
+        // every fixture share one decode cache.
+        temp.path().join("cache").display(),
+      ),
     )
     .unwrap();
 
@@ -65,6 +71,15 @@ cache = "build/ludared"
     self.reload();
 
     assert!(self.project.manifest.sources.contains_key(source_name));
+  }
+
+  /// # Manifest helpers
+  pub fn write_manifest(&self, contents: impl AsRef<[u8]>) {
+    let manifest_path = self
+      .project
+      .root
+      .join(&self.project.configuration.project.manifest);
+    fs::write(manifest_path, contents).unwrap();
   }
 
   /// # Project helpers

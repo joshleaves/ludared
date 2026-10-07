@@ -13,4 +13,10 @@ pub(crate) enum ManifestError {
 
   #[error("Duplicate output name: {0} under {1}")]
   DuplicateOutput(String, String),
+
+  #[error("Decode '{0}' under '{1}' records output '{2}', but its codec did not produce it")]
+  MissingOutput(String, String, String),
+
+  #[error("Decode '{0}' under '{1}' produced unexpected output '{2}'")]
+  UnexpectedOutput(String, String, String),
 }

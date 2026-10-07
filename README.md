@@ -2,12 +2,6 @@
 
 ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain ROM hacking and game modding projects.
 
-## Shell completions
-
-ludared provides dynamic shell completions, including project-aware completion for sources and other project resources.
-
-Use `ludared completions [SHELL] | source`. If you don't provide a shell, it will be identified best-effort from your `$SHELL` environment variable.
-
 # Current status
 > **Status:** Early development.
 
@@ -23,14 +17,22 @@ Use `ludared completions [SHELL] | source`. If you don't provide a shell, it wil
 - [x] `codecs info` - Get information about a specific codec
 - [x] `codecs detect` - Detect which codecs can be used on a file
 
-- [x] `decode add`  - Add a decode step
+- [x] `decode add` - Add a decode step
+
+- [x] `unpack` - Replay a whole manifest
 
 - [x] `doctor` - Verify project configuration and source files
 - [x] `clean` - Remove generated build and cache artifacts
 
 - [x] `completions` - Generate completions for your shell
 
-## Available completions
+## Shell completions
+
+ludared provides dynamic shell completions, including project-aware completion for sources and other project resources.
+
+Use `ludared completions [SHELL] | source`. If you don't provide a shell, it will be identified best-effort from your `$SHELL` environment variable.
+
+### Available completions
 - [x] `codecs info => complete_codecs_list` - Available codecs
 - [x] `sources add => complete_source_add` - Available files in `sources/` folder, and not in manifest
 - [x] `sources remove => complete_source_remove` - Sources declared in manifest
@@ -47,8 +49,6 @@ Use `ludared completions [SHELL] | source`. If you don't provide a shell, it wil
   - [ ] `cat` - `cache cat <VPATH>`
   - [ ] `path` - `cache path <VPATH>`
 
-
-- [ ] `unpack`
 - [ ] `build`
 
 - [ ] `archive`
@@ -61,6 +61,10 @@ Use `ludared completions [SHELL] | source`. If you don't provide a shell, it wil
 
 ### Configuration
 - [ ] Reconsider build/cache path configuration: use `paths.builds` as the single configurable root for all disposable/generated data, with Ludared managing internal directories such as `cache/decodes` itself. Keep separate paths only if a concrete use case requires them (shared cache, separate storage, CI, etc.).
+
+### Other stuff
+- [ ] Migrate to [usage-rs](https://usage.jdx.dev/rust/migrating-from-clap#migrating-from-clap)
+- [ ] Interace with [ratatui](https://ratatui.rs/installation/)
 
 ## Notes
 

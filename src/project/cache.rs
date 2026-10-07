@@ -35,7 +35,15 @@ impl Cache {
     self.index.entries.keys().map(String::as_str)
   }
 
-  pub fn add_entry(&mut self, path: VirtualPath, bytes: &[u8]) -> Result<(), AppError> {
+  /// Forgets every entry in the in-memory index, leaving stored content alone.
+  ///
+  /// Nothing reaches disk until [`Self::save`], so this only makes sense as the
+  /// first half of rebuilding an index from scratch.
+  pub fn clear_index(&mut self) {
+    self.index = CacheIndex::default();
+  }
+
+  pub fn add_entry(&mut self, path: &VirtualPath, bytes: &[u8]) -> Result<(), AppError> {
     let hash = sha256_bytes(bytes);
     std::fs::write(self.root.join(&hash), bytes)?;
     self.index.entries.insert(path.to_string(), hash);
