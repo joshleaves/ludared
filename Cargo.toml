@@ -9,7 +9,8 @@ license = "MIT"
 homepage = "https://github.com/joshleaves/ludared"
 repository = "https://github.com/joshleaves/ludared"
 
-exclude = ["tests/**"]
+# The binary fixtures the test suite decodes are not part of the source package.
+exclude = ["src/testing/fixtures/data/**"]
 
 [[bin]]
 name = "ludared"

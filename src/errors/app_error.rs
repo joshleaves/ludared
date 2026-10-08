@@ -16,6 +16,9 @@ pub(crate) enum AppError {
   #[error("Virtual Path Error: {0}")]
   VirtualPathError(#[from] crate::virtual_path::errors::VirtualPathError),
 
+  #[error("Cache Error: {0}")]
+  CacheError(#[from] crate::project::cache::errors::CacheError),
+
   #[error("Unavailable codec {0}")]
   CodecUnavailable(String),
 

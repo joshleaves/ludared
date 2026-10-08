@@ -1,5 +1,6 @@
 pub(crate) mod completions;
 
+pub(crate) mod cache;
 pub(crate) mod clean;
 pub(crate) mod codecs;
 pub(crate) mod decode;

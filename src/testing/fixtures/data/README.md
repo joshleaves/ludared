@@ -6,6 +6,10 @@ Hand-crafted SNES LoROM test image embedding the article [Smashing The Stack For
 
 Used solely as test data for Ludared codec/unpack tests. This will not run anything in an emulator, not even a stack smash.
 
+The decode scenario built on this ROM lives in `../lorom.rs`, which is where tests should get it from.
+
+These files are binary test data rather than source, so the package excludes this directory.
+
 The ROM structure, header, and other original material created for this fixture are dedicated to the public domain under CC0 1.0.
 
 The embedded article "Smashing The Stack For Fun And Profit" by Aleph One was originally published in Phrack and is not covered by this CC0 dedication. It remains subject to its original copyright/licensing terms[^1].

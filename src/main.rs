@@ -16,6 +16,7 @@ mod source;
 #[cfg(test)]
 mod testing;
 mod virtual_path;
+use cli::cache::{CacheArgs, command_cache};
 use cli::clean::{CleanArgs, command_clean};
 use cli::codecs::{CodecsArgs, command_codecs};
 use cli::completions::{CompletionsArgs, command_completions};
@@ -55,6 +56,9 @@ enum Commands {
   /// Rebuild the decode cache from the manifest
   Unpack,
 
+  /// Inspect the decode cache
+  Cache(CacheArgs),
+
   /// Validate project configuration and sources
   Doctor,
 
@@ -86,6 +90,7 @@ fn main() -> ExitCode {
 fn run(cli: Cli) -> Result<(), AppError> {
   match cli.command {
     Commands::Completions(args) => command_completions(&args)?,
+    Commands::Cache(args) => command_cache(&args)?,
     Commands::Clean(args) => command_clean(&args)?,
     Commands::Codecs(args) => command_codecs(&args)?,
     Commands::Decode(args) => command_decode(&args)?,

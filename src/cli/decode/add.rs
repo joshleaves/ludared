@@ -15,7 +15,7 @@ use crate::virtual_path::VirtualPath;
 #[derive(Args)]
 pub(crate) struct DecodeAddArgs {
   /// Virtual path
-  #[arg(add = ArgValueCompleter::new(complete_virtual_path))]
+  #[arg(value_name = "PATH", add = ArgValueCompleter::new(complete_virtual_path))]
   virtual_path: String,
 
   /// Codec name

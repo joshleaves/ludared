@@ -19,7 +19,14 @@ ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain
 
 - [x] `decode add` - Add a decode step
 
-- [x] `unpack` - Replay a whole manifest
+- [ ] `decode`
+  - [x] `unpack` - Replay a whole manifest
+
+- [x] `cache`
+  - [x] `cat` - Outputs a cached artifact's contents to STDOUT
+  - [x] `path` - Prints a cached artifact's physical path
+  - [x] `list` - Lists cached artifacts, optionally filtered by `[VPATH]`
+  - [x] `tree` - Displays cached artifacts as a tree, optionally filtered by `[VPATH]`
 
 - [x] `doctor` - Verify project configuration and source files
 - [x] `clean` - Remove generated build and cache artifacts
@@ -33,9 +40,12 @@ ludared provides dynamic shell completions, including project-aware completion f
 Use `ludared completions [SHELL] | source`. If you don't provide a shell, it will be identified best-effort from your `$SHELL` environment variable.
 
 ### Available completions
-- [x] `codecs info => complete_codecs_list` - Available codecs
-- [x] `sources add => complete_source_add` - Available files in `sources/` folder, and not in manifest
-- [x] `sources remove => complete_source_remove` - Sources declared in manifest
+- [x] `codecs info <CODEC: complete_codecs_list>`
+- [x] `sources add <FILE: complete_source_add>`
+- [x] `sources remove <FILE: complete_source_remove>`
+- [x] `decode add <PATH: complete_virtual_path> <CODEC: complete_codecs_list>`
+- [x] `cache list [PATH: complete_virtual_path]`
+- [x] `cache tree [PATH: complete_virtual_path]`
 
 ## Planned commands
 
@@ -43,11 +53,6 @@ Use `ludared completions [SHELL] | source`. If you don't provide a shell, it wil
   - [x] `add` - `decode add <VPATH> <CODEC> [ARGS] [NAME]`
   - [ ] `list` - `decode list [VPATH]`
   - [ ] `remove` - `decode remove <VPATH> <NAME> `
-
-- [ ] `cache`
-  - [ ] `ls` - `cache list [VPATH*]`
-  - [ ] `cat` - `cache cat <VPATH>`
-  - [ ] `path` - `cache path <VPATH>`
 
 - [ ] `build`
 
@@ -69,8 +74,6 @@ Use `ludared completions [SHELL] | source`. If you don't provide a shell, it wil
 ## Notes
 
 This document is a lightweight roadmap while the CLI evolves.
-
-
 
 ```json
 {

@@ -215,6 +215,7 @@ fn verify_outputs(
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::testing::fixtures::lorom;
   use crate::testing::fixtures::project::ProjectFixture;
 
   const EXTRACT: &str = "std/generic/extract_bytes";
@@ -548,35 +549,23 @@ mod tests {
 
   #[test]
   fn restores_a_real_lorom_and_its_nested_decode() {
-    let rom = include_bytes!("../../tests/fixtures/smashing_the_stack.sfc");
-    let decodes = r#"[{
-      "name": "rom_banks",
-      "codec": { "id": "std/nintendo/snes/cart/lorom", "version": 1, "args": {} },
-      "outputs": [ "rom_bank_00.bin", "rom_bank_01.bin" ],
-      "decodes": {
-        "rom_bank_00.bin": [{
-          "name": "TITLE",
-          "codec": {
-            "id": "std/generic/extract_bytes",
-            "version": 1,
-            "args": { "target": "TITLE.txt", "offset": 385, "length": 37 }
-          },
-          "outputs": [ "TITLE.txt" ],
-          "decodes": {}
-        }]
-      }
-    }]"#;
-    let (mut fixture, source) = fixture(rom, decodes);
+    let (mut fixture, source) = lorom::project();
 
     let report = fixture.project.unpack().unwrap();
 
     assert_eq!(report.decodes, 2);
     assert_eq!(report.artifacts, 3);
-    assert_eq!(cached(&fixture, &source, "rom_bank_00.bin"), &rom[..0x8000]);
-    assert_eq!(cached(&fixture, &source, "rom_bank_01.bin"), &rom[0x8000..]);
     assert_eq!(
-      cached(&fixture, &source, "rom_bank_00.bin/TITLE.txt"),
-      b"Smashing The Stack For Fun And Profit"
+      cached(&fixture, &source, "rom_bank_00.bin"),
+      &lorom::SOURCE[..0x8000]
+    );
+    assert_eq!(
+      cached(&fixture, &source, "rom_bank_01.bin"),
+      &lorom::SOURCE[0x8000..]
+    );
+    assert_eq!(
+      cached(&fixture, &source, lorom::TITLE_ARTIFACT),
+      lorom::TITLE
     );
   }
 }
