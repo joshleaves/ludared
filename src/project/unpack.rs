@@ -427,6 +427,7 @@ mod tests {
         args: Default::default(),
       },
       outputs: vec!["head.bin".to_owned()],
+      overrides: Vec::new(),
       decodes: Default::default(),
     };
     let artifacts = [

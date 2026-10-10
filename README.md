@@ -9,24 +9,35 @@ ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain
 
 - [x] `init` - Set up a project
 
-- [x] `sources list` - List configured source files
-- [x] `sources add` - Add a source file to the manifest
-- [x] `sources remove` - Remove a source file from the manifest
+- [x] `sources`
+  - [x] `list` - List configured source files
+  - [x] `add` - Add a source file to the manifest
+  - [x] `remove` - Remove a source file from the manifest
 
-- [x] `codecs list` - List available codecs
-- [x] `codecs info` - Get information about a specific codec
-- [x] `codecs detect` - Detect which codecs can be used on a file
+- [x] `codecs`
+  - [x] `list` - List available codecs
+  - [x] `info` - Get information about a specific codec
+  - [x] `detect` - Detect which codecs can be used on a file
 
-- [x] `decode add` - Add a decode step
+- [x] `decode`
+  - [x] `add` - Add a decode step
 
-- [ ] `decode`
-  - [x] `unpack` - Replay a whole manifest
+- [x] `unpack` - Execute the manifest's decode pipeline
+
+- [x] `artifacts`
+  - [x] `list [VPATH]` - List artifacts
+  - [x] `tree [VPATH]` - Display artifacts as a tree
 
 - [x] `cache`
-  - [x] `cat` - Outputs a cached artifact's contents to STDOUT
-  - [x] `path` - Prints a cached artifact's physical path
-  - [x] `list` - Lists cached artifacts, optionally filtered by `[VPATH]`
-  - [x] `tree` - Displays cached artifacts as a tree, optionally filtered by `[VPATH]`
+  - [x] `cat` - Output a cached artifact's contents to STDOUT
+  - [x] `path` - Print a cached artifact's physical path
+
+- [x] `override` - Manage the decoded artifacts materialized in the workspace
+  - [x] `list [VPATH]` - Lists the artifacts declared as overrides
+  - [x] `tree [VPATH]` - Displays declared overrides as a tree
+  - [x] `add <VPATH> [--force]` - Declares an override and materializes the artifact in the workspace
+  - [x] `refresh <VPATH>` - Rewrites an overridden artifact with its canonical bytes
+  - [x] `remove <VPATH> [--clean]` - Deactivates an override, optionally deleting its workspace file
 
 - [x] `doctor` - Verify project configuration and source files
 - [x] `clean` - Remove generated build and cache artifacts
@@ -43,9 +54,14 @@ Use `ludared completions [SHELL] | source`. If you don't provide a shell, it wil
 - [x] `codecs info <CODEC: complete_codecs_list>`
 - [x] `sources add <FILE: complete_source_add>`
 - [x] `sources remove <FILE: complete_source_remove>`
-- [x] `decode add <PATH: complete_virtual_path> <CODEC: complete_codecs_list>`
-- [x] `cache list [PATH: complete_virtual_path]`
-- [x] `cache tree [PATH: complete_virtual_path]`
+- [x] `decode add <PATH: complete_artifacts_decodable> <CODEC: complete_codecs_list>`
+- [x] `artifacts list [PATH: complete_artifacts_listing]`
+- [x] `artifacts tree [PATH: complete_artifacts_listing]`
+- [x] `override list [PATH: complete_override_listing]`
+- [x] `override tree [PATH: complete_override_listing]`
+- [x] `override add <PATH: complete_override_addable>`
+- [x] `override refresh <PATH: complete_override_active>`
+- [x] `override remove <PATH: complete_override_active>`
 
 ## Planned commands
 

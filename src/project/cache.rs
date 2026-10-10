@@ -37,8 +37,8 @@ impl Cache {
   ///
   /// The index is a [`BTreeMap`], so the order is a property of the index rather
   /// than of the order entries happened to be added in, and does not change
-  /// between runs. This is the listing the `cache list` command prints, and the
-  /// index is the only thing it consults: blobs on disk are never scanned.
+  /// between runs. The index is the only thing it consults: blobs on disk are
+  /// never scanned.
   pub fn entries(&self) -> impl Iterator<Item = &str> {
     self.index.entries.keys().map(String::as_str)
   }

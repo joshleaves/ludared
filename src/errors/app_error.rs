@@ -19,6 +19,9 @@ pub(crate) enum AppError {
   #[error("Cache Error: {0}")]
   CacheError(#[from] crate::project::cache::errors::CacheError),
 
+  #[error("Override Error: {0}")]
+  OverrideError(#[from] crate::project::overrides::errors::OverrideError),
+
   #[error("Unavailable codec {0}")]
   CodecUnavailable(String),
 
@@ -66,4 +69,10 @@ pub(crate) enum AppError {
 
   #[error("Could not clean {}: {}", .0.display(), .1)]
   CleanIo(PathBuf, std::io::Error),
+
+  #[error("Could not create workspace directory {}: {}", .0.display(), .1)]
+  WorkspaceDirIo(PathBuf, std::io::Error),
+
+  #[error("Could not write workspace file {}: {}", .0.display(), .1)]
+  WorkspaceFileIo(PathBuf, std::io::Error),
 }

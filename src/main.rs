@@ -16,6 +16,7 @@ mod source;
 #[cfg(test)]
 mod testing;
 mod virtual_path;
+use cli::artifacts::{ArtifactsArgs, command_artifacts};
 use cli::cache::{CacheArgs, command_cache};
 use cli::clean::{CleanArgs, command_clean};
 use cli::codecs::{CodecsArgs, command_codecs};
@@ -23,6 +24,7 @@ use cli::completions::{CompletionsArgs, command_completions};
 use cli::decode::{DecodeArgs, command_decode};
 use cli::doctor::command_doctor;
 use cli::init::{InitArgs, command_init};
+use cli::overrides::{OverrideArgs, command_override};
 use cli::sources::{SourcesArgs, command_sources};
 use cli::unpack::command_unpack;
 use errors::app_error::AppError;
@@ -56,8 +58,14 @@ enum Commands {
   /// Rebuild the decode cache from the manifest
   Unpack,
 
+  /// Inspect the artifacts declared in the manifest
+  Artifacts(ArtifactsArgs),
+
   /// Inspect the decode cache
   Cache(CacheArgs),
+
+  /// Manage the decoded artifacts materialized in the workspace
+  Override(OverrideArgs),
 
   /// Validate project configuration and sources
   Doctor,
@@ -90,12 +98,14 @@ fn main() -> ExitCode {
 fn run(cli: Cli) -> Result<(), AppError> {
   match cli.command {
     Commands::Completions(args) => command_completions(&args)?,
+    Commands::Artifacts(args) => command_artifacts(&args)?,
     Commands::Cache(args) => command_cache(&args)?,
     Commands::Clean(args) => command_clean(&args)?,
     Commands::Codecs(args) => command_codecs(&args)?,
     Commands::Decode(args) => command_decode(&args)?,
     Commands::Doctor => command_doctor()?,
     Commands::Init(mut args) => command_init(&mut args)?,
+    Commands::Override(args) => command_override(&args)?,
     Commands::Sources(args) => command_sources(&args)?,
     Commands::Unpack => command_unpack()?,
   }

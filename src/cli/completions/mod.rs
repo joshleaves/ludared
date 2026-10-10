@@ -4,9 +4,10 @@ use std::env::current_exe;
 use std::path::Path;
 use std::process::Command;
 
+pub(crate) mod artifacts;
 pub(crate) mod codecs;
+pub(crate) mod overrides;
 pub(crate) mod sources;
-pub(crate) mod virtual_path;
 
 #[derive(Args)]
 pub(crate) struct CompletionsArgs {
