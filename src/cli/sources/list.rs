@@ -53,5 +53,5 @@ fn display_source_entry(
       format_bytes(*source_size)
     );
   }
-  println!("  SHA256: {}", &source.sha256);
+  println!("  SHA256: {}", source.sha256);
 }

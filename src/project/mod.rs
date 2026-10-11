@@ -33,7 +33,7 @@ impl Project {
     let manifest = Manifest::load(&manifest_path)?;
     debug!(
       "Parsed manifest: {}",
-      &configuration.project.manifest.display()
+      configuration.project.manifest.display()
     );
     trace!("{manifest:?}");
 
@@ -62,7 +62,7 @@ impl Project {
 
     debug!(
       "Saved manifest: {}",
-      &self.configuration.project.manifest.display()
+      self.configuration.project.manifest.display()
     );
     trace!("{:?}", self.manifest);
     Ok(())
