@@ -1334,7 +1334,7 @@ fn sha256_of(bytes: &[u8]) -> String {
 
 /// Decodes `target` out of the source, as a second decode operation on it.
 fn decode(project: &Project, target: &str) -> std::process::Output {
-  let args = format!(r#"{{"target":"{target}","offset":0,"length":4}}"#);
+  let args = serde_json::json!({ "target": target, "offset": 0, "length": 4 }).to_string();
 
   project.run(&[
     "decode",

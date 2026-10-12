@@ -51,6 +51,52 @@ impl DecodeNode {
       .is_none_or(|decodes| decodes.is_empty())
   }
 
+  /// Visits every output this decode node declares, and every output the decodes
+  /// hanging off those declare in turn, depth first and in declaration order.
+  ///
+  /// `prefix` is the virtual path the outputs sit under, and `visit` is handed
+  /// each output's full virtual path.
+  ///
+  /// Only outputs are visited. The parents an output name implies are navigation
+  /// rather than artifacts of their own, so `data` is not visited on account of
+  /// some other node producing `data/gfx/head.bin` below it.
+  pub(crate) fn visit_paths(&self, prefix: &str, visit: &mut impl FnMut(&str)) {
+    for output in &self.outputs {
+      let path = format!("{prefix}/{output}");
+
+      visit(&path);
+
+      if let Some(nested) = self.decodes.get(output) {
+        for decode in nested {
+          decode.visit_paths(&path, visit);
+        }
+      }
+    }
+  }
+
+  /// Visits only the outputs this decode node and the decodes hanging off those
+  /// declare as overrides, traversing exactly as [`Self::visit_paths`] does.
+  ///
+  /// Whether an output is an override is the producing node's to say: a node
+  /// naming a nested artifact it did not produce overrides nothing.
+  pub(crate) fn visit_overrides(&self, prefix: &str, visit: &mut impl FnMut(&str)) {
+    for output in &self.outputs {
+      let path = format!("{prefix}/{output}");
+
+      if self.overrides.contains(output) {
+        visit(&path);
+      }
+
+      // Being overridden says nothing about what hangs below the output, so the
+      // descent happens either way.
+      if let Some(nested) = self.decodes.get(output) {
+        for decode in nested {
+          decode.visit_overrides(&path, visit);
+        }
+      }
+    }
+  }
+
   /// Resolves or creates the mutable decode bucket for an artifact relative to
   /// this decode node.
   ///

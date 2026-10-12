@@ -3,6 +3,14 @@ use crate::codecs::LudaredCodecArgs;
 use crate::codecs::errors::CodecError;
 use crate::codecs::snes::common;
 use serde::Deserialize;
+use std::collections::{BTreeMap, BTreeSet};
+
+/// The artifact name every SNES decoder gives the copier header, when the image
+/// carries one.
+const COPIER_HEADER: &str = "copier_header.bin";
+
+/// The prefix of every artifact name standing for a ROM bank.
+const ROM_BANK: &str = "rom_bank_";
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -36,8 +44,8 @@ impl<'a> SnesRomExtractor<'a> {
     }
   }
 
-  pub fn banks_left(&self, bank_size: usize) -> usize {
-    (self.data.len() - self.position) / bank_size
+  pub fn banks_left(&self) -> usize {
+    (self.data.len() - self.position) / self.bank_size
   }
 
   pub fn extract_copier_header(&mut self) -> Result<Option<&[u8]>, CodecError> {
@@ -80,7 +88,7 @@ pub fn extract_extended_rom_banks(
     };
     results.push(result);
   }
-  let bank_count = extractor.banks_left(common::BANK_SIZE * 2);
+  let bank_count = extractor.banks_left();
   if bank_count > 130 {
     return Err(CodecError::Message(format!(
       "Too many ROM banks: {} (Maximum: 130)",
@@ -129,4 +137,336 @@ pub fn extract_extended_rom_banks(
   });
 
   Ok(results)
+}
+
+/// Rebuilds the image [`extract_extended_rom_banks`] split, from the banks it
+/// produced.
+///
+/// The three groups the decoder numbers are the same ones, in the same order, so
+/// a bank that is numbered after another is often the one that came first.
+pub fn encode_extended_rom_banks(
+  artifacts: &[DecodedArtifact],
+  args: Option<&str>,
+) -> Result<Vec<u8>, CodecError> {
+  let args = SnesCodecArgs::from_args(args)?;
+  let groups = match args.bank_numbers {
+    BankNumbers::Mapped => [
+      (0xc0, 64),
+      (0x40, 64),
+      (0x3e, 2),
+    ],
+    BankNumbers::Sequential => [
+      (0x00, 64),
+      (0x40, 64),
+      (0x80, 2),
+    ],
+  };
+
+  encode_rom_banks(artifacts, common::BANK_SIZE * 2, &groups)
+}
+
+/// The names a decoder numbers its banks with, in the order the banks sit in the
+/// image.
+///
+/// `groups` lists the decoder's numbering as `(first bank number, bank count)`
+/// pairs. Mapped numbering is not monotonic — an extended image numbers its
+/// first group from `0xc0`, its second from `0x40` and its last from `0x3e` —
+/// so the pairs carry the physical order explicitly rather than leaving it to be
+/// sorted back out of the names.
+fn bank_names(groups: &[(usize, usize)]) -> Vec<String> {
+  groups
+    .iter()
+    .flat_map(|(first, count)| (0..*count).map(move |offset| bank_name(first + offset)))
+    .collect()
+}
+
+/// The artifact name a decoder gives the bank numbered `number`.
+fn bank_name(number: usize) -> String {
+  format!("{ROM_BANK}{number:02x}.bin")
+}
+
+/// Rebuilds a SNES image from the artifacts a bank-splitting decoder produced.
+///
+/// `groups` is the numbering of the decoder the image came from and `bank_size`
+/// the size of one of its banks; see [`bank_names`].
+///
+/// The copier header leads the image whenever the decoder emitted one, and the
+/// banks follow in the order `groups` gives them. An image holds as many banks
+/// as it has room for, so the banks present are a prefix of the numbering and
+/// the first one missing ends the image. Every artifact has to be placed by
+/// that walk: a bank the image skipped over, a name no bank of this codec
+/// carries, and a second artifact of a name already given are all errors,
+/// because each of them is a hole where a ROM should be.
+pub fn encode_rom_banks(
+  artifacts: &[DecodedArtifact],
+  bank_size: usize,
+  groups: &[(usize, usize)],
+) -> Result<Vec<u8>, CodecError> {
+  let mut banks: BTreeMap<&str, &[u8]> = BTreeMap::new();
+
+  for artifact in artifacts {
+    if banks
+      .insert(artifact.name.as_str(), artifact.data.as_slice())
+      .is_some()
+    {
+      return Err(CodecError::DuplicateArtifact(artifact.name.clone()));
+    }
+  }
+
+  let mut image: Vec<u8> = Vec::new();
+  let mut placed: BTreeSet<&str> = BTreeSet::new();
+
+  if let Some(header) = banks.get(COPIER_HEADER) {
+    if header.len() != common::COPIER_HEADER_SIZE {
+      return Err(CodecError::Message(format!(
+        "Invalid copier header size: {} (Expected: {})",
+        header.len(),
+        common::COPIER_HEADER_SIZE
+      )));
+    }
+    image.extend_from_slice(header);
+    placed.insert(COPIER_HEADER);
+  }
+
+  let names = bank_names(groups);
+  let numbered: BTreeSet<&str> = names.iter().map(String::as_str).collect();
+
+  for name in &names {
+    let Some(bank) = banks.get(name.as_str()) else {
+      // The image ran out of banks. A bank this layout does number, sitting
+      // beyond this one, was skipped rather than never reached, which is a hole
+      // in the middle of a ROM. A bank the layout never numbered at all is not,
+      // and the walk over the artifacts below reports it for what it is.
+      if let Some(skipped) = banks
+        .keys()
+        .copied()
+        .find(|entry| numbered.contains(entry) && !placed.contains(entry))
+      {
+        return Err(CodecError::Message(format!(
+          "Missing ROM bank {name} before {skipped}"
+        )));
+      }
+      break;
+    };
+
+    if bank.len() != bank_size {
+      return Err(CodecError::Message(format!(
+        "Invalid ROM bank {name}: {} bytes (Expected: {bank_size})",
+        bank.len()
+      )));
+    }
+
+    image.extend_from_slice(bank);
+    placed.insert(name.as_str());
+  }
+
+  for artifact in artifacts {
+    if !placed.contains(artifact.name.as_str()) {
+      return Err(CodecError::Message(format!(
+        "Unexpected artifact: {}",
+        artifact.name
+      )));
+    }
+  }
+
+  Ok(image)
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::codecs::snes::common::testkit;
+
+  /// The number of banks the extended layout numbers, and so the number an
+  /// image has to hold before every group is used.
+  const EXTENDED_BANKS: usize = 130;
+
+  /// A full image: enough banks that the numbered groups are all in play.
+  fn full_image(copier_header: bool) -> Vec<u8> {
+    let banks: Vec<Vec<u8>> = (0..EXTENDED_BANKS)
+      .map(|index| testkit::bank(index, common::BANK_SIZE * 2))
+      .collect();
+
+    testkit::image(copier_header.then(testkit::copier_header), &banks)
+  }
+
+  #[test]
+  fn rebuilds_a_full_image_numbered_sequentially() {
+    let image = full_image(true);
+    let artifacts = extract_extended_rom_banks(&image, None).unwrap();
+
+    // Sequential numbering runs straight on, so the last bank of the image is
+    // also the last one that was numbered.
+    assert_eq!(
+      testkit::names(&artifacts).last().copied(),
+      Some(format!("rom_bank_{:02x}.bin", EXTENDED_BANKS - 1).as_str())
+    );
+    assert_eq!(encode_extended_rom_banks(&artifacts, None).unwrap(), image);
+  }
+
+  #[test]
+  fn rebuilds_the_mapped_groups_in_the_order_they_sit_in_the_image() {
+    let args = r#"{"bank_numbers":"mapped"}"#;
+    let image = full_image(true);
+    let artifacts = extract_extended_rom_banks(&image, Some(args)).unwrap();
+    let names = testkit::names(&artifacts);
+
+    // Mapped numbering is not the physical order: the last two banks of the
+    // image are numbered below the middle group rather than above it, so
+    // putting the banks back in numerical order would reverse two thirds of
+    // the image.
+    assert_eq!(names.len(), EXTENDED_BANKS + 1);
+    assert_eq!(names[0], "copier_header.bin");
+    assert_eq!(names[1], "rom_bank_c0.bin");
+    assert_eq!(names[1 + 64], "rom_bank_40.bin");
+    assert_eq!(names[1 + 128], "rom_bank_3e.bin");
+    assert_eq!(names[1 + 129], "rom_bank_3f.bin");
+
+    assert_eq!(
+      encode_extended_rom_banks(&artifacts, Some(args)).unwrap(),
+      image
+    );
+  }
+
+  #[test]
+  fn slices_the_banks_out_in_the_order_they_sit_in_the_image() {
+    // The numbering and the physical order disagree here: the last two banks of
+    // a mapped image are numbered below the middle group, and a numbering of its
+    // own would put them at the front. The bytes are cut in file order and handed
+    // over in that order whatever they are called, which is what puts the image
+    // back together.
+    for args in [
+      None,
+      Some(r#"{"bank_numbers":"mapped"}"#),
+    ] {
+      let image = full_image(true);
+      let artifacts = extract_extended_rom_banks(&image, args).unwrap();
+
+      testkit::assert_physical_order(&artifacts, &image);
+    }
+  }
+
+  #[test]
+  fn rebuilds_an_image_of_a_single_bank() {
+    let image = testkit::image(
+      None,
+      &[testkit::bank(
+        0,
+        common::BANK_SIZE * 2,
+      )],
+    );
+
+    assert_eq!(
+      encode_extended_rom_banks(&extract_extended_rom_banks(&image, None).unwrap(), None).unwrap(),
+      image
+    );
+  }
+
+  #[test]
+  fn rebuilds_an_image_of_no_banks_at_all() {
+    // An image holding only a copier header decodes to that header alone.
+    let image = testkit::copier_header();
+    let artifacts = extract_extended_rom_banks(&image, None).unwrap();
+
+    assert_eq!(testkit::names(&artifacts), ["copier_header.bin"]);
+    assert_eq!(encode_extended_rom_banks(&artifacts, None).unwrap(), image);
+  }
+
+  #[test]
+  fn refuses_a_bank_the_image_cannot_hold() {
+    let short = testkit::bank(0, common::BANK_SIZE * 2 - 1);
+    let artifacts = [
+      testkit::artifact("copier_header.bin", &testkit::copier_header()),
+      testkit::artifact("rom_bank_00.bin", &short),
+    ];
+
+    assert!(
+      encode_extended_rom_banks(&artifacts, None)
+        .unwrap_err()
+        .to_string()
+        .contains("Invalid ROM bank rom_bank_00.bin"),
+      "a truncated bank should be refused"
+    );
+  }
+
+  #[test]
+  fn refuses_a_copier_header_of_the_wrong_size() {
+    let artifacts = [testkit::artifact(
+      "copier_header.bin",
+      b"TOO SHORT",
+    )];
+
+    assert!(
+      encode_extended_rom_banks(&artifacts, None)
+        .unwrap_err()
+        .to_string()
+        .contains("Invalid copier header size"),
+      "a truncated copier header should be refused"
+    );
+  }
+
+  #[test]
+  fn refuses_a_bank_the_image_skipped() {
+    let bank = testkit::bank(1, common::BANK_SIZE * 2);
+    // The first bank of the image is absent, so the second cannot be placed.
+    let artifacts = [testkit::artifact(
+      "rom_bank_01.bin",
+      &bank,
+    )];
+
+    assert!(
+      encode_extended_rom_banks(&artifacts, None)
+        .unwrap_err()
+        .to_string()
+        .contains("Missing ROM bank rom_bank_00.bin before rom_bank_01.bin"),
+      "a hole at the front of an image should be refused"
+    );
+  }
+
+  #[test]
+  fn refuses_an_artifact_no_bank_of_the_image_could_be() {
+    let bank = testkit::bank(0, common::BANK_SIZE * 2);
+    let artifacts = [
+      testkit::artifact("rom_bank_00.bin", &bank),
+      testkit::artifact("rom_bank_fe.bin", &bank),
+    ];
+
+    assert!(
+      encode_extended_rom_banks(&artifacts, None)
+        .unwrap_err()
+        .to_string()
+        .contains("Unexpected artifact: rom_bank_fe.bin"),
+      "a bank outside the numbering should be refused"
+    );
+  }
+
+  #[test]
+  fn refuses_two_artifacts_of_the_same_name() {
+    let bank = testkit::bank(0, common::BANK_SIZE * 2);
+    let artifacts = [
+      testkit::artifact("rom_bank_00.bin", &bank),
+      testkit::artifact("rom_bank_00.bin", &bank),
+    ];
+
+    assert!(
+      matches!(
+        encode_extended_rom_banks(&artifacts, None),
+        Err(CodecError::DuplicateArtifact(name)) if name == "rom_bank_00.bin"
+      ),
+      "two artifacts of one name should be refused"
+    );
+  }
+
+  #[test]
+  fn rebuilds_the_banks_whatever_order_they_arrive_in() {
+    let image = full_image(false);
+    let mut artifacts = extract_extended_rom_banks(&image, None).unwrap();
+    artifacts.reverse();
+
+    assert_eq!(
+      encode_extended_rom_banks(&artifacts, None).unwrap(),
+      image,
+      "artifacts are placed by name, not by position"
+    );
+  }
 }

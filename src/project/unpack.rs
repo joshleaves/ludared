@@ -308,13 +308,14 @@ mod tests {
   #[test]
   fn restores_artifacts_of_nested_decodes() {
     let inner = extract("inner", "inner.bin", 0, 6, "{}");
-    let nested = format!("[{}]", extract("tail", "TAIL.txt", 1, 3, "{}"));
+    let tail = extract("tail", "TAIL.txt", 1, 3, "{}");
+    let nested: serde_json::Value = serde_json::from_str(&format!("[{tail}]")).unwrap();
     let outer = extract(
       "outer",
       "outer.bin",
       0,
       10,
-      &format!(r#"{{ "outer.bin": {nested} }}"#),
+      &serde_json::json!({ "outer.bin": nested }).to_string(),
     );
     let (mut fixture, source) = fixture(b"HELLOWORLD", &format!("[{inner}, {outer}]"));
 

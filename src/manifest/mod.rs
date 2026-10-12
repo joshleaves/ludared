@@ -1,5 +1,8 @@
+use crate::codecs::Codec;
+use crate::codecs::CodecKind;
 use crate::codecs::DecodedArtifact;
 use crate::codecs::errors::CodecError;
+use crate::codecs::registry::CodecRegistry;
 use crate::errors::app_error::AppError::{self, ManifestFileJson};
 use crate::manifest::decode_node::CodecNode;
 use crate::project::overrides::errors::OverrideError;
@@ -102,16 +105,24 @@ impl Manifest {
       .map(ToOwned::to_owned)
       .collect();
 
+    let mut collect = |path: &str| paths.push(path.to_owned());
+
     for (source, decodes) in &self.decodes {
       for decode in decodes {
-        collect_artifacts(decode, source, &mut paths);
+        decode.visit_paths(source, &mut collect);
       }
     }
 
     paths.sort();
     paths.dedup();
 
-    virtual_paths(paths)
+    // A path naming no virtual path is dropped. Every one here is built from a
+    // source name and the output names recorded under it, so this only ever
+    // drops a hand-edited manifest.
+    paths
+      .iter()
+      .filter_map(|path| VirtualPath::new(path).ok())
+      .collect()
   }
 
   /// Returns the virtual path of every artifact declared as an override.
@@ -127,17 +138,23 @@ impl Manifest {
   /// manifest's meaning.
   pub(crate) fn overrides(&self) -> Vec<VirtualPath> {
     let mut paths = Vec::new();
+    let mut collect = |path: &str| paths.push(path.to_owned());
 
     for (source, decodes) in &self.decodes {
       for decode in decodes {
-        collect_overrides(decode, source, &mut paths);
+        decode.visit_overrides(source, &mut collect);
       }
     }
 
     paths.sort();
     paths.dedup();
 
-    virtual_paths(paths)
+    // A path naming no virtual path is dropped, for the same reason as in
+    // `artifacts`: the names come from the manifest, not from anywhere else.
+    paths
+      .iter()
+      .filter_map(|path| VirtualPath::new(path).ok())
+      .collect()
   }
 
   /// Returns whether the artifact at the given virtual path is declared as an
@@ -262,9 +279,8 @@ impl Manifest {
   ///
   /// # Errors
   ///
-  /// Returns an [`AppError`] if the path is overridden, if the decode name is
-  /// already taken, or if an artifact name is empty, cannot name a virtual path,
-  /// already recorded, or stands in an ancestor relation with another output.
+  /// Returns an [`AppError`] if the decode configuration is invalid
+  /// or conflicts with the existing manifest.
   pub(crate) fn add_decode(
     &mut self,
     path: &VirtualPath,
@@ -277,7 +293,22 @@ impl Manifest {
       return Err(OverrideError::OverriddenArtifactCannotBeDecoded(path.to_string()).into());
     }
 
+    let kind = CodecRegistry::get(&codec_id)
+      .map(Codec::kind)
+      .ok_or_else(|| AppError::CodecUnavailable(codec_id.clone()))?;
+
     let decodes = self.get_or_create_decodes_mut(path)?;
+
+    let recorded: Vec<Option<CodecKind>> = decodes
+      .iter()
+      .map(|node| CodecRegistry::get(&node.codec.id).map(Codec::kind))
+      .collect();
+
+    if !recorded.is_empty()
+      && (kind == CodecKind::Rebuild || recorded.contains(&Some(CodecKind::Rebuild)))
+    {
+      return Err(ManifestError::ConflictingDecodeKind(name, path.to_string()).into());
+    }
 
     let existing: HashSet<&str> = decodes
       .iter()
@@ -318,6 +349,12 @@ impl Manifest {
             .into(),
         );
       }
+      if artifact.name.contains('\\') {
+        return Err(
+          CodecError::ArtifactContainsInvalidSequence(artifact.name.clone(), "\\".to_string())
+            .into(),
+        );
+      }
       // The codec handing back one name twice is its own doing, whatever the
       // manifest already holds.
       if !new_outputs.insert(artifact.name.as_str()) {
@@ -329,34 +366,46 @@ impl Manifest {
       }
     }
 
+    let outputs: Vec<VirtualPath> = artifacts
+      .iter()
+      .map(|artifact| match VirtualPath::new(&artifact.name) {
+        Ok(path) => path,
+        Err(_) => unreachable!("Artifact names were validated above"),
+      })
+      .collect();
+
     // A path resolves to one artifact or to nothing, so the outputs sharing an
     // input artifact may not stand in an ancestor relation with one another. What
     // the pair is made of decides who is at fault: two outputs of this decode are
     // the codec's doing, while an output against one another decode already
     // declared is a conflict with the manifest.
-    for (index, artifact) in artifacts.iter().enumerate() {
-      if let Some(other) = artifacts[index + 1..]
-        .iter()
-        .find(|other| ancestor_of(&artifact.name, &other.name))
-      {
-        return Err(
-          CodecError::OverlappingArtifacts(artifact.name.clone(), other.name.clone()).into(),
-        );
+    for (index, output) in outputs.iter().enumerate() {
+      if let Some(other) = outputs[index + 1..].iter().find(|other| {
+        // A name is its own ancestor, and being recorded twice is refused above.
+        output != *other && (output.is_within(other) || other.is_within(output))
+      }) {
+        return Err(CodecError::OverlappingArtifacts(output.to_string(), other.to_string()).into());
       }
     }
 
     // Sorted, so that an artifact overlapping several of them is always reported
-    // against the same one.
+    // against the same one. A recorded output that no longer names a virtual path,
+    // which only a hand-edited manifest produces, stands in no relation to
+    // anything.
     let mut declared: Vec<&str> = existing.iter().copied().collect();
     declared.sort();
+    let declared: Vec<VirtualPath> = declared
+      .iter()
+      .filter_map(|name| VirtualPath::new(name).ok())
+      .collect();
 
-    for artifact in artifacts {
+    for output in &outputs {
       if let Some(other) = declared
         .iter()
-        .find(|other| ancestor_of(&artifact.name, other))
+        .find(|other| output != *other && (output.is_within(other) || other.is_within(output)))
       {
         return Err(
-          ManifestError::OverlappingArtifacts(artifact.name.clone(), (*other).to_owned()).into(),
+          ManifestError::OverlappingArtifacts(output.to_string(), other.to_string()).into(),
         );
       }
     }
@@ -383,71 +432,6 @@ impl Manifest {
 
     Ok(())
   }
-}
-
-/// Returns whether one output name contains the other as a path.
-///
-/// Components are compared whole, so `data/head.bin` and `data/head.bin.bak` are
-/// distinct artifacts that merely share a directory, while `data` and
-/// `data/gfx/head.bin` cannot both exist: the first would be a directory sitting
-/// inside a file.
-///
-/// Identical names are not reported, since a name is its own ancestor and is
-/// refused separately for being recorded twice.
-fn ancestor_of(output: &str, other: &str) -> bool {
-  let output: Vec<&str> = output.split('/').collect();
-  let other: Vec<&str> = other.split('/').collect();
-
-  output.len() != other.len() && (output.starts_with(&other) || other.starts_with(&output))
-}
-
-/// Gathers the virtual path of every output `node` declared, recursing into the
-/// decodes attached to those outputs.
-///
-/// This walks the decode tree alone: an output is recorded by the node that
-/// produced it, so the parents it implies are never gathered in their own right.
-fn collect_artifacts(node: &DecodeNode, prefix: &str, paths: &mut Vec<String>) {
-  for output in &node.outputs {
-    let path = format!("{prefix}/{output}");
-
-    paths.push(path.clone());
-
-    if let Some(nested) = node.decodes.get(output) {
-      for decode in nested {
-        collect_artifacts(decode, &path, paths);
-      }
-    }
-  }
-}
-
-/// Gathers the virtual path of every output `node` declares as an override,
-/// recursing into the decodes attached to the outputs nested below it.
-fn collect_overrides(node: &DecodeNode, prefix: &str, paths: &mut Vec<String>) {
-  for output in &node.outputs {
-    let path = format!("{prefix}/{output}");
-
-    if node.overrides.contains(output) {
-      paths.push(path.clone());
-    }
-
-    if let Some(nested) = node.decodes.get(output) {
-      for decode in nested {
-        collect_overrides(decode, &path, paths);
-      }
-    }
-  }
-}
-
-/// Parses gathered paths into virtual paths, dropping any that do not name one.
-///
-/// Every path here is built from a source name and the output names recorded
-/// under it, so this only ever drops a hand-edited manifest; the alternative
-/// being to refuse to answer at all.
-fn virtual_paths(paths: Vec<String>) -> Vec<VirtualPath> {
-  paths
-    .iter()
-    .filter_map(|path| VirtualPath::new(path).ok())
-    .collect()
 }
 
 #[cfg(test)]
@@ -553,6 +537,64 @@ mod tests {
         ]
       );
     }
+  }
+
+  #[test]
+  fn lists_the_outputs_of_the_decodes_nested_under_an_artifact() {
+    // A decode hanging off an output produces artifacts below it, and an
+    // override is declared by the node that produced what it names rather than by
+    // any node above it.
+    let manifest = r#"{
+      "sources": { "$SOURCE": { "sha256": "unverified", "size": null, "label": null } },
+      "decodes": { "$SOURCE": [ {
+        "name": "rom_banks",
+        "codec": { "id": "std/nintendo/snes/cart/lorom", "version": 1, "args": {} },
+        "outputs": [ "rom_bank_00.bin" ],
+        "decodes": {
+          "rom_bank_00.bin": [
+            {
+              "name": "gfx",
+              "codec": { "id": "std/generic/extract_bytes", "version": 1, "args": {} },
+              "outputs": [ "data/gfx/head.bin", "data/sound.bin" ],
+              "overrides": [ "data/gfx/head.bin" ],
+              "decodes": {}
+            },
+            {
+              "name": "title",
+              "codec": { "id": "std/generic/extract_bytes", "version": 1, "args": {} },
+              "outputs": [ "TITLE.txt" ],
+              "overrides": [ "TITLE.txt" ],
+              "decodes": {}
+            }
+          ]
+        }
+      } ] }
+    }"#;
+
+    let fixture = fixture(manifest);
+    let source = source_of(&fixture);
+
+    assert_eq!(
+      names(fixture.project.manifest.artifacts()),
+      [
+        source.clone(),
+        format!("{source}/rom_bank_00.bin"),
+        format!("{source}/rom_bank_00.bin/TITLE.txt"),
+        format!("{source}/rom_bank_00.bin/data/gfx/head.bin"),
+        format!("{source}/rom_bank_00.bin/data/sound.bin"),
+      ]
+    );
+
+    // The bank neither nested decode hangs off is an artifact without being
+    // overridden, and the two directories the nested names imply are not
+    // artifacts at all.
+    assert_eq!(
+      names(fixture.project.manifest.overrides()),
+      [
+        format!("{source}/rom_bank_00.bin/TITLE.txt"),
+        format!("{source}/rom_bank_00.bin/data/gfx/head.bin"),
+      ]
+    );
   }
 
   #[test]
@@ -927,54 +969,6 @@ mod tests {
   }
 
   #[test]
-  fn treats_outputs_sharing_a_directory_as_distinct_artifacts() {
-    // The directories an output name implies are not artifacts, so sharing them
-    // is not a conflict.
-    for (left, right) in [
-      ("data/gfx/head.bin", "data/gfx/tail.bin"),
-      ("data/head.bin", "data/head.bin.bak"),
-      ("data/head.bin", "data/tail.bin"),
-      ("head.bin", "tail.bin"),
-    ] {
-      assert!(
-        !ancestor_of(left, right),
-        "'{left}' should not contain '{right}'"
-      );
-      assert!(
-        !ancestor_of(right, left),
-        "'{right}' should not contain '{left}'"
-      );
-    }
-  }
-
-  #[test]
-  fn treats_an_output_containing_another_as_a_conflict() {
-    for (parent, child) in [
-      ("data", "data/gfx/head.bin"),
-      ("data/gfx", "data/gfx/head.bin"),
-      ("data/gfx/head.bin", "data"),
-      ("data/gfx/head.bin", "data/gfx"),
-    ] {
-      assert!(
-        ancestor_of(parent, child),
-        "'{parent}' should contain '{child}'"
-      );
-      assert!(
-        ancestor_of(child, parent),
-        "'{child}' should contain '{parent}'"
-      );
-    }
-  }
-
-  #[test]
-  fn leaves_an_output_out_of_its_own_conflicts() {
-    // A name contains itself, and being recorded twice is refused separately for
-    // being the same name rather than for standing in a relation with one.
-    assert!(!ancestor_of("data/head.bin", "data/head.bin"));
-    assert!(!ancestor_of("head.bin", "head.bin"));
-  }
-
-  #[test]
   fn accepts_a_decode_node_naming_its_outputs_the_way_a_virtual_path_reads() {
     // Dots are ordinary characters, including a component that is nothing but
     // one, and the directories an output name implies are not artifacts.
@@ -1105,13 +1099,114 @@ mod tests {
 
   /// Declares a decode producing `outputs` on the source of `manifest`.
   fn declaring(source: &str, manifest: &mut Manifest, outputs: &[&str]) -> Result<(), AppError> {
+    declaring_codec(source, manifest, "std/generic/extract_bytes", outputs)
+  }
+
+  /// Declares a decode by `codec` producing `outputs` on the source of
+  /// `manifest`.
+  fn declaring_codec(
+    source: &str,
+    manifest: &mut Manifest,
+    codec: &str,
+    outputs: &[&str],
+  ) -> Result<(), AppError> {
+    declaring_named(source, manifest, codec, "conflicting", outputs)
+  }
+
+  /// Declares a decode by `codec`, under the name `name`, producing `outputs` on
+  /// the source of `manifest`.
+  fn declaring_named(
+    source: &str,
+    manifest: &mut Manifest,
+    codec: &str,
+    name: &str,
+    outputs: &[&str],
+  ) -> Result<(), AppError> {
     manifest.add_decode(
       &VirtualPath::new(source).unwrap(),
-      "std/generic/extract_bytes".to_owned(),
+      codec.to_owned(),
       &None,
-      "conflicting".to_owned(),
+      name.to_owned(),
       &artifacts_of(outputs),
     )
+  }
+
+  /// The banks the LoROM rebuild codec produces, and the window the extraction
+  /// patch codec produces, so that each may stand in for the other.
+  const BANKS: [&str; 1] = ["rom_bank_00.bin"];
+  const WINDOW: [&str; 1] = ["window.bin"];
+
+  #[test]
+  fn refuses_a_decode_whose_kind_conflicts_with_the_ones_already_on_the_artifact() {
+    let lorom = "std/nintendo/snes/cart/lorom";
+    let extract = "std/generic/extract_bytes";
+
+    // A rebuild produces the artifact whole and so has it to itself, while a
+    // patch edits what is already there and so is one of several.
+    for (first, first_outputs, second, second_outputs) in [
+      // A patch cannot follow a rebuild...
+      (lorom, &BANKS[..], extract, &WINDOW[..]),
+      // ...nor a rebuild follow a patch...
+      (extract, &WINDOW[..], lorom, &BANKS[..]),
+      // ...nor a rebuild follow another rebuild.
+      (lorom, &BANKS[..], lorom, &BANKS[..]),
+    ] {
+      let (source, mut manifest) = source_manifest("[]");
+
+      declaring_codec(&source, &mut manifest, first, first_outputs).unwrap();
+      let before = names(manifest.artifacts());
+
+      match declaring_named(&source, &mut manifest, second, "second", second_outputs).unwrap_err() {
+        AppError::ManifestError(ManifestError::ConflictingDecodeKind(name, under)) => {
+          assert_eq!((name.as_str(), under.as_str()), ("second", source.as_str()));
+        }
+        err => panic!("Unexpected error for '{second}' after '{first}': {err:?}"),
+      }
+
+      // The refused decode left the manifest with only the first one on it.
+      assert_eq!(names(manifest.artifacts()), before);
+    }
+  }
+
+  #[test]
+  fn accepts_several_patches_of_the_same_artifact() {
+    let extract = "std/generic/extract_bytes";
+    let (source, mut manifest) = source_manifest("[]");
+
+    // Patching an artifact is the one case where several decodes share it: each
+    // is applied over the last, so the order they are declared in decides what
+    // the artifact ends up holding.
+    for window in [
+      "head.bin",
+      "middle.bin",
+      "tail.bin",
+    ] {
+      declaring_named(&source, &mut manifest, extract, window, &[window]).unwrap();
+    }
+
+    assert_eq!(
+      names(manifest.artifacts()),
+      [
+        source.clone(),
+        format!("{source}/head.bin"),
+        format!("{source}/middle.bin"),
+        format!("{source}/tail.bin"),
+      ]
+    );
+  }
+
+  #[test]
+  fn refuses_a_decode_naming_a_codec_the_registry_does_not_hold() {
+    let (source, mut manifest) = source_manifest("[]");
+
+    // The kind comes off the codec, so a decode naming none cannot be recorded
+    // with one.
+    match declaring_codec(&source, &mut manifest, "std/generic/absent", &BANKS).unwrap_err() {
+      AppError::CodecUnavailable(id) => assert_eq!(id, "std/generic/absent"),
+      err => panic!("Unexpected error: {err:?}"),
+    }
+
+    assert_eq!(names(manifest.artifacts()), [source]);
   }
 
   #[test]
@@ -1125,6 +1220,7 @@ mod tests {
       "data//file.bin",
       "data/./file.bin",
       "data/../file.bin",
+      r"data\file.bin",
     ] {
       let (source, mut manifest) = source_manifest("[]");
       let before = names(manifest.artifacts());
@@ -1146,6 +1242,7 @@ mod tests {
               "data//file.bin" => ("data//file.bin", "data//file.bin", "//"),
               "data/./file.bin" => ("data/./file.bin", "data/./file.bin", "."),
               "data/../file.bin" => ("data/../file.bin", "data/../file.bin", ".."),
+              r"data\file.bin" => (r"data\file.bin", r"data\file.bin", r"\"),
               name => panic!("Unexpected name: {name}"),
             }
           );

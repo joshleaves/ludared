@@ -14,6 +14,9 @@ pub(crate) enum ManifestError {
   #[error("Overlapping artifacts: {0} and {1}")]
   OverlappingArtifacts(String, String),
 
+  #[error("Decode '{0}' conflicts with existing decodes under '{1}'")]
+  ConflictingDecodeKind(String, String),
+
   #[error("Decode '{0}' under '{1}' records output '{2}', but its codec did not produce it")]
   MissingOutput(String, String, String),
 
