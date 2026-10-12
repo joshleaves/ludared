@@ -7,16 +7,16 @@ use crate::codecs::errors::CodecError;
 use crate::codecs::snes::common::BANK_SIZE;
 use crate::codecs::snes::common::HIROM_HEADER_OFFSET;
 use crate::codecs::snes::common::SnesRomMapType;
-use crate::codecs::snes::common::extractor::BankNumbers;
-use crate::codecs::snes::common::extractor::SnesCodecArgs;
-use crate::codecs::snes::common::extractor::SnesRomExtractor;
+use crate::codecs::snes::common::rom_banks::BankNumbers;
+use crate::codecs::snes::common::rom_banks::SnesCodecArgs;
+use crate::codecs::snes::common::rom_banks::SnesRomExtractor;
 use log::*;
 
 const CODEC_ID: &str = "std/nintendo/snes/cart/hirom";
 const CODEC_NAME: &str = "SNES HiROM";
 const CODEC_DESC: &str = "SNES HiROM codec
 
-Separates a Super Nintendo Entertainment System/Super Famicom HiROM into 64 KiB banks, plus a copier header if present. Reassembles those banks into the image they were split from.
+Separates a Super Nintendo Entertainment System/Super Famicom HiROM into 64 KiB banks, plus a copier header if present. Reassembles those banks into the image they were split from, recalculating the SNES checksum of its header.
 
 Available arguments:
   bank_numbers
@@ -101,7 +101,12 @@ impl Codec for SnesHiRom {
       BankNumbers::Sequential => [(0x00, 64)],
     };
 
-    super::common::extractor::encode_rom_banks(artifacts, BANK_SIZE * 2, &groups)
+    super::common::rom_banks::encode_rom_banks(
+      artifacts,
+      BANK_SIZE * 2,
+      &groups,
+      HIROM_HEADER_OFFSET,
+    )
   }
 }
 
@@ -109,6 +114,12 @@ impl Codec for SnesHiRom {
 mod tests {
   use super::*;
   use crate::codecs::snes::common::testkit;
+
+  /// The arguments asking for the numbering the console sees.
+  const MAPPED: &str = r#"{"bank_numbers":"mapped"}"#;
+
+  /// The mapping mode byte of a HiROM running fast.
+  const MAP_MODE: u8 = 0x21;
 
   /// Two banks rather than one, so a rebuild that dropped a bank, repeated one,
   /// or put two of them back in the wrong order could not pass.
@@ -118,24 +129,47 @@ mod tests {
       .collect()
   }
 
+  /// An image of [`banks`] carrying the header a HiROM keeps.
+  fn image_with_header(copier: bool) -> Vec<u8> {
+    testkit::image_with_header(copier, &banks(), HIROM_HEADER_OFFSET, MAP_MODE)
+  }
+
   #[test]
   fn rebuilds_a_headerless_image_from_its_banks() {
-    let image = testkit::image(None, &banks());
+    let image = image_with_header(false);
 
     assert_eq!(testkit::round_trip(&SnesHiRom, &image, None), image);
   }
 
   #[test]
   fn rebuilds_an_image_carrying_a_copier_header() {
-    let image = testkit::image(Some(testkit::copier_header()), &banks());
+    let image = image_with_header(true);
 
     assert_eq!(testkit::round_trip(&SnesHiRom, &image, None), image);
   }
 
   #[test]
+  fn finalizes_the_header_of_a_rebuilt_image() {
+    testkit::assert_finalizes_header(&SnesHiRom, &banks(), HIROM_HEADER_OFFSET, MAP_MODE);
+  }
+
+  #[test]
+  fn finalizes_the_header_of_a_rebuild_numbered_as_mapped_banks() {
+    let image = image_with_header(true);
+    let artifacts = SnesHiRom.decode(&image, Some(MAPPED)).unwrap();
+
+    let rebuilt = SnesHiRom
+      .encode(Vec::new(), &artifacts, Some(MAPPED))
+      .unwrap();
+
+    assert_eq!(rebuilt, image);
+    testkit::assert_valid_header(&SnesHiRom, &rebuilt, HIROM_HEADER_OFFSET);
+  }
+
+  #[test]
   fn rebuilds_the_banks_numbered_as_mapped_banks() {
-    let args = r#"{"bank_numbers":"mapped"}"#;
-    let image = testkit::image(Some(testkit::copier_header()), &banks());
+    let args = MAPPED;
+    let image = image_with_header(true);
     let artifacts = SnesHiRom.decode(&image, Some(args)).unwrap();
 
     assert_eq!(

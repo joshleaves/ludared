@@ -2,6 +2,7 @@ use crate::codecs::DecodedArtifact;
 use crate::codecs::LudaredCodecArgs;
 use crate::codecs::errors::CodecError;
 use crate::codecs::snes::common;
+use crate::codecs::snes::common::checksum::SnesChecksum;
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -10,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 const COPIER_HEADER: &str = "copier_header.bin";
 
 /// The prefix of every artifact name standing for a ROM bank.
-const ROM_BANK: &str = "rom_bank_";
+pub(super) const ROM_BANK: &str = "rom_bank_";
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -140,13 +141,14 @@ pub fn extract_extended_rom_banks(
 }
 
 /// Rebuilds the image [`extract_extended_rom_banks`] split, from the banks it
-/// produced.
+/// produced, and finalises the internal header at `rom_header_offset`.
 ///
 /// The three groups the decoder numbers are the same ones, in the same order, so
 /// a bank that is numbered after another is often the one that came first.
 pub fn encode_extended_rom_banks(
   artifacts: &[DecodedArtifact],
   args: Option<&str>,
+  rom_header_offset: usize,
 ) -> Result<Vec<u8>, CodecError> {
   let args = SnesCodecArgs::from_args(args)?;
   let groups = match args.bank_numbers {
@@ -162,7 +164,27 @@ pub fn encode_extended_rom_banks(
     ],
   };
 
-  encode_rom_banks(artifacts, common::BANK_SIZE * 2, &groups)
+  let image = encode_rom_banks(artifacts, common::BANK_SIZE * 2, &groups, rom_header_offset)?;
+
+  Ok(image)
+}
+
+/// Finalises the internal header of a rebuilt image, so that the checksum it
+/// carries describes the image rather than the one the banks were cut from.
+///
+/// `rom_header_offset` is where the mapping the image is of puts that header.
+/// An image too short, or laid out too oddly, to hold it cannot be finalised,
+/// and an encoder has no business handing back an image claiming a checksum it
+/// never computed.
+fn finalize_header(image: &mut [u8], rom_header_offset: usize) -> Result<(), CodecError> {
+  SnesChecksum::write_header(image, rom_header_offset)
+    .map(|_| ())
+    .ok_or_else(|| {
+      CodecError::Message(format!(
+        "Image of {} bytes has no room for the internal header at {rom_header_offset:#x}",
+        image.len()
+      ))
+    })
 }
 
 /// The names a decoder numbers its banks with, in the order the banks sit in the
@@ -185,10 +207,13 @@ fn bank_name(number: usize) -> String {
   format!("{ROM_BANK}{number:02x}.bin")
 }
 
-/// Rebuilds a SNES image from the artifacts a bank-splitting decoder produced.
+/// Rebuilds a SNES image from the artifacts a bank-splitting decoder produced,
+/// and finalises the internal header at `rom_header_offset`.
 ///
 /// `groups` is the numbering of the decoder the image came from and `bank_size`
-/// the size of one of its banks; see [`bank_names`].
+/// the size of one of its banks; see [`bank_names`]. `rom_header_offset` is
+/// where the mapping the image is of keeps its internal header, whose checksum
+/// and complement are recalculated from the image as it now stands.
 ///
 /// The copier header leads the image whenever the decoder emitted one, and the
 /// banks follow in the order `groups` gives them. An image holds as many banks
@@ -201,6 +226,7 @@ pub fn encode_rom_banks(
   artifacts: &[DecodedArtifact],
   bank_size: usize,
   groups: &[(usize, usize)],
+  rom_header_offset: usize,
 ) -> Result<Vec<u8>, CodecError> {
   let mut banks: BTreeMap<&str, &[u8]> = BTreeMap::new();
 
@@ -269,6 +295,10 @@ pub fn encode_rom_banks(
     }
   }
 
+  // The checksum covers the image it is written into, so it is only final once
+  // the banks are back where they belong.
+  finalize_header(&mut image, rom_header_offset)?;
+
   Ok(image)
 }
 
@@ -281,13 +311,22 @@ mod tests {
   /// image has to hold before every group is used.
   const EXTENDED_BANKS: usize = 130;
 
+  /// Where the stamped images keep their internal header, and the mapping mode
+  /// they declare. These tests are about where banks go rather than about what
+  /// any one mapping does, so the images are stamped as a plain HiROM.
+  const HEADER_OFFSET: usize = common::HIROM_HEADER_OFFSET;
+  const MAP_MODE: u8 = 0x21;
+
   /// A full image: enough banks that the numbered groups are all in play.
+  ///
+  /// The header is stamped so that a rebuild finalising it changes nothing, and
+  /// these tests can go on comparing whole images byte for byte.
   fn full_image(copier_header: bool) -> Vec<u8> {
     let banks: Vec<Vec<u8>> = (0..EXTENDED_BANKS)
       .map(|index| testkit::bank(index, common::BANK_SIZE * 2))
       .collect();
 
-    testkit::image(copier_header.then(testkit::copier_header), &banks)
+    testkit::image_with_header(copier_header, &banks, HEADER_OFFSET, MAP_MODE)
   }
 
   #[test]
@@ -301,7 +340,10 @@ mod tests {
       testkit::names(&artifacts).last().copied(),
       Some(format!("rom_bank_{:02x}.bin", EXTENDED_BANKS - 1).as_str())
     );
-    assert_eq!(encode_extended_rom_banks(&artifacts, None).unwrap(), image);
+    assert_eq!(
+      encode_extended_rom_banks(&artifacts, None, HEADER_OFFSET).unwrap(),
+      image
+    );
   }
 
   #[test]
@@ -323,7 +365,7 @@ mod tests {
     assert_eq!(names[1 + 129], "rom_bank_3f.bin");
 
     assert_eq!(
-      encode_extended_rom_banks(&artifacts, Some(args)).unwrap(),
+      encode_extended_rom_banks(&artifacts, Some(args), HEADER_OFFSET).unwrap(),
       image
     );
   }
@@ -348,28 +390,42 @@ mod tests {
 
   #[test]
   fn rebuilds_an_image_of_a_single_bank() {
-    let image = testkit::image(
-      None,
+    let image = testkit::image_with_header(
+      false,
       &[testkit::bank(
         0,
         common::BANK_SIZE * 2,
       )],
+      HEADER_OFFSET,
+      MAP_MODE,
     );
 
     assert_eq!(
-      encode_extended_rom_banks(&extract_extended_rom_banks(&image, None).unwrap(), None).unwrap(),
+      encode_extended_rom_banks(
+        &extract_extended_rom_banks(&image, None).unwrap(),
+        None,
+        HEADER_OFFSET
+      )
+      .unwrap(),
       image
     );
   }
 
   #[test]
   fn rebuilds_an_image_of_no_banks_at_all() {
-    // An image holding only a copier header decodes to that header alone.
+    // An image holding only a copier header decodes to that header alone, and
+    // has nowhere to put an internal header of its own.
     let image = testkit::copier_header();
     let artifacts = extract_extended_rom_banks(&image, None).unwrap();
 
     assert_eq!(testkit::names(&artifacts), ["copier_header.bin"]);
-    assert_eq!(encode_extended_rom_banks(&artifacts, None).unwrap(), image);
+    assert!(
+      encode_extended_rom_banks(&artifacts, None, HEADER_OFFSET)
+        .unwrap_err()
+        .to_string()
+        .contains("no room for the internal header"),
+      "an image with no room for a header cannot be finalised"
+    );
   }
 
   #[test]
@@ -381,7 +437,7 @@ mod tests {
     ];
 
     assert!(
-      encode_extended_rom_banks(&artifacts, None)
+      encode_extended_rom_banks(&artifacts, None, HEADER_OFFSET)
         .unwrap_err()
         .to_string()
         .contains("Invalid ROM bank rom_bank_00.bin"),
@@ -397,7 +453,7 @@ mod tests {
     )];
 
     assert!(
-      encode_extended_rom_banks(&artifacts, None)
+      encode_extended_rom_banks(&artifacts, None, HEADER_OFFSET)
         .unwrap_err()
         .to_string()
         .contains("Invalid copier header size"),
@@ -415,7 +471,7 @@ mod tests {
     )];
 
     assert!(
-      encode_extended_rom_banks(&artifacts, None)
+      encode_extended_rom_banks(&artifacts, None, HEADER_OFFSET)
         .unwrap_err()
         .to_string()
         .contains("Missing ROM bank rom_bank_00.bin before rom_bank_01.bin"),
@@ -432,7 +488,7 @@ mod tests {
     ];
 
     assert!(
-      encode_extended_rom_banks(&artifacts, None)
+      encode_extended_rom_banks(&artifacts, None, HEADER_OFFSET)
         .unwrap_err()
         .to_string()
         .contains("Unexpected artifact: rom_bank_fe.bin"),
@@ -450,7 +506,7 @@ mod tests {
 
     assert!(
       matches!(
-        encode_extended_rom_banks(&artifacts, None),
+        encode_extended_rom_banks(&artifacts, None, HEADER_OFFSET),
         Err(CodecError::DuplicateArtifact(name)) if name == "rom_bank_00.bin"
       ),
       "two artifacts of one name should be refused"
@@ -464,7 +520,7 @@ mod tests {
     artifacts.reverse();
 
     assert_eq!(
-      encode_extended_rom_banks(&artifacts, None).unwrap(),
+      encode_extended_rom_banks(&artifacts, None, HEADER_OFFSET).unwrap(),
       image,
       "artifacts are placed by name, not by position"
     );

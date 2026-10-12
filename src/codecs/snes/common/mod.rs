@@ -3,7 +3,7 @@ use checksum::SnesChecksum;
 use log::*;
 
 pub mod checksum;
-pub mod extractor;
+pub mod rom_banks;
 #[cfg(test)]
 pub(in crate::codecs::snes) mod testkit;
 
@@ -69,7 +69,10 @@ impl SnesHeader<'_> {
   }
 
   pub fn rom_size(&self) -> usize {
-    1024usize << self.bytes[0x17]
+    // A size byte of 0x40 declares more than a `usize` can hold, and shifting by
+    // it would panic. No such cartridge exists, so a header declaring one
+    // declares no size at all.
+    1024usize.checked_shl(self.bytes[0x17] as u32).unwrap_or(0)
   }
 
   // Check 1: Header checksum + complement

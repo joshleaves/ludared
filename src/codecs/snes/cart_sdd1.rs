@@ -11,7 +11,7 @@ const CODEC_ID: &str = "std/nintendo/snes/cart/sdd1";
 const CODEC_NAME: &str = "SNES SDD-1 ROM";
 const CODEC_DESC: &str = "SNES SDD-1 ROM codec
 
-Separates a Super Nintendo Entertainment System/Super Famicom SDD-1 ROM into 64 KiB banks, plus a copier header if present. Reassembles those banks into the image they were split from.
+Separates a Super Nintendo Entertainment System/Super Famicom SDD-1 ROM into 64 KiB banks, plus a copier header if present. Reassembles those banks into the image they were split from, recalculating the SNES checksum of its header.
 
 Available arguments:
   bank_numbers
@@ -46,7 +46,7 @@ impl Codec for SnesSdd1Rom {
 
   fn decode(&self, data: &[u8], args: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
     trace!("Decoding SNES S-DD1 ROM");
-    super::common::extractor::extract_extended_rom_banks(data, args)
+    super::common::rom_banks::extract_extended_rom_banks(data, args)
   }
 
   fn encode(
@@ -56,7 +56,7 @@ impl Codec for SnesSdd1Rom {
     args: Option<&str>,
   ) -> Result<Vec<u8>, CodecError> {
     trace!("Encoding SNES S-DD1 ROM");
-    super::common::extractor::encode_extended_rom_banks(artifacts, args)
+    super::common::rom_banks::encode_extended_rom_banks(artifacts, args, LOROM_HEADER_OFFSET)
   }
 }
 
@@ -66,6 +66,12 @@ mod tests {
   use crate::codecs::snes::common::BANK_SIZE;
   use crate::codecs::snes::common::testkit;
 
+  /// The arguments asking for the numbering the console sees.
+  const MAPPED: &str = r#"{"bank_numbers":"mapped"}"#;
+
+  /// The mapping mode byte of a SDD-1 running fast.
+  const MAP_MODE: u8 = 0x22;
+
   /// Three banks rather than one, so a rebuild that dropped a bank, repeated
   /// one, or put two of them back in the wrong order could not pass.
   fn banks() -> Vec<Vec<u8>> {
@@ -74,24 +80,47 @@ mod tests {
       .collect()
   }
 
+  /// An image of [`banks`] carrying the header a SDD-1 keeps.
+  fn image_with_header(copier: bool) -> Vec<u8> {
+    testkit::image_with_header(copier, &banks(), LOROM_HEADER_OFFSET, MAP_MODE)
+  }
+
   #[test]
   fn rebuilds_a_headerless_image_from_its_banks() {
-    let image = testkit::image(None, &banks());
+    let image = image_with_header(false);
 
     assert_eq!(testkit::round_trip(&SnesSdd1Rom, &image, None), image);
   }
 
   #[test]
   fn rebuilds_an_image_carrying_a_copier_header() {
-    let image = testkit::image(Some(testkit::copier_header()), &banks());
+    let image = image_with_header(true);
 
     assert_eq!(testkit::round_trip(&SnesSdd1Rom, &image, None), image);
   }
 
   #[test]
+  fn finalizes_the_header_of_a_rebuilt_image() {
+    testkit::assert_finalizes_header(&SnesSdd1Rom, &banks(), LOROM_HEADER_OFFSET, MAP_MODE);
+  }
+
+  #[test]
+  fn finalizes_the_header_of_a_rebuild_numbered_as_mapped_banks() {
+    let image = image_with_header(true);
+    let artifacts = SnesSdd1Rom.decode(&image, Some(MAPPED)).unwrap();
+
+    let rebuilt = SnesSdd1Rom
+      .encode(Vec::new(), &artifacts, Some(MAPPED))
+      .unwrap();
+
+    assert_eq!(rebuilt, image);
+    testkit::assert_valid_header(&SnesSdd1Rom, &rebuilt, LOROM_HEADER_OFFSET);
+  }
+
+  #[test]
   fn rebuilds_the_banks_numbered_as_mapped_banks() {
-    let args = r#"{"bank_numbers":"mapped"}"#;
-    let image = testkit::image(Some(testkit::copier_header()), &banks());
+    let args = MAPPED;
+    let image = image_with_header(true);
     let artifacts = SnesSdd1Rom.decode(&image, Some(args)).unwrap();
 
     assert_eq!(
