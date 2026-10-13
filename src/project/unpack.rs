@@ -58,7 +58,7 @@ impl Project {
 
     self.cache.clear_index();
 
-    for source_name in self.manifest.sources.keys() {
+    for (source_name, source_entry) in &self.manifest.sources {
       let Some(source) = source_name.to_str() else {
         return Err(VirtualPathError::NonUtf8Path(source_name.clone()).into());
       };
@@ -76,8 +76,12 @@ impl Project {
 
       let vpath = VirtualPath::new(source)?;
       let source_path = self.source_path(source_name);
-      let data =
-        std::fs::read(&source_path).map_err(|err| AppError::SourceFileIo(source_path, err))?;
+      let data = std::fs::read(&source_path)
+        .map_err(|err| AppError::SourceFileIo(source_path.clone(), err))?;
+
+      source_entry.sha256_matches(&data).map_err(|actual| {
+        AppError::SourceFileMismatch(source_path.clone(), source_entry.sha256.clone(), actual)
+      })?;
 
       trace!(
         "Replaying {} decode(s) for source '{source}'",
@@ -128,7 +132,7 @@ fn unpack_decode(
   let codec = CodecRegistry::get(&node.codec.id)
     .ok_or_else(|| AppError::CodecUnavailable(node.codec.id.clone()))?;
 
-  let args = recorded_args(&node.codec.args)?;
+  let args = node.codec_args()?;
   let artifacts = codec.decode(input, args.as_deref())?;
 
   verify_outputs(path, node, &artifacts)?;
@@ -151,20 +155,6 @@ fn unpack_decode(
   report.decodes += 1;
 
   Ok(())
-}
-
-/// Renders the arguments recorded in the manifest back into the JSON string the
-/// codec API expects.
-///
-/// Absent arguments are recorded as `null`; codecs already treat a missing
-/// argument list as an empty object, so those are handed over as `None`.
-fn recorded_args(args: &serde_json::Value) -> Result<Option<String>, AppError> {
-  match args {
-    serde_json::Value::Null => Ok(None),
-    args => Ok(Some(
-      serde_json::to_string(args).map_err(CodecError::JsonArgs)?,
-    )),
-  }
 }
 
 /// Verifies that a replayed decode node produced exactly the outputs recorded
@@ -231,23 +221,24 @@ mod tests {
     let mut fixture = ProjectFixture::new();
 
     fixture.register_source_file(&source_path, source);
-    fixture.write_manifest(manifest(&source_name, decodes));
+    fixture.write_manifest(manifest(&source_name, decodes, source));
     fixture.reload();
 
     (fixture, source_name)
   }
 
   /// A manifest recording a single source and the decode nodes attached to it.
-  fn manifest(source: &str, decodes: &str) -> String {
+  fn manifest(source: &str, decodes: &str, bytes: &[u8]) -> String {
     format!(
       r#"{{
   "sources": {{
-    "{source}": {{ "sha256": "unverified", "size": null, "label": null }}
+    "{source}": {{ "sha256": "{}", "size": null, "label": null }}
   }},
   "decodes": {{
     "{source}": {decodes}
   }}
-}}"#
+}}"#,
+      ProjectFixture::sha256_hex(bytes)
     )
   }
 
@@ -339,14 +330,16 @@ mod tests {
     fixture.write_manifest(format!(
       r#"{{
   "sources": {{
-    "{first}": {{ "sha256": "unverified", "size": null, "label": null }},
-    "{second}": {{ "sha256": "unverified", "size": null, "label": null }}
+    "{first}": {{ "sha256": "{}", "size": null, "label": null }},
+    "{second}": {{ "sha256": "{}", "size": null, "label": null }}
   }},
   "decodes": {{
     "{first}": [{}],
     "{second}": [{}]
   }}
 }}"#,
+      ProjectFixture::sha256_hex(b"HELLOWORLD"),
+      ProjectFixture::sha256_hex(b"GOODBYE"),
       extract("head", "head.bin", 0, 5, "{}"),
       extract("tail", "tail.bin", 4, 3, "{}"),
     ));
@@ -387,7 +380,7 @@ mod tests {
 
     // The decode tree moves on: `head.bin` is no longer recorded anywhere.
     let decodes = format!("[{}]", extract("tail", "tail.bin", 6, 4, "{}"));
-    fixture.write_manifest(manifest(&source, &decodes));
+    fixture.write_manifest(manifest(&source, &decodes, b"HELLOWORLD"));
     fixture.reload();
 
     fixture.project.unpack().unwrap();
@@ -454,7 +447,7 @@ mod tests {
   fn does_not_modify_the_manifest() {
     let decodes = format!("[{}]", extract("head", "head.bin", 0, 4, "{}"));
     let (mut fixture, source) = fixture(b"HELLOWORLD", &decodes);
-    let written = manifest(&source, &decodes);
+    let written = manifest(&source, &decodes, b"HELLOWORLD");
 
     fixture.project.unpack().unwrap();
 
@@ -569,5 +562,32 @@ mod tests {
       cached(&fixture, &source, lorom::TITLE_ARTIFACT),
       lorom::TITLE
     );
+  }
+
+  #[test]
+  fn rejects_source_bytes_mismatch_manifest() {
+    let (mut fixture, source) = fixture(
+      b"HELLOWORLD",
+      &format!("[{}]", extract("head", "head.bin", 0, 4, "{}")),
+    );
+
+    // Modify the source file on disk so its bytes differ from the manifest sha256.
+    let sources_dir = fixture
+      .project
+      .root
+      .join(&fixture.project.configuration.paths.sources);
+    let source_path = sources_dir.join(&source);
+    let original = std::fs::read(&source_path).unwrap();
+    let mutated = [
+      &original[..original.len().saturating_sub(1)],
+      &[0u8],
+    ]
+    .concat();
+    std::fs::write(&source_path, &mutated).unwrap();
+
+    match fixture.project.unpack().unwrap_err() {
+      AppError::SourceFileMismatch(..) => {}
+      err => panic!("Expected SourceFileMismatch, got {err:?}"),
+    }
   }
 }

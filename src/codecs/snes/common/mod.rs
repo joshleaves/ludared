@@ -5,7 +5,7 @@ use log::*;
 pub mod checksum;
 pub mod rom_banks;
 #[cfg(test)]
-pub(in crate::codecs::snes) mod testkit;
+pub(crate) mod testkit;
 
 pub const BANK_SIZE: usize = 0x8000;
 pub const COPIER_HEADER_SIZE: usize = 0x200;

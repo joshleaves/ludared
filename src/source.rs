@@ -29,6 +29,8 @@ impl Source {
     Ok(source)
   }
 
+  /// Computes a file's SHA-256 without loading it entirely into memory.
+  /// Used when only the checksum is needed, such as during `doctor`.
   pub(crate) fn compute_sha256(source_path: &PathBuf) -> Result<String, AppError> {
     let file =
       File::open(source_path).map_err(|e| AppError::SourceFileIo(source_path.clone(), e))?;
@@ -48,5 +50,17 @@ impl Source {
     }
     let actual = hex::encode(hasher.finalize());
     Ok(actual)
+  }
+
+  /// Verifies the SHA-256 of bytes already loaded into memory.
+  /// Used by `build` and `unpack`, which need the bytes for decoding anyway.
+  pub(crate) fn sha256_matches(&self, bytes: &[u8]) -> Result<(), String> {
+    let actual = hex::encode(Sha256::digest(bytes));
+
+    if actual == self.sha256 {
+      Ok(())
+    } else {
+      Err(actual)
+    }
   }
 }

@@ -93,4 +93,12 @@ cache = "{}"
 
     (file, path)
   }
+
+  pub fn sha256_hex(bytes: &[u8]) -> String {
+    use sha2::Digest as _;
+    sha2::Sha256::digest(bytes)
+      .iter()
+      .map(|byte| format!("{byte:02x}"))
+      .collect()
+  }
 }

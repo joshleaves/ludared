@@ -1,6 +1,8 @@
 use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
 
+use std::path::{Path, PathBuf};
+
 use crate::cli::completions::artifacts::complete_artifacts_decodable;
 use crate::cli::completions::codecs::complete_codecs_list;
 use crate::codecs::CodecHandlingConfidence;
@@ -38,8 +40,20 @@ pub(crate) fn command_decode_add(args: &DecodeAddArgs) -> Result<(), AppError> {
   let vpath = VirtualPath::new(&args.virtual_path)?;
   let mut project = Project::load_default()?;
   let real_path = vpath.resolve(&project)?;
+  let data = std::fs::read(&real_path)?;
 
-  let data = std::fs::read(real_path)?;
+  if vpath.is_source() {
+    let source = project
+      .manifest
+      .sources
+      .get(Path::new(&args.virtual_path))
+      .ok_or_else(|| AppError::SourceNotFound(PathBuf::from(&args.virtual_path)))?;
+
+    source.sha256_matches(&data).map_err(|actual| {
+      AppError::SourceFileMismatch(real_path.clone(), source.sha256.clone(), actual)
+    })?;
+  }
+
   match codec.can_handle(&data) {
     CodecHandlingConfidence::No if !args.force => {
       return Err(AppError::CodecIncompatible(codec.id().to_owned()));

@@ -83,7 +83,7 @@ cache = "builds/cache"
     format!(
       r#"{{
   "sources": {{
-    "{SOURCE}": {{ "sha256": "unverified", "size": null, "label": null }}
+    "{SOURCE}": {{ "sha256": "0b21b7db59cd154904fac6336fa7d2be1bab38d632794f281549584068cdcb74", "size": null, "label": null }}
   }},
   "decodes": {{
     "{SOURCE}": [

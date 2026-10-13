@@ -75,4 +75,13 @@ pub(crate) enum AppError {
 
   #[error("Could not write workspace file {}: {}", .0.display(), .1)]
   WorkspaceFileIo(PathBuf, std::io::Error),
+
+  #[error("Could not read workspace file {}: {}", .0.display(), .1)]
+  WorkspaceFileReadIo(PathBuf, std::io::Error),
+
+  #[error("No source files defined in project")]
+  NoBuildSource,
+
+  #[error("Could not write build output {}: {}", .0.display(), .1)]
+  BuildIo(PathBuf, std::io::Error),
 }

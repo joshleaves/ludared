@@ -69,12 +69,13 @@ fn manifest(source_name: &str) -> String {
   format!(
     r#"{{
   "sources": {{
-    "{source_name}": {{ "sha256": "unverified", "size": null, "label": null }}
+    "{source_name}": {{ "sha256": "{}", "size": null, "label": null }}
   }},
   "decodes": {{
     "{source_name}": [ {title} ]
   }}
 }}"#,
+    ProjectFixture::sha256_hex(SOURCE),
     title = lorom_decode(),
   )
 }

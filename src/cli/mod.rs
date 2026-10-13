@@ -1,6 +1,7 @@
 pub(crate) mod completions;
 
 pub(crate) mod artifacts;
+pub(crate) mod build;
 pub(crate) mod cache;
 pub(crate) mod clean;
 pub(crate) mod codecs;

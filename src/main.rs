@@ -17,6 +17,7 @@ mod source;
 mod testing;
 mod virtual_path;
 use cli::artifacts::{ArtifactsArgs, command_artifacts};
+use cli::build::{BuildArgs, command_build};
 use cli::cache::{CacheArgs, command_cache};
 use cli::clean::{CleanArgs, command_clean};
 use cli::codecs::{CodecsArgs, command_codecs};
@@ -57,6 +58,9 @@ enum Commands {
 
   /// Rebuild the decode cache from the manifest
   Unpack,
+
+  /// Rebuild a source from its decode tree
+  Build(BuildArgs),
 
   /// Inspect the artifacts declared in the manifest
   Artifacts(ArtifactsArgs),
@@ -108,6 +112,7 @@ fn run(cli: Cli) -> Result<(), AppError> {
     Commands::Override(args) => command_override(&args)?,
     Commands::Sources(args) => command_sources(&args)?,
     Commands::Unpack => command_unpack()?,
+    Commands::Build(args) => command_build(&args)?,
   }
 
   Ok(())

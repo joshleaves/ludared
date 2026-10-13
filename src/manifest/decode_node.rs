@@ -1,3 +1,4 @@
+use crate::codecs::errors::CodecError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -31,6 +32,15 @@ pub(crate) struct DecodeNode {
 }
 
 impl DecodeNode {
+  /// Serializes recorded arguments for the codec API.
+  /// JSON `null` is represented as `None`.
+  pub(crate) fn codec_args(&self) -> Result<Option<String>, CodecError> {
+    match &self.codec.args {
+      serde_json::Value::Null => Ok(None),
+      args => Ok(Some(serde_json::to_string(args)?)),
+    }
+  }
+
   /// Returns whether this decode node declares `output` as an override.
   ///
   /// An override is declared by the decode node that produced the artifact, so

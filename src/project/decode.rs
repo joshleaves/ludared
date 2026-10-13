@@ -58,19 +58,12 @@ mod tests {
 
     let mut fixture = ProjectFixture::new();
     fixture.create_source_file(&path, b"HELLOWORLD");
-    fixture.write_manifest(manifest(&source));
+    fixture.write_manifest(format!(
+      r#"{{ "sources": {{ "{source}": {{ "sha256": "0b21b7db59cd154904fac6336fa7d2be1bab38d632794f281549584068cdcb74", "size": null, "label": null }} }} }}"#,
+    ));
     fixture.reload();
 
     (fixture, source)
-  }
-
-  /// A manifest recording one source, holding no decodes.
-  fn manifest(source: &str) -> String {
-    format!(
-      r#"{{
-  "sources": {{ "{source}": {{ "sha256": "unverified", "size": null, "label": null }} }}
-}}"#
-    )
   }
 
   fn artifacts(names: &[&str]) -> Vec<DecodedArtifact> {

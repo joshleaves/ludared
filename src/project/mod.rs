@@ -6,6 +6,7 @@ use crate::errors::app_error::AppError;
 use crate::manifest::Manifest;
 use crate::project::cache::Cache;
 
+pub(crate) mod build;
 pub(crate) mod cache;
 pub(crate) mod decode;
 pub(crate) mod overrides;
