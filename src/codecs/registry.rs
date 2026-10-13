@@ -1,6 +1,7 @@
 use crate::codecs::Codec;
 use crate::codecs::CodecHandlingConfidence;
 use crate::codecs::generic::extract::Extract;
+use crate::codecs::generic::split::Split;
 use crate::codecs::snes::cart_exhirom::SnesExHiRom;
 use crate::codecs::snes::cart_hirom::SnesHiRom;
 use crate::codecs::snes::cart_lorom::SnesLoRom;
@@ -11,6 +12,7 @@ use log::*;
 
 static BUILTINS: &[&dyn Codec] = &[
   &Extract,
+  &Split,
   &SnesExHiRom,
   &SnesLoRom,
   &SnesHiRom,

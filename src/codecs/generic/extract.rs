@@ -53,7 +53,7 @@ impl Codec for Extract {
   }
 
   fn can_handle(&self, _: &[u8]) -> CodecHandlingConfidence {
-    CodecHandlingConfidence::Certain
+    CodecHandlingConfidence::Possible
   }
 
   fn decode_name(&self, args: Option<&str>) -> Result<String, CodecError> {
