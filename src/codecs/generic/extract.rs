@@ -6,7 +6,7 @@ use crate::codecs::LudaredCodecArgs;
 use crate::codecs::errors::CodecError;
 use serde::Deserialize;
 
-const CODEC_ID: &str = "std/generic/extract_bytes";
+const CODEC_ID: &str = "std/generic/extract";
 const CODEC_NAME: &str = "Extract bytes";
 const CODEC_DESC: &str = "Raw bytes extractor
 
@@ -26,18 +26,18 @@ Available arguments:
     Numeric, number of bytes to extract.
 ";
 
-pub(crate) struct ExtractBytes;
+pub(crate) struct Extract;
 
 #[derive(Debug, Deserialize)]
-pub(crate) struct ExtractBytesCodecArgs {
+pub(crate) struct ExtractCodecArgs {
   pub(crate) target: String,
   pub(crate) offset: usize,
   pub(crate) length: usize,
 }
 
-impl LudaredCodecArgs for ExtractBytesCodecArgs {}
+impl LudaredCodecArgs for ExtractCodecArgs {}
 
-impl Codec for ExtractBytes {
+impl Codec for Extract {
   fn id(&self) -> &'static str {
     CODEC_ID
   }
@@ -57,7 +57,7 @@ impl Codec for ExtractBytes {
   }
 
   fn decode_name(&self, args: Option<&str>) -> Result<String, CodecError> {
-    let args = ExtractBytesCodecArgs::from_args(args)?;
+    let args = ExtractCodecArgs::from_args(args)?;
     Ok(match args.target.rsplit_once('.') {
       Some((name, _)) => name.to_owned(),
       None => args.target,
@@ -65,7 +65,7 @@ impl Codec for ExtractBytes {
   }
 
   fn decode(&self, data: &[u8], args: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
-    let args = ExtractBytesCodecArgs::from_args(args)?;
+    let args = ExtractCodecArgs::from_args(args)?;
     let from = args.offset;
     let to = args.offset.checked_add(args.length).ok_or_else(|| {
       CodecError::Message(format!(
@@ -97,7 +97,7 @@ impl Codec for ExtractBytes {
     artifacts: &[DecodedArtifact],
     args: Option<&str>,
   ) -> Result<Vec<u8>, CodecError> {
-    let args = ExtractBytesCodecArgs::from_args(args)?;
+    let args = ExtractCodecArgs::from_args(args)?;
 
     if artifacts.len() != 1 {
       return Err(CodecError::Message(format!(
@@ -176,12 +176,12 @@ mod tests {
   #[test]
   fn patches_the_range_back_into_the_input_it_was_taken_from() {
     let args = args("tail.bin", 27, 5);
-    let artifacts = ExtractBytes.decode(SOURCE, Some(&args)).unwrap();
+    let artifacts = Extract.decode(SOURCE, Some(&args)).unwrap();
 
     // Putting an extraction back over the input it came from changes nothing,
     // whatever range of the input it covers.
     assert_eq!(
-      ExtractBytes
+      Extract
         .encode(SOURCE.to_vec(), &artifacts, Some(&args))
         .unwrap(),
       SOURCE
@@ -193,7 +193,7 @@ mod tests {
     let args = args("patch.bin", 27, 5);
     let replacement = b"PATCH";
 
-    let patched = ExtractBytes
+    let patched = Extract
       .encode(
         SOURCE.to_vec(),
         &[artifact(
@@ -217,7 +217,7 @@ mod tests {
     // it are the only things that must survive.
     let args = args("one.bin", 1, 1);
 
-    let patched = ExtractBytes
+    let patched = Extract
       .encode(
         SOURCE.to_vec(),
         &[artifact(
@@ -245,10 +245,10 @@ mod tests {
       (0, 0),
     ] {
       let args = args("edge.bin", offset, length);
-      let artifacts = ExtractBytes.decode(SOURCE, Some(&args)).unwrap();
+      let artifacts = Extract.decode(SOURCE, Some(&args)).unwrap();
 
       assert_eq!(
-        ExtractBytes
+        Extract
           .encode(SOURCE.to_vec(), &artifacts, Some(&args))
           .unwrap(),
         SOURCE.to_vec(),
@@ -266,7 +266,7 @@ mod tests {
     let head = args("head.bin", 0, 5);
     let tail = args("tail.bin", SOURCE.len() - 5, 5);
 
-    let after_head = ExtractBytes
+    let after_head = Extract
       .encode(
         SOURCE.to_vec(),
         &[artifact(
@@ -276,7 +276,7 @@ mod tests {
         Some(&head),
       )
       .unwrap();
-    let after_tail = ExtractBytes
+    let after_tail = Extract
       .encode(
         after_head,
         &[artifact(
@@ -306,7 +306,7 @@ mod tests {
     ] {
       let args = args("beyond.bin", offset, length);
 
-      let err = ExtractBytes
+      let err = Extract
         .encode(
           SOURCE.to_vec(),
           &[artifact(
@@ -330,7 +330,7 @@ mod tests {
     // the bytes after it are never dropped to make the result fit the window.
     let args = args("narrow.bin", 0, 1);
 
-    let patched = ExtractBytes
+    let patched = Extract
       .encode(
         SOURCE.to_vec(),
         &[artifact(
@@ -354,7 +354,7 @@ mod tests {
 
     // The error rather than the panic: `DecodedArtifact` is no `Debug`, so this
     // cannot go through `unwrap_err`.
-    let Err(err) = ExtractBytes.decode(SOURCE, Some(&args)) else {
+    let Err(err) = Extract.decode(SOURCE, Some(&args)) else {
       panic!("an overflowing window should be refused");
     };
 
@@ -370,7 +370,7 @@ mod tests {
     // that fits nowhere, not one that wraps back round to the start of one.
     let args = args("overflow.bin", usize::MAX - 2, 8);
 
-    let err = ExtractBytes
+    let err = Extract
       .encode(
         SOURCE.to_vec(),
         &[artifact(
@@ -416,7 +416,7 @@ mod tests {
         .collect();
 
       assert!(
-        ExtractBytes
+        Extract
           .encode(SOURCE.to_vec(), &artifacts, Some(&args))
           .is_err(),
         "{names:?} should not have been accepted"

@@ -14,7 +14,7 @@ use tempfile::TempDir;
 
 const SOURCE: &str = "game.sfc";
 const SOURCE_BYTES: &[u8] = b"HELLOWORLD";
-const EXTRACT: &str = "std/generic/extract_bytes";
+const EXTRACT: &str = "std/generic/extract";
 
 /// A top-level leaf artifact.
 const TAIL: &str = "game.sfc/tail.bin";
@@ -75,9 +75,9 @@ cache = "builds/cache"
 
   /// The manifest recording the decode tree every test works with.
   ///
-  /// `extract_bytes` produces a single artifact per decode node, so the tree is
-  /// two decodes on the source with one decode nested under `head.bin`. That
-  /// gives the three shapes the commands have to tell apart: a top-level leaf, a
+  /// `extract` produces a single artifact per decode node, so the tree is two
+  /// decodes on the source with one decode nested under `head.bin`. That gives
+  /// the three shapes the commands have to tell apart: a top-level leaf, a
   /// nested leaf, and an artifact with decodes of its own.
   fn decode_tree(&self) -> String {
     format!(
@@ -1340,7 +1340,7 @@ fn decode(project: &Project, target: &str) -> std::process::Output {
     "decode",
     "add",
     SOURCE,
-    "std/generic/extract_bytes",
+    "std/generic/extract",
     &args,
   ])
 }
@@ -1418,7 +1418,7 @@ fn refuses_to_decode_the_same_output_twice() {
       "decode",
       "add",
       SOURCE,
-      "std/generic/extract_bytes",
+      "std/generic/extract",
       r#"{"target":"dup.bin","offset":0,"length":2}"#,
       "--name",
       "dup-again",
@@ -1444,7 +1444,7 @@ fn decodes_artifacts_nested_beneath_another_decode_output() {
     "decode",
     "add",
     "game.sfc/bank.bin",
-    "std/generic/extract_bytes",
+    "std/generic/extract",
     r#"{"target":"inner.bin","offset":0,"length":2}"#,
   ]);
 

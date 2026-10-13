@@ -99,7 +99,7 @@ mod tests {
       .project
       .add_decode(
         &vpath(&source),
-        "std/generic/extract_bytes".to_owned(),
+        "std/generic/extract".to_owned(),
         &None,
         "head".to_owned(),
         artifacts(&[
@@ -132,7 +132,7 @@ mod tests {
       .project
       .add_decode(
         &vpath(&source),
-        "std/generic/extract_bytes".to_owned(),
+        "std/generic/extract".to_owned(),
         &Some(r#"{"offset":0}"#.to_owned()),
         "head".to_owned(),
         artifacts(&["head.bin"]),
@@ -166,7 +166,7 @@ mod tests {
         .project
         .add_decode(
           &vpath(&source),
-          "std/generic/extract_bytes".to_owned(),
+          "std/generic/extract".to_owned(),
           &None,
           "head".to_owned(),
           artifacts(&["head.bin"]),
@@ -188,7 +188,7 @@ mod tests {
         .project
         .add_decode(
           &vpath(&source),
-          "std/generic/extract_bytes".to_owned(),
+          "std/generic/extract".to_owned(),
           &None,
           "head".to_owned(),
           artifacts(&[
@@ -216,7 +216,7 @@ mod tests {
         .project
         .add_decode(
           &vpath("elsewhere.sfc/head.bin"),
-          "std/generic/extract_bytes".to_owned(),
+          "std/generic/extract".to_owned(),
           &None,
           "head".to_owned(),
           artifacts(&["head.bin"]),

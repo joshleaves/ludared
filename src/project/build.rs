@@ -240,7 +240,7 @@ mod tests {
 
   use super::*;
 
-  const EXTRACT: &str = "std/generic/extract_bytes";
+  const EXTRACT: &str = "std/generic/extract";
   const LOROM: &str = "std/nintendo/snes/cart/lorom";
 
   const SOURCE: &[u8] = b"HELLOWORLD";

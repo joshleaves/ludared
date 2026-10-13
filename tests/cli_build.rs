@@ -15,7 +15,7 @@ use tempfile::TempDir;
 const SOURCE: &str = "game.sfc";
 const OTHER_SOURCE: &str = "other.sfc";
 const SOURCE_BYTES: &[u8] = b"HELLOWORLD";
-const EXTRACT: &str = "std/generic/extract_bytes";
+const EXTRACT: &str = "std/generic/extract";
 
 struct Project {
   dir: TempDir,

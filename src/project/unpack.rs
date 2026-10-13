@@ -208,7 +208,7 @@ mod tests {
   use crate::testing::fixtures::lorom;
   use crate::testing::fixtures::project::ProjectFixture;
 
-  const EXTRACT: &str = "std/generic/extract_bytes";
+  const EXTRACT: &str = "std/generic/extract";
 
   /// A project with one registered source and a manifest written by hand, since
   /// the decode tree unpack replays is exactly what is under test.
@@ -498,7 +498,7 @@ mod tests {
     let node = r#"{
       "name": "head",
       "codec": {
-        "id": "std/generic/extract_bytes",
+        "id": "std/generic/extract",
         "version": 1,
         "args": { "target": "head.bin", "offset": 0, "length": 4 }
       },
@@ -523,7 +523,7 @@ mod tests {
     let node = r#"{
       "name": "head",
       "codec": {
-        "id": "std/generic/extract_bytes",
+        "id": "std/generic/extract",
         "version": 1,
         "args": { "target": "head.bin", "offset": 0, "length": 4 }
       },

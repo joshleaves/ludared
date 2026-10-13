@@ -29,13 +29,13 @@ const TITLE_OFFSET: usize = 385;
 const TITLE_LENGTH: usize = 37;
 
 const LOROM: &str = "std/nintendo/snes/cart/lorom";
-const EXTRACT: &str = "std/generic/extract_bytes";
+const EXTRACT: &str = "std/generic/extract";
 
 /// A project whose single source is the real LoROM fixture, carrying a decode
 /// tree the real codecs can replay.
 ///
 /// The tree is the one this project's tests care about: the LoROM codec splits
-/// the source into banks, and a nested `extract_bytes` decode pulls the article
+/// the source into banks, and a nested `extrat` decode pulls the article
 /// title out of the first of them. A test that unpacks the project therefore
 /// ends up with the virtual paths a real source produces, nested artifact
 /// included, without having to spell the tree out.
