@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 const CODEC_ID: &str = "std/generic/extract";
 const CODEC_NAME: &str = "Extract bytes";
-const CODEC_DESC: &str = "Raw bytes extractor
+const CODEC_DESC: &str = r#"Raw bytes extractor
 
 Extracts a range of bytes from the input into a separate artifact.
 
@@ -17,14 +17,17 @@ leaving every other byte alone, so several extractions may share one
 input. The range must already fit inside the artifact: it is never grown
 to fit and never truncated to fit.
 
-Available arguments:
-  target
+Arguments (JSON):
+  target (optional)
     String, output artifact name.
   offset
     Numeric, byte offset at which extraction starts.
   length
     Numeric, number of bytes to extract.
-";
+
+Example:
+  {"target":"header.bin","offset":0,"length":512}
+"#;
 
 pub(crate) struct Extract;
 

@@ -9,15 +9,20 @@ use log::*;
 
 const CODEC_ID: &str = "std/nintendo/snes/cart/sdd1";
 const CODEC_NAME: &str = "SNES SDD-1 ROM";
-const CODEC_DESC: &str = "SNES SDD-1 ROM codec
+const CODEC_DESC: &str = r#"SNES SDD-1 ROM codec
 
-Separates a Super Nintendo Entertainment System/Super Famicom SDD-1 ROM into 64 KiB banks, plus a copier header if present. Reassembles those banks into the image they were split from, recalculating the SNES checksum of its header.
+Separates a Super Nintendo Entertainment System/Super Famicom SDD-1 ROM into
+64 KiB banks, plus a copier header if present. Reassembles those banks into
+the image they were split from, recalculating the SNES checksum of its header.
 
-Available arguments:
-  bank_numbers
+Arguments (JSON):
+  bank_numbers (optional)
     mapped      Use mapped SNES bank numbers
     sequential  Use sequential physical bank numbers (default)
-";
+
+Example:
+  {"bank_numbers":"mapped"}
+"#;
 
 pub(crate) struct SnesSdd1Rom;
 

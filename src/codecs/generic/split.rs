@@ -14,12 +14,12 @@ Splits the entire input into consecutive artifacts. The offsets mark the
 start of each artifact after the first. Reassembly concatenates the artifacts
 in their original order, allowing their sizes to change.
 
-Available arguments:
+Arguments (JSON):
   offsets
     Non-empty array of strictly increasing byte offsets. Each offset must be
     greater than zero and less than the input length.
-  pattern
-    Optional artifact filename pattern with exactly one %d or %0Nd placeholder.
+  pattern (optional)
+    Artifact filename pattern with exactly one %d or %0Nd placeholder.
     Defaults to part_%d.bin.
 
 Example:

@@ -14,15 +14,20 @@ use log::*;
 
 const CODEC_ID: &str = "std/nintendo/snes/cart/lorom";
 const CODEC_NAME: &str = "SNES LoROM";
-const CODEC_DESC: &str = "SNES LoROM codec
+const CODEC_DESC: &str = r#"SNES LoROM codec
 
-Separates a Super Nintendo Entertainment System/Super Famicom LoROM into 32 KiB banks, plus a copier header if present. Reassembles those banks into the image they were split from, recalculating the SNES checksum of its header.
+Separates a Super Nintendo Entertainment System/Super Famicom LoROM into
+32 KiB banks, plus a copier header if present. Reassembles those banks into
+the image they were split from, recalculating the SNES checksum of its header.
 
-Available arguments:
-  bank_numbers
+Arguments (JSON):
+  bank_numbers (optional)
     mapped      Use mapped SNES bank numbers
     sequential  Use sequential physical bank numbers (default)
-";
+
+Example:
+  {"bank_numbers":"mapped"}
+"#;
 
 /// The SNES LoROM codec.
 ///

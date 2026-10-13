@@ -14,15 +14,20 @@ use log::*;
 
 const CODEC_ID: &str = "std/nintendo/snes/cart/hirom";
 const CODEC_NAME: &str = "SNES HiROM";
-const CODEC_DESC: &str = "SNES HiROM codec
+const CODEC_DESC: &str = r#"SNES HiROM codec
 
-Separates a Super Nintendo Entertainment System/Super Famicom HiROM into 64 KiB banks, plus a copier header if present. Reassembles those banks into the image they were split from, recalculating the SNES checksum of its header.
+Separates a Super Nintendo Entertainment System/Super Famicom HiROM into
+64 KiB banks, plus a copier header if present. Reassembles those banks into
+the image they were split from, recalculating the SNES checksum of its header.
 
-Available arguments:
-  bank_numbers
+Arguments (JSON):
+  bank_numbers (optional)
     mapped      Use mapped SNES bank numbers
     sequential  Use sequential physical bank numbers (default)
-";
+
+Example:
+  {"bank_numbers":"mapped"}
+"#;
 
 pub(crate) struct SnesHiRom;
 
