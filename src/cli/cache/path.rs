@@ -1,14 +1,19 @@
 use log::*;
 
+use clap::Args;
+use clap_complete::engine::ArgValueCompleter;
+
+use crate::cli::completions::artifacts::complete_artifacts_listing;
+
 use crate::errors::app_error::AppError;
 use crate::project::Project;
 use crate::project::cache::errors::CacheError;
 use crate::virtual_path::VirtualPath;
-use clap::Args;
 
 #[derive(Args)]
 pub(crate) struct CachePathArgs {
   /// Virtual path
+  #[arg(value_name = "PATH", add = ArgValueCompleter::new(complete_artifacts_listing))]
   virtual_path: String,
 }
 

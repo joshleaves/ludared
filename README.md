@@ -28,8 +28,8 @@ ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain
   - [x] `list [VPATH] [--tree]` - List artifacts, optionally as a tree
 
 - [x] `cache`
-  - [x] `cat` - Output a cached artifact's contents to STDOUT
-  - [x] `path` - Print a cached artifact's physical path
+  - [x] `cat <VPATH>` - Output a cached artifact's contents to STDOUT
+  - [x] `path <VPATH>` - Print a cached artifact's physical path
 
 - [x] `override` - Manage the decoded artifacts materialized in the workspace
   - [x] `list [VPATH] [--tree]` - Lists the artifacts declared as overrides, optionally as a tree
@@ -56,6 +56,8 @@ Use `ludared completions [SHELL] | source`. If you don't provide a shell, it wil
 - [x] `sources remove <FILE: complete_source_remove>`
 - [x] `decode add <PATH: complete_artifacts_decodable> <CODEC: complete_codecs_list>`
 - [x] `artifacts list [PATH: complete_artifacts_listing]`
+- [x] `cache path [PATH: complete_artifacts_listing]`
+- [x] `cache cat [PATH: complete_artifacts_listing]`
 - [x] `override list [PATH: complete_override_listing]`
 - [x] `override add <PATH: complete_override_addable>`
 - [x] `override refresh <PATH: complete_override_active>`

@@ -2,6 +2,9 @@ use std::fs::File;
 use std::io::Write as _;
 
 use clap::Args;
+use clap_complete::engine::ArgValueCompleter;
+
+use crate::cli::completions::artifacts::complete_artifacts_listing;
 use log::*;
 
 use crate::errors::app_error::AppError;
@@ -12,6 +15,7 @@ use crate::virtual_path::VirtualPath;
 #[derive(Args)]
 pub(crate) struct CacheCatArgs {
   /// Virtual path
+  #[arg(value_name = "PATH", add = ArgValueCompleter::new(complete_artifacts_listing))]
   virtual_path: String,
 }
 
