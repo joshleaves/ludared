@@ -16,6 +16,8 @@ const SOURCE: &str = "game.sfc";
 const OTHER_SOURCE: &str = "other.sfc";
 const SOURCE_BYTES: &[u8] = b"HELLOWORLD";
 const EXTRACT: &str = "std/generic/extract";
+const SPLIT: &str = "std/generic/split";
+const SPLIT_SOURCE_BYTES: &[u8] = b"HEADBODYTAIL";
 
 struct Project {
   dir: TempDir,
@@ -111,6 +113,102 @@ fn decoded_project() -> Project {
   project
 }
 
+/// A project holding one registered source, decoded with split and unpacked.
+fn split_decoded_project() -> Project {
+  let project = Project::new();
+
+  project.write_source(SOURCE, SPLIT_SOURCE_BYTES);
+  project.ok(&[
+    "sources",
+    "add",
+    SOURCE,
+  ]);
+  project.ok(&[
+    "decode",
+    "add",
+    SOURCE,
+    SPLIT,
+    r#"{"offsets":[4,8]}"#,
+  ]);
+  project.ok(&["unpack"]);
+
+  project
+}
+
+/// A project with a nested decode tree and three overrides:
+///
+/// HEADBODYTAIL
+/// └── split [4,8]
+///     ├── part_0.bin: HEAD
+///     │   └── split [3]
+///     │       ├── part_0.bin: HEA
+///     │       └── part_1.bin: D → override: DER
+///     ├── part_1.bin: BODY → override: LONGER
+///     └── part_2.bin: TAIL
+///         └── extract [1,3] name=extracted.bin
+///             └── AI → override: OO
+///
+/// Expected rebuild: HEADERLONGERTOOL
+fn nested_split_extract_project() -> Project {
+  let project = Project::new();
+
+  project.write_source(SOURCE, SPLIT_SOURCE_BYTES);
+  project.ok(&["sources", "add", SOURCE]);
+
+  // Root split: HEADBODYTAIL → HEAD | BODY | TAIL
+  project.ok(&[
+    "decode",
+    "add",
+    SOURCE,
+    SPLIT,
+    r#"{"offsets":[4,8]}"#,
+  ]);
+
+  // Nested split on part_0.bin (HEAD): HEAD → HEA | D
+  project.ok(&[
+    "decode",
+    "add",
+    "game.sfc/part_0.bin",
+    SPLIT,
+    r#"{"offsets":[3]}"#,
+  ]);
+
+  // Nested extract on part_2.bin (TAIL): TAIL → extract "AI" at offset 1, length 3
+  project.ok(&[
+    "decode",
+    "add",
+    "game.sfc/part_2.bin",
+    EXTRACT,
+    r#"{"name":"extracted.bin","offset":1,"length":3}"#,
+  ]);
+
+  project.ok(&["unpack"]);
+
+  // Declare and write the three overrides
+  project.ok(&["override", "add", "game.sfc/part_0.bin/part_1.bin"]);
+  fs::write(
+    project.path("workspace").join("game.sfc/part_0.bin/part_1.bin"),
+    b"DER",
+  )
+  .unwrap();
+
+  project.ok(&["override", "add", "game.sfc/part_1.bin"]);
+  fs::write(
+    project.path("workspace").join("game.sfc/part_1.bin"),
+    b"LONGER",
+  )
+  .unwrap();
+
+  project.ok(&["override", "add", "game.sfc/part_2.bin/extracted.bin"]);
+  fs::write(
+    project.path("workspace").join("game.sfc/part_2.bin/extracted.bin"),
+    b"OOL",
+  )
+  .unwrap();
+
+  project
+}
+
 #[test]
 fn builds_the_only_source_of_a_project() {
   let project = decoded_project();
@@ -157,6 +255,52 @@ fn writes_workspace_edits_back_into_the_image() {
   assert_eq!(
     fs::read(project.path("builds").join(SOURCE)).unwrap(),
     b"HEAD!WORLD"
+  );
+}
+
+#[test]
+fn builds_with_split_codec_without_overrides() {
+  let project = split_decoded_project();
+
+  assert_eq!(project.ok(&["build"]), "✓ Built builds/game.sfc\n");
+  assert_eq!(
+    fs::read(project.path("builds").join(SOURCE)).unwrap(),
+    SPLIT_SOURCE_BYTES
+  );
+}
+
+#[test]
+fn writes_workspace_edits_back_into_the_image_with_split() {
+  let project = split_decoded_project();
+
+  project.ok(&[
+    "override",
+    "add",
+    "game.sfc/part_1.bin",
+  ]);
+  fs::write(
+    project.path("workspace").join("game.sfc").join("part_1.bin"),
+    b"LONGER",
+  )
+  .unwrap();
+
+  project.ok(&["build"]);
+
+  assert_eq!(
+    fs::read(project.path("builds").join(SOURCE)).unwrap(),
+    b"HEADLONGERTAIL"
+  );
+}
+
+#[test]
+fn rebuilds_nested_decode_tree_with_multiple_overrides() {
+  let project = nested_split_extract_project();
+
+  project.ok(&["build"]);
+
+  assert_eq!(
+    fs::read(project.path("builds").join(SOURCE)).unwrap(),
+    b"HEADERLONGERTOOL"
   );
 }
 
