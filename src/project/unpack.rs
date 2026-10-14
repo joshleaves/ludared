@@ -249,7 +249,7 @@ mod tests {
       "codec": {{
         "id": "{EXTRACT}",
         "version": 1,
-        "args": {{ "target": "{target}", "offset": {offset}, "length": {length} }}
+        "args": {{ "name": "{target}", "offset": {offset}, "length": {length} }}
       }},
       "outputs": [ "{target}" ],
       "decodes": {decodes}
@@ -500,7 +500,7 @@ mod tests {
       "codec": {
         "id": "std/generic/extract",
         "version": 1,
-        "args": { "target": "head.bin", "offset": 0, "length": 4 }
+        "args": { "name": "head.bin", "offset": 0, "length": 4 }
       },
       "outputs": [ "renamed.bin" ],
       "decodes": {}
@@ -525,7 +525,7 @@ mod tests {
       "codec": {
         "id": "std/generic/extract",
         "version": 1,
-        "args": { "target": "head.bin", "offset": 0, "length": 4 }
+        "args": { "name": "head.bin", "offset": 0, "length": 4 }
       },
       "outputs": [],
       "decodes": {}

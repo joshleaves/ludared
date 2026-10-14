@@ -18,7 +18,7 @@ input. The range must already fit inside the artifact: it is never grown
 to fit and never truncated to fit.
 
 Arguments (JSON):
-  target (optional)
+  name
     String, output artifact name.
   offset
     Numeric, byte offset at which extraction starts.
@@ -26,14 +26,14 @@ Arguments (JSON):
     Numeric, number of bytes to extract.
 
 Example:
-  {"target":"header.bin","offset":0,"length":512}
+  {"name":"header.bin","offset":0,"length":512}
 "#;
 
 pub(crate) struct Extract;
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct ExtractCodecArgs {
-  pub(crate) target: String,
+  pub(crate) name: String,
   pub(crate) offset: usize,
   pub(crate) length: usize,
 }
@@ -61,9 +61,9 @@ impl Codec for Extract {
 
   fn decode_name(&self, args: Option<&str>) -> Result<String, CodecError> {
     let args = ExtractCodecArgs::from_args(args)?;
-    Ok(match args.target.rsplit_once('.') {
+    Ok(match args.name.rsplit_once('.') {
       Some((name, _)) => name.to_owned(),
-      None => args.target,
+      None => args.name,
     })
   }
 
@@ -85,7 +85,7 @@ impl Codec for Extract {
       )));
     }
     Ok(vec![DecodedArtifact {
-      name: args.target,
+      name: args.name,
       data: data[from..to].to_vec(),
     }])
   }
@@ -105,17 +105,17 @@ impl Codec for Extract {
     if artifacts.len() != 1 {
       return Err(CodecError::Message(format!(
         "Expected exactly one artifact ('{}'), found {}",
-        args.target,
+        args.name,
         artifacts.len()
       )));
     }
 
     let artifact = &artifacts[0];
 
-    if artifact.name != args.target {
+    if artifact.name != args.name {
       return Err(CodecError::Message(format!(
         "Expected artifact '{}', found '{}'",
-        args.target, artifact.name
+        args.name, artifact.name
       )));
     }
 
@@ -123,7 +123,7 @@ impl Codec for Extract {
       return Err(CodecError::Message(format!(
         "Expected {} bytes for artifact '{}', found {}",
         args.length,
-        args.target,
+        args.name,
         artifact.data.len()
       )));
     }
@@ -159,9 +159,9 @@ mod tests {
   const SOURCE: &[u8] = b"SnES header, then ROM banks, then nothing much else";
 
   /// An extraction of `offset..offset + length`, as the codec is given it.
-  fn args(target: &str, offset: usize, length: usize) -> String {
+  fn args(name: &str, offset: usize, length: usize) -> String {
     serde_json::json!({
-      "target": target,
+      "name": name,
       "offset": offset,
       "length": length
     })

@@ -103,7 +103,7 @@ fn decoded_project() -> Project {
     "add",
     SOURCE,
     EXTRACT,
-    r#"{"target":"head.bin","offset":0,"length":5}"#,
+    r#"{"name":"head.bin","offset":0,"length":5}"#,
   ]);
   project.ok(&["unpack"]);
 
@@ -299,7 +299,7 @@ fn decode_add_rejects_source_bytes_mismatch_manifest() {
     "add",
     SOURCE,
     EXTRACT,
-    r#"{"target":"head.bin","offset":0,"length":5}"#,
+    r#"{"name":"head.bin","offset":0,"length":5}"#,
   ]);
 
   assert!(

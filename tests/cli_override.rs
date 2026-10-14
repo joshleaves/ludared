@@ -89,13 +89,13 @@ cache = "builds/cache"
     "{SOURCE}": [
       {{
         "name": "head",
-        "codec": {{ "id": "{EXTRACT}", "version": 1, "args": {{ "target": "head.bin", "offset": 0, "length": 4 }} }},
+        "codec": {{ "id": "{EXTRACT}", "version": 1, "args": {{ "name": "head.bin", "offset": 0, "length": 4 }} }},
         "outputs": [ "head.bin" ],
         "decodes": {{
           "head.bin": [
             {{
               "name": "TITLE",
-              "codec": {{ "id": "{EXTRACT}", "version": 1, "args": {{ "target": "TITLE.txt", "offset": 0, "length": 4 }} }},
+              "codec": {{ "id": "{EXTRACT}", "version": 1, "args": {{ "name": "TITLE.txt", "offset": 0, "length": 4 }} }},
               "outputs": [ "TITLE.txt" ],
               "decodes": {{}}
             }}
@@ -104,7 +104,7 @@ cache = "builds/cache"
       }},
       {{
         "name": "tail",
-        "codec": {{ "id": "{EXTRACT}", "version": 1, "args": {{ "target": "tail.bin", "offset": 6, "length": 4 }} }},
+        "codec": {{ "id": "{EXTRACT}", "version": 1, "args": {{ "name": "tail.bin", "offset": 6, "length": 4 }} }},
         "outputs": [ "tail.bin" ],
         "decodes": {{}}
       }}
@@ -847,7 +847,7 @@ fn refuses_to_decode_into_an_overridden_artifact() {
 
   project.override_path(TAIL);
 
-  let args = r#"{"target":"inner.bin","offset":0,"length":2}"#;
+  let args = r#"{"name":"inner.bin","offset":0,"length":2}"#;
   let stderr = project.fails(&[
     "decode",
     "add",
@@ -1334,7 +1334,7 @@ fn sha256_of(bytes: &[u8]) -> String {
 
 /// Decodes `target` out of the source, as a second decode operation on it.
 fn decode(project: &Project, target: &str) -> std::process::Output {
-  let args = serde_json::json!({ "target": target, "offset": 0, "length": 4 }).to_string();
+  let args = serde_json::json!({ "name": target, "offset": 0, "length": 4 }).to_string();
 
   project.run(&[
     "decode",
@@ -1419,7 +1419,7 @@ fn refuses_to_decode_the_same_output_twice() {
       "add",
       SOURCE,
       "std/generic/extract",
-      r#"{"target":"dup.bin","offset":0,"length":2}"#,
+      r#"{"name":"dup.bin","offset":0,"length":2}"#,
       "--name",
       "dup-again",
     ]);
@@ -1445,7 +1445,7 @@ fn decodes_artifacts_nested_beneath_another_decode_output() {
     "add",
     "game.sfc/bank.bin",
     "std/generic/extract",
-    r#"{"target":"inner.bin","offset":0,"length":2}"#,
+    r#"{"name":"inner.bin","offset":0,"length":2}"#,
   ]);
 
   assert!(
@@ -1511,7 +1511,7 @@ fn overrides_an_artifact_that_was_just_decoded() {
 
   // Decoding an artifact leaves an empty decode bucket attached to it, which must
   // not stop that artifact from being a leaf an override can be declared on.
-  let args = r#"{"target":"fresh.bin","offset":0,"length":4}"#;
+  let args = r#"{"name":"fresh.bin","offset":0,"length":4}"#;
   let output = project.run(&[
     "decode",
     "add",

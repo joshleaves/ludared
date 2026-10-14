@@ -3,7 +3,7 @@
 ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain ROM hacking and game modding projects.
 
 # Current status
-> **Status:** Early development.
+> **Status:** Kind usable actually.
 
 ## Available commands
 
@@ -39,6 +39,8 @@ ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain
   - [x] `refresh <VPATH>` - Rewrites an overridden artifact with its canonical bytes
   - [x] `remove <VPATH> [--clean]` - Deactivates an override, optionally deleting its workspace file
 
+- [x] `build` - Run the manifest to produce build(s) from the source(s)
+
 - [x] `doctor` - Verify project configuration and source files
 - [x] `clean` - Remove generated build and cache artifacts
 
@@ -62,20 +64,39 @@ Use `ludared completions [SHELL] | source`. If you don't provide a shell, it wil
 - [x] `override add <PATH: complete_override_addable>`
 - [x] `override refresh <PATH: complete_override_active>`
 - [x] `override remove <PATH: complete_override_active>`
+- [x] `build [SOURCE: complete_source_remove]`
 
-## Planned commands
+## Available codecs
+
+Codecs come in two types: `Rebuild` and `Patch`. Simply put [one is archival, the other is replacement](there_are_two_codec_types.png).
+
+### Rebuild codecs
+A `Rebuild` codec consumes ALL of its input, so it is the only _decode_ that can be ran on an artifact.
+
+- [x] `std/generic/split` - Turn a single blob into mulitple blobs
+- [x] `std/nintendo/snes/cart/exhirom`- Cut a SNES ExHiROM into ROM banks
+- [x] `std/nintendo/snes/cart/hirom`- Cut a SNES HiROM into ROM banks
+- [x] `std/nintendo/snes/cart/lorom`- Cut a SNES LoROM into ROM banks
+- [x] `std/nintendo/snes/cart/sa1`- Cut a SNES SA-1 ROM into ROM banks
+- [x] `std/nintendo/snes/cart/sdd1`- Cut a SNES SDD-1 ROM into ROM banks
+- [x] `std/nintendo/snes/cart/spc7110`- Cut a SNES SPC7110 ROM into ROM banks
+- [x] `std/cdrom/iso9660` - Extract the filesystem of an ISO 9660 CD-ROM image. Uses [hadris-iso](https://github.com/hxyulin/hadris).
+
+### Patch codecs
+Multiple `Patch` codecs can be ran against a single artefact, as each will take a part. The ludared engine guarantees they are always ran in the manifest definition order.
+
+- [x] `std/generic/extract` - Extract arbitrary bytes from a blob
+
+## To-do list
+
+### Planned commands
 
 - [ ] `decode`
-  - [x] `add` - `decode add <VPATH> <CODEC> [ARGS] [NAME]`
   - [ ] `list` - `decode list [VPATH]`
   - [ ] `remove` - `decode remove <VPATH> <NAME> `
 
-- [ ] `build`
-
 - [ ] `archive`
 - [ ] `tool`
-
-## To-do list
 
 ### Codecs
 - [ ] Add versioning and metadata, with an ABI-friendly key/value metadata representation for future dynamic plugins.
@@ -86,48 +107,3 @@ Use `ludared completions [SHELL] | source`. If you don't provide a shell, it wil
 ### Other stuff
 - [ ] Migrate to [usage-rs](https://usage.jdx.dev/rust/migrating-from-clap#migrating-from-clap)
 - [ ] Interace with [ratatui](https://ratatui.rs/installation/)
-
-## Notes
-
-This document is a lightweight roadmap while the CLI evolves.
-
-```json
-{
-  "decodes": {
-    "my_rom.sfc": [
-      {
-        "name": "rom_banks",
-        "codec": {
-          "id": "std/nintendo/snes/cart/lorom",
-          "version": 1,
-          "args": {
-            "bank_numbers": "mapped"
-          }
-        },
-        "outputs": [
-          "rom_bank_80.bin", "etc..."
-        ],
-        "decodes": {
-          "rom_bank_80.bin": [
-            {
-              "name": "rom_name.txt",
-              "codec": {
-                "id": "std/extract_bytes",
-                "version": 1,
-                "args": {
-                  "target": "rom_name.txt",
-                  "offset": 0,
-                  "length": 21
-                }
-              },
-              "outputs": [
-                "ROM_NAME.txt"
-              ]
-            }
-          ]
-        }
-      }
-    ]
-  }
-}
-```

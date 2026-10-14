@@ -230,6 +230,7 @@ impl Project {
 mod tests {
   use std::collections::BTreeMap;
 
+  use crate::codecs::cdrom::iso9660::Iso9660;
   use crate::codecs::errors::CodecError;
   use crate::codecs::snes::cart_lorom::SnesLoRom;
   use crate::codecs::snes::common::LOROM_HEADER_OFFSET;
@@ -241,6 +242,7 @@ mod tests {
   use super::*;
 
   const EXTRACT: &str = "std/generic/extract";
+  const ISO9660: &str = "std/cdrom/iso9660";
   const LOROM: &str = "std/nintendo/snes/cart/lorom";
 
   const SOURCE: &[u8] = b"HELLOWORLD";
@@ -270,16 +272,16 @@ mod tests {
     )
   }
 
-  fn extract(target: &str, offset: usize, length: usize) -> String {
+  fn extract(name: &str, offset: usize, length: usize) -> String {
     format!(
       r#"{{
-      "name": "{target}",
+      "name": "{name}",
       "codec": {{
         "id": "{EXTRACT}",
         "version": 1,
-        "args": {{ "target": "{target}", "offset": {offset}, "length": {length} }}
+        "args": {{ "name": "{name}", "offset": {offset}, "length": {length} }}
       }},
-      "outputs": [ "{target}" ],
+      "outputs": [ "{name}" ],
       "decodes": {{}}
     }}"#
     )
@@ -766,5 +768,180 @@ mod tests {
       AppError::SourceFileMismatch(..) => {}
       err => panic!("Expected SourceFileMismatch, got {err:?}"),
     }
+  }
+
+  /// An ISO 9660 image recorded the way the core records any other source, and
+  /// rebuilt from the artifacts its decode produced.
+  ///
+  /// The unit tests beside the codec cover it in isolation; this one covers the
+  /// part only the core can show, that the order a decode produced its
+  /// artifacts in is the order the artifacts are handed back in, which is what
+  /// the table of contents leading them relies on.
+  fn iso_project() -> (ProjectFixture, String) {
+    let image = iso_fixture();
+    let source = "game.iso".to_owned();
+
+    let mut fixture = ProjectFixture::new();
+    fixture.register_source_file(&source, &image);
+
+    fixture
+      .project
+      .add_decode(
+        &vpath(&source),
+        ISO9660.to_owned(),
+        &None,
+        "iso".to_owned(),
+        iso_decode(&image),
+      )
+      .unwrap();
+
+    fixture.project.unpack().unwrap();
+
+    (fixture, source)
+  }
+
+  /// An ISO holding two files and a directory, written through the same writer
+  /// the codec rebuilds with.
+  fn iso_fixture() -> Vec<u8> {
+    use hadris_iso::write::options::CreationFeatures;
+    use hadris_iso::write::{File as IsoFile, InputFiles, IsoImageWriter};
+    use std::sync::Arc;
+
+    let mut buffer = std::io::Cursor::new(Vec::new());
+    IsoImageWriter::create(
+      &mut buffer,
+      InputFiles {
+        path_separator: hadris_iso::read::PathSeparator::ForwardSlash,
+        files: vec![
+          IsoFile::File {
+            name: Arc::new("Z.BIN".to_owned()),
+            contents: b"z".to_vec(),
+          },
+          IsoFile::Directory {
+            name: Arc::new("A".to_owned()),
+            children: vec![IsoFile::File {
+              name: Arc::new("FIRST.BIN".to_owned()),
+              contents: b"first".to_vec(),
+            }],
+          },
+        ],
+      },
+      hadris_iso::write::options::IsoFormatOptions {
+        volume_name: "TEST".to_owned(),
+        system_id: None,
+        volume_set_id: None,
+        publisher_id: None,
+        preparer_id: None,
+        application_id: None,
+        sector_size: 2048,
+        path_separator: hadris_iso::read::PathSeparator::ForwardSlash,
+        features: CreationFeatures::rock_ridge(),
+        strict_charset: false,
+      },
+    )
+    .unwrap();
+
+    buffer.into_inner()
+  }
+
+  fn iso_decode(image: &[u8]) -> Vec<DecodedArtifact> {
+    crate::codecs::Codec::decode(&Iso9660, image, None).unwrap()
+  }
+
+  /// The files the image carries, read back through Hadris.
+  fn iso_files(image: &[u8]) -> Vec<(String, Vec<u8>)> {
+    use hadris_iso::read::IsoImage;
+
+    let image = IsoImage::open(std::io::Cursor::new(image.to_vec())).unwrap();
+    let root = image.root_dir();
+
+    let mut found = Vec::new();
+    let mut pending = vec![(root.iter(&image), String::new())];
+
+    while let Some((directory, prefix)) = pending.pop() {
+      for entry in directory.entries() {
+        let entry = entry.unwrap();
+        if entry.is_special() {
+          continue;
+        }
+
+        let raw = entry.record.name();
+        let raw = match raw.iter().position(|byte| *byte == b';') {
+          Some(index) => &raw[..index],
+          None => raw,
+        };
+        let name = String::from_utf8_lossy(raw).into_owned();
+        let path = if prefix.is_empty() {
+          name.clone()
+        } else {
+          format!("{prefix}/{name}")
+        };
+
+        if entry.is_directory() {
+          pending.push((image.open_dir(entry.as_dir_ref(&image).unwrap()), path));
+          continue;
+        }
+
+        found.push((path, image.read_file(&entry).unwrap()));
+      }
+    }
+
+    found.sort();
+    found
+  }
+
+  #[test]
+  fn rebuilds_an_iso_9660_image_from_a_recorded_decode() {
+    let (fixture, source) = iso_project();
+    let image = iso_fixture();
+
+    let rebuilt = fixture.project.build(&vpath(&source)).unwrap();
+
+    assert_eq!(
+      iso_files(&rebuilt),
+      iso_files(&image),
+      "the rebuilt image should hold the source's files"
+    );
+  }
+
+  #[test]
+  fn rebuilds_an_iso_9660_image_carrying_an_edited_file() {
+    let (mut fixture, source) = iso_project();
+    let edited = b"an edited file, and a good deal longer than it was";
+
+    edit(&mut fixture, &of(&source, "Z.BIN"), edited);
+
+    let rebuilt = fixture.project.build(&vpath(&source)).unwrap();
+    let files = iso_files(&rebuilt);
+
+    assert_eq!(
+      files,
+      [
+        ("A/FIRST.BIN".to_owned(), b"first".to_vec()),
+        ("Z.BIN".to_owned(), edited.to_vec()),
+      ],
+      "the edit should have reached the rebuilt image"
+    );
+  }
+
+  #[test]
+  fn records_the_metadata_before_the_files() {
+    let (fixture, source) = iso_project();
+
+    // What the rebuild relies on is the metadata leading the artifacts the
+    // manifest recorded, which is what `decode` returning it first buys.
+    let outputs = &fixture.project.manifest.decodes[&source][0].outputs;
+
+    assert_eq!(
+      outputs[0], "ISO9660.json",
+      "the metadata should be recorded first"
+    );
+    assert_eq!(
+      &outputs[1..],
+      [
+        "Z.BIN",
+        "A/FIRST.BIN"
+      ]
+    );
   }
 }

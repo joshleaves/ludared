@@ -94,7 +94,7 @@ fn lorom_decode() -> String {
           "codec": {{
             "id": "{EXTRACT}",
             "version": 1,
-            "args": {{ "target": "{TITLE_FILE}", "offset": {TITLE_OFFSET}, "length": {TITLE_LENGTH} }}
+            "args": {{ "name": "{TITLE_FILE}", "offset": {TITLE_OFFSET}, "length": {TITLE_LENGTH} }}
           }},
           "outputs": [ "{TITLE_FILE}" ],
           "decodes": {{}}
