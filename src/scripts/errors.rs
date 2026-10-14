@@ -6,7 +6,7 @@ pub enum ScriptError {
   Io(#[from] std::io::Error),
 
   #[error(transparent)]
-  LuaScriptError(#[from] mlua::Error),
+  Lua(#[from] mlua::Error),
 
   #[error("Invalid codec kind '{0}': expected 'rebuild' or 'patch'")]
   InvalidCodecKind(String),

@@ -153,7 +153,11 @@ fn nested_split_extract_project() -> Project {
   let project = Project::new();
 
   project.write_source(SOURCE, SPLIT_SOURCE_BYTES);
-  project.ok(&["sources", "add", SOURCE]);
+  project.ok(&[
+    "sources",
+    "add",
+    SOURCE,
+  ]);
 
   // Root split: HEADBODYTAIL → HEAD | BODY | TAIL
   project.ok(&[
@@ -185,23 +189,39 @@ fn nested_split_extract_project() -> Project {
   project.ok(&["unpack"]);
 
   // Declare and write the three overrides
-  project.ok(&["override", "add", "game.sfc/part_0.bin/part_1.bin"]);
+  project.ok(&[
+    "override",
+    "add",
+    "game.sfc/part_0.bin/part_1.bin",
+  ]);
   fs::write(
-    project.path("workspace").join("game.sfc/part_0.bin/part_1.bin"),
+    project
+      .path("workspace")
+      .join("game.sfc/part_0.bin/part_1.bin"),
     b"DER",
   )
   .unwrap();
 
-  project.ok(&["override", "add", "game.sfc/part_1.bin"]);
+  project.ok(&[
+    "override",
+    "add",
+    "game.sfc/part_1.bin",
+  ]);
   fs::write(
     project.path("workspace").join("game.sfc/part_1.bin"),
     b"LONGER",
   )
   .unwrap();
 
-  project.ok(&["override", "add", "game.sfc/part_2.bin/extracted.bin"]);
+  project.ok(&[
+    "override",
+    "add",
+    "game.sfc/part_2.bin/extracted.bin",
+  ]);
   fs::write(
-    project.path("workspace").join("game.sfc/part_2.bin/extracted.bin"),
+    project
+      .path("workspace")
+      .join("game.sfc/part_2.bin/extracted.bin"),
     b"OOL",
   )
   .unwrap();
@@ -279,7 +299,10 @@ fn writes_workspace_edits_back_into_the_image_with_split() {
     "game.sfc/part_1.bin",
   ]);
   fs::write(
-    project.path("workspace").join("game.sfc").join("part_1.bin"),
+    project
+      .path("workspace")
+      .join("game.sfc")
+      .join("part_1.bin"),
     b"LONGER",
   )
   .unwrap();

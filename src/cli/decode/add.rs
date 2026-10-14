@@ -70,14 +70,11 @@ pub(crate) fn command_decode_add(args: &DecodeAddArgs) -> Result<(), AppError> {
     None => codec.decode_name(args.args.as_deref())?,
   };
   let artifacts = codec.decode(&data, args.args.as_deref())?;
+  let codec_id = codec.id().to_owned();
 
-  project.add_decode(
-    &vpath,
-    codec.id().to_owned(),
-    &args.args,
-    decode_name,
-    artifacts,
-  )?;
+  project.add_decode(&vpath, codec_id.clone(), &args.args, decode_name, artifacts)?;
+
+  println!("✓ Added decode '{codec_id}' to {vpath}");
 
   Ok(())
 }
