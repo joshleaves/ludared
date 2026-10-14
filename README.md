@@ -86,6 +86,38 @@ Multiple `Patch` codecs can be ran against a single artefact, as each will take 
 
 - [x] `std/generic/extract` - Extract arbitrary bytes from a blob
 
+## Scripts codec
+
+### Lua
+Lua is embedded through [mlua](https://github.com/mlua-rs/mlua), with lua 5.5 being supported.
+
+```lua
+return {
+  name = "My Codec",
+  description = "Description of the codec",
+  version = 1,
+  kind = "patch", -- "patch" ou "rebuild"
+
+  can_handle = function(data)
+    return "no" -- "no", "possible", "likely", "certain"
+  end,
+
+  decode_name = function(args)
+    return "output.bin"
+  end,
+
+  decode = function(data, args)
+    return {
+      ["output.bin"] = data,
+    }
+  end,
+
+  encode = function(original, artifacts, args)
+    return artifacts["output.bin"]
+  end,
+}
+```
+
 ## To-do list
 
 ### Planned commands

@@ -19,6 +19,7 @@ pub(crate) struct LuaCodec {
   name: String,
   kind: CodecKind,
   description: String,
+  #[allow(dead_code)]
   version: u32,
 }
 
