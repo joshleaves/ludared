@@ -1,6 +1,7 @@
 use log::*;
 use std::path::{Path, PathBuf};
 
+use crate::codecs::registry::CodecRegistry;
 use crate::configuration::Configuration;
 use crate::errors::app_error::AppError;
 use crate::manifest::Manifest;
@@ -13,11 +14,11 @@ pub(crate) mod overrides;
 pub(crate) mod sources;
 pub(crate) mod unpack;
 
-#[derive(Debug)]
 pub(crate) struct Project {
   pub(crate) root: PathBuf,
   pub(crate) configuration: Configuration,
   pub(crate) manifest: Manifest,
+  pub(crate) codecs: CodecRegistry,
   pub(crate) cache: Cache,
 }
 
@@ -39,11 +40,13 @@ impl Project {
     trace!("{manifest:?}");
 
     let cache = Cache::new(configuration.paths.cache.join("decodes"))?;
+    let codecs = CodecRegistry::new(root.join(&configuration.paths.scripts))?;
 
     Ok(Self {
       root: root.to_path_buf(),
       configuration,
       manifest,
+      codecs,
       cache,
     })
   }

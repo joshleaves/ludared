@@ -1,11 +1,9 @@
 use crate::cli::artifacts::list::ArtifactsListArgs;
-use crate::cli::artifacts::tree::ArtifactsTreeArgs;
 use crate::errors::app_error::AppError;
 use crate::project::Project;
 use clap::{Args, Subcommand};
 
 pub(crate) mod list;
-pub(crate) mod tree;
 
 #[derive(Args)]
 pub(crate) struct ArtifactsArgs {
@@ -17,9 +15,6 @@ pub(crate) struct ArtifactsArgs {
 enum ArtifactsCommands {
   /// List the artifacts declared in the manifest
   List(ArtifactsListArgs),
-
-  /// Display the artifacts declared in the manifest as a tree
-  Tree(ArtifactsTreeArgs),
 }
 
 /// Dispatches execution to the requested `artifacts` subcommand.
@@ -32,6 +27,5 @@ pub(crate) fn command_artifacts(args: &ArtifactsArgs) -> Result<(), AppError> {
 
   match &args.command {
     ArtifactsCommands::List(args) => list::command_artifacts_list(&project, args),
-    ArtifactsCommands::Tree(args) => tree::command_artifacts_tree(&project, args),
   }
 }

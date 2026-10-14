@@ -131,15 +131,15 @@ impl SplitCodecArgs {
 }
 
 impl Codec for Split {
-  fn id(&self) -> &'static str {
+  fn id(&self) -> &str {
     CODEC_ID
   }
 
-  fn name(&self) -> &'static str {
+  fn name(&self) -> &str {
     CODEC_NAME
   }
 
-  fn description(&self) -> &'static str {
+  fn description(&self) -> &str {
     CODEC_DESC
   }
 
@@ -147,8 +147,8 @@ impl Codec for Split {
     CodecKind::Rebuild
   }
 
-  fn can_handle(&self, _: &[u8]) -> CodecHandlingConfidence {
-    CodecHandlingConfidence::Possible
+  fn can_handle(&self, _: &[u8]) -> Result<CodecHandlingConfidence, CodecError> {
+    Ok(CodecHandlingConfidence::Possible)
   }
 
   fn decode_name(&self, args: Option<&str>) -> Result<String, CodecError> {

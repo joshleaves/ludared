@@ -1,5 +1,5 @@
+use crate::cli::codecs::registry;
 use crate::cli::completions::codecs::complete_codecs_list;
-use crate::codecs::registry::CodecRegistry;
 use crate::errors::app_error::AppError;
 use clap::Args;
 use clap_complete::ArgValueCompleter;
@@ -12,12 +12,11 @@ pub(crate) struct CodecsInfoArgs {
 }
 
 pub(crate) fn command_codecs_info(args: &CodecsInfoArgs) -> Result<(), AppError> {
-  let Some(codec) = CodecRegistry::builtins()
-    .iter()
-    .find(|codec| codec.id() == args.codec)
-  else {
+  let registry = registry()?;
+  let Some(codec) = registry.get(&args.codec) else {
     return Err(AppError::CodecUnavailable(args.codec.clone()));
   };
+
   println!("Codec {}", codec.id());
   println!("- Name: \t{}", codec.name());
   println!("- Description:\t{}", codec.description());

@@ -6,7 +6,6 @@ use std::path::{Path, PathBuf};
 use crate::cli::completions::artifacts::complete_artifacts_decodable;
 use crate::cli::completions::codecs::complete_codecs_list;
 use crate::codecs::CodecHandlingConfidence;
-use crate::codecs::registry::CodecRegistry;
 use crate::errors::app_error::AppError;
 use crate::project::Project;
 use crate::virtual_path::VirtualPath;
@@ -34,11 +33,12 @@ pub(crate) struct DecodeAddArgs {
 }
 
 pub(crate) fn command_decode_add(args: &DecodeAddArgs) -> Result<(), AppError> {
-  let codec =
-    CodecRegistry::get(&args.codec).ok_or(AppError::CodecUnavailable(args.codec.clone()))?;
-
   let vpath = VirtualPath::new(&args.virtual_path)?;
   let mut project = Project::load_default()?;
+  let codec = project
+    .codecs
+    .get(&args.codec)
+    .ok_or(AppError::CodecUnavailable(args.codec.clone()))?;
   let real_path = vpath.resolve(&project)?;
   let data = std::fs::read(&real_path)?;
 
@@ -55,13 +55,14 @@ pub(crate) fn command_decode_add(args: &DecodeAddArgs) -> Result<(), AppError> {
   }
 
   match codec.can_handle(&data) {
-    CodecHandlingConfidence::No if !args.force => {
+    Ok(CodecHandlingConfidence::No) if !args.force => {
       return Err(AppError::CodecIncompatible(codec.id().to_owned()));
     }
-    CodecHandlingConfidence::No | CodecHandlingConfidence::Possible => {
+    Ok(CodecHandlingConfidence::No) | Ok(CodecHandlingConfidence::Possible) => {
       eprintln!("Warning: codec handling confidence is low");
     }
-    CodecHandlingConfidence::Likely | CodecHandlingConfidence::Certain => {}
+    Ok(CodecHandlingConfidence::Likely) | Ok(CodecHandlingConfidence::Certain) => {}
+    Err(e) => return Err(e.into()),
   }
 
   let decode_name = match &args.name {

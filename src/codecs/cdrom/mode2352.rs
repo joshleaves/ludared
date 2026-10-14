@@ -165,13 +165,13 @@ fn encode_sector(
 }
 
 impl Codec for Mode2352 {
-  fn id(&self) -> &'static str {
+  fn id(&self) -> &str {
     CODEC_ID
   }
-  fn name(&self) -> &'static str {
+  fn name(&self) -> &str {
     CODEC_NAME
   }
-  fn description(&self) -> &'static str {
+  fn description(&self) -> &str {
     CODEC_DESC
   }
 
@@ -179,9 +179,9 @@ impl Codec for Mode2352 {
     CodecKind::Rebuild
   }
 
-  fn can_handle(&self, data: &[u8]) -> CodecHandlingConfidence {
+  fn can_handle(&self, data: &[u8]) -> Result<CodecHandlingConfidence, CodecError> {
     if data.is_empty() || !data.len().is_multiple_of(RAW_SECTOR_SIZE) {
-      return CodecHandlingConfidence::No;
+      return Ok(CodecHandlingConfidence::No);
     }
 
     let sector = &data[..RAW_SECTOR_SIZE];
@@ -191,10 +191,10 @@ impl Codec for Mode2352 {
       || sector[11] != 0
       || sector[15] != 1
     {
-      return CodecHandlingConfidence::No;
+      return Ok(CodecHandlingConfidence::No);
     }
 
-    CodecHandlingConfidence::Likely
+    Ok(CodecHandlingConfidence::Likely)
   }
 
   fn decode_name(&self, _: Option<&str>) -> Result<String, CodecError> {
@@ -314,24 +314,33 @@ mod tests {
     )
     .unwrap();
 
-    assert_eq!(codec.can_handle(&sector), CodecHandlingConfidence::Likely,);
+    assert_eq!(
+      codec.can_handle(&sector).unwrap(),
+      CodecHandlingConfidence::Likely,
+    );
 
     assert_eq!(
-      codec.can_handle(&sector[..RAW_SECTOR_SIZE - 1]),
+      codec.can_handle(&sector[..RAW_SECTOR_SIZE - 1]).unwrap(),
       CodecHandlingConfidence::No,
     );
 
     let mut invalid_sync = sector;
     invalid_sync[1] = 0;
 
-    assert_eq!(codec.can_handle(&invalid_sync), CodecHandlingConfidence::No,);
+    assert_eq!(
+      codec.can_handle(&invalid_sync).unwrap(),
+      CodecHandlingConfidence::No,
+    );
 
     let mut invalid_mode = sector;
     invalid_mode[15] = 2;
 
-    assert_eq!(codec.can_handle(&invalid_mode), CodecHandlingConfidence::No,);
+    assert_eq!(
+      codec.can_handle(&invalid_mode).unwrap(),
+      CodecHandlingConfidence::No,
+    );
 
-    assert_eq!(codec.can_handle(&[]), CodecHandlingConfidence::No,);
+    assert_eq!(codec.can_handle(&[]).unwrap(), CodecHandlingConfidence::No,);
   }
 
   #[test]
@@ -455,7 +464,10 @@ mod tests {
     let original = std::fs::read(path).expect("Failed to read Sakura Taisen BIN");
     let codec = Mode2352;
 
-    assert_eq!(codec.can_handle(&original), CodecHandlingConfidence::Likely,);
+    assert_eq!(
+      codec.can_handle(&original).unwrap(),
+      CodecHandlingConfidence::Likely,
+    );
 
     let artifacts = codec.decode(&original, None).unwrap();
 

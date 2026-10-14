@@ -2,6 +2,9 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum CodecError {
+  #[error(transparent)]
+  Io(#[from] std::io::Error),
+
   #[error("Invalid output name: empty")]
   ArtifactEmptyName,
 
@@ -25,4 +28,7 @@ pub enum CodecError {
 
   #[error("Could not parse JSON args:\n{0}")]
   JsonArgs(#[from] serde_json::Error),
+
+  #[error(transparent)]
+  Script(#[from] crate::scripts::errors::ScriptError),
 }

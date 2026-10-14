@@ -8,6 +8,7 @@ pub(crate) mod codecs;
 pub(crate) mod decode;
 pub(crate) mod doctor;
 pub(crate) mod init;
+pub(crate) mod listing;
 pub(crate) mod overrides;
 pub(crate) mod sources;
 pub(crate) mod tree_formatter;

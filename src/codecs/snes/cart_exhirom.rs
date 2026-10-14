@@ -27,13 +27,13 @@ Example:
 pub(crate) struct SnesExHiRom;
 
 impl Codec for SnesExHiRom {
-  fn id(&self) -> &'static str {
+  fn id(&self) -> &str {
     CODEC_ID
   }
-  fn name(&self) -> &'static str {
+  fn name(&self) -> &str {
     CODEC_NAME
   }
-  fn description(&self) -> &'static str {
+  fn description(&self) -> &str {
     CODEC_DESC
   }
 
@@ -41,7 +41,7 @@ impl Codec for SnesExHiRom {
     CodecKind::Rebuild
   }
 
-  fn can_handle(&self, data: &[u8]) -> CodecHandlingConfidence {
+  fn can_handle(&self, data: &[u8]) -> Result<CodecHandlingConfidence, CodecError> {
     super::common::can_handle(data, EXHIROM_HEADER_OFFSET, &SnesRomMapType::ExHiROM)
   }
 

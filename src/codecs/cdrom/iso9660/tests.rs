@@ -284,7 +284,7 @@ fn encode_one(name: &str) -> Result<Vec<u8>, crate::codecs::errors::CodecError> 
 #[test]
 fn recognizes_an_iso_9660_image() {
   assert_eq!(
-    Iso9660.can_handle(&sample()),
+    Iso9660.can_handle(&sample()).unwrap(),
     CodecHandlingConfidence::Certain
   );
 }
@@ -306,7 +306,7 @@ fn refuses_input_that_is_not_an_iso_9660_image() {
     },
   ] {
     assert_eq!(
-      Iso9660.can_handle(&data),
+      Iso9660.can_handle(&data).unwrap(),
       CodecHandlingConfidence::No,
       "should not have been recognized"
     );

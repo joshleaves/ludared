@@ -87,7 +87,14 @@ impl Project {
         "Replaying {} decode(s) for source '{source}'",
         decodes.len()
       );
-      unpack_decodes(&mut self.cache, &vpath, &data, decodes, &mut report)?;
+      unpack_decodes(
+        &mut self.cache,
+        &self.codecs,
+        &vpath,
+        &data,
+        decodes,
+        &mut report,
+      )?;
     }
 
     debug!(
@@ -103,13 +110,14 @@ impl Project {
 /// Replays every decode node attached to an artifact, in manifest order.
 fn unpack_decodes(
   cache: &mut Cache,
+  codecs: &CodecRegistry,
   path: &VirtualPath,
   input: &[u8],
   decodes: &[DecodeNode],
   report: &mut UnpackReport,
 ) -> Result<(), AppError> {
   for node in decodes {
-    unpack_decode(cache, path, input, node, report)?;
+    unpack_decode(cache, codecs, path, input, node, report)?;
   }
 
   Ok(())
@@ -119,6 +127,7 @@ fn unpack_decodes(
 /// outputs.
 fn unpack_decode(
   cache: &mut Cache,
+  codecs: &CodecRegistry,
   path: &VirtualPath,
   input: &[u8],
   node: &DecodeNode,
@@ -129,11 +138,12 @@ fn unpack_decode(
     node.name, node.codec.id
   );
 
-  let codec = CodecRegistry::get(&node.codec.id)
+  let codec = codecs
+    .get(&node.codec.id)
     .ok_or_else(|| AppError::CodecUnavailable(node.codec.id.clone()))?;
 
-  let args = node.codec_args()?;
-  let artifacts = codec.decode(input, args.as_deref())?;
+  let args = node.codec_args();
+  let artifacts = codec.decode(input, args)?;
 
   verify_outputs(path, node, &artifacts)?;
 
@@ -149,7 +159,14 @@ fn unpack_decode(
       .get(&artifact.name)
       .map(Vec::as_slice)
       .unwrap_or(&[]);
-    unpack_decodes(cache, &artifact_path, &artifact.data, nested, report)?;
+    unpack_decodes(
+      cache,
+      codecs,
+      &artifact_path,
+      &artifact.data,
+      nested,
+      report,
+    )?;
   }
 
   report.decodes += 1;
@@ -243,13 +260,19 @@ mod tests {
   }
 
   fn extract(name: &str, target: &str, offset: usize, length: usize, decodes: &str) -> String {
+    // The manifest records arguments as the string the codec is handed, so the
+    // JSON is written there as a JSON string rather than as a nested object.
+    let args =
+      serde_json::json!({ "name": target, "offset": offset, "length": length }).to_string();
+    let args = serde_json::Value::String(args).to_string();
+
     format!(
       r#"{{
       "name": "{name}",
       "codec": {{
         "id": "{EXTRACT}",
         "version": 1,
-        "args": {{ "name": "{target}", "offset": {offset}, "length": {length} }}
+        "args": {args}
       }},
       "outputs": [ "{target}" ],
       "decodes": {decodes}
@@ -462,7 +485,7 @@ mod tests {
   fn fails_if_codec_is_unavailable() {
     let decodes = r#"[{
       "name": "gone",
-      "codec": { "id": "std/gone/missing", "version": 1, "args": {} },
+      "codec": { "id": "std/gone/missing", "version": 1, "args": null },
       "outputs": [ "gone.bin" ],
       "decodes": {}
     }]"#;
@@ -500,7 +523,7 @@ mod tests {
       "codec": {
         "id": "std/generic/extract",
         "version": 1,
-        "args": { "name": "head.bin", "offset": 0, "length": 4 }
+        "args": "{\"name\": \"head.bin\", \"offset\": 0, \"length\": 4}"
       },
       "outputs": [ "renamed.bin" ],
       "decodes": {}
@@ -525,7 +548,7 @@ mod tests {
       "codec": {
         "id": "std/generic/extract",
         "version": 1,
-        "args": { "name": "head.bin", "offset": 0, "length": 4 }
+        "args": "{\"name\": \"head.bin\", \"offset\": 0, \"length\": 4}"
       },
       "outputs": [],
       "decodes": {}

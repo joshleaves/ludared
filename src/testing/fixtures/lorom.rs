@@ -83,10 +83,20 @@ fn manifest(source_name: &str) -> String {
 /// The decode node splitting the source into banks, with the title nested under
 /// the first bank.
 fn lorom_decode() -> String {
+  // The manifest records arguments as the string the codec is handed, so the JSON
+  // is written there as a JSON string rather than as a nested object.
+  let title_args = serde_json::json!({
+    "name": TITLE_FILE,
+    "offset": TITLE_OFFSET,
+    "length": TITLE_LENGTH
+  })
+  .to_string();
+  let title_args = serde_json::Value::String(title_args).to_string();
+
   format!(
     r#"{{
       "name": "rom_banks",
-      "codec": {{ "id": "{LOROM}", "version": 1, "args": {{}} }},
+      "codec": {{ "id": "{LOROM}", "version": 1, "args": null }},
       "outputs": [ "{FIRST_BANK}", "{SECOND_BANK}" ],
       "decodes": {{
         "{FIRST_BANK}": [ {{
@@ -94,7 +104,7 @@ fn lorom_decode() -> String {
           "codec": {{
             "id": "{EXTRACT}",
             "version": 1,
-            "args": {{ "name": "{TITLE_FILE}", "offset": {TITLE_OFFSET}, "length": {TITLE_LENGTH} }}
+            "args": {title_args}
           }},
           "outputs": [ "{TITLE_FILE}" ],
           "decodes": {{}}

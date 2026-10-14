@@ -28,6 +28,7 @@ manifest = "test.ludared"
 
 [paths]
 sources = "sources"
+scripts = "scripts"
 builds = "builds"
 cache = "{}"
 "#,

@@ -27,6 +27,10 @@ pub(crate) struct InitArgs {
   #[arg(long)]
   pub workspace: Option<PathBuf>,
 
+  /// Directory for scripts
+  #[arg(long)]
+  pub scripts: Option<PathBuf>,
+
   /// Directory for build outputs
   #[arg(long)]
   pub builds: Option<PathBuf>,
@@ -70,6 +74,13 @@ impl InitArgs {
     PathBuf::from("workspace")
   }
 
+  pub(crate) fn scripts_value(&self) -> PathBuf {
+    if let Some(scripts) = &self.scripts {
+      return scripts.clone();
+    }
+    PathBuf::from("workspace")
+  }
+
   pub(crate) fn sources_value(&self) -> PathBuf {
     if let Some(sources) = &self.sources {
       return sources.clone();
@@ -99,6 +110,7 @@ impl InitArgs {
     let paths = PathsConfiguration {
       sources: self.sources_value(),
       workspace: self.workspace_value(),
+      scripts: self.scripts_value(),
       builds: self.builds_value(),
       cache: self.cache_value(),
     };
@@ -106,6 +118,7 @@ impl InitArgs {
     configuration.save(&PathBuf::from("ludared.toml"))?;
     std::fs::create_dir_all(self.sources_value())?;
     std::fs::create_dir_all(self.workspace_value())?;
+    std::fs::create_dir_all(self.scripts_value())?;
     std::fs::create_dir_all(self.builds_value())?;
     std::fs::create_dir_all(self.cache_value())?;
     Manifest::default().save(&self.manifest_value())?;
@@ -139,6 +152,9 @@ pub(crate) fn command_init(args: &mut InitArgs) -> Result<(), AppError> {
 
     let default = args.workspace_value();
     prompt_path(&mut args.workspace, "Workspace directory", default)?;
+
+    let default = args.scripts_value();
+    prompt_path(&mut args.scripts, "Scripts directory", default)?;
 
     let default = args.builds_value();
     prompt_path(&mut args.builds, "Builds directory", default)?;

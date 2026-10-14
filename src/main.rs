@@ -12,6 +12,7 @@ mod formatting;
 mod hash;
 mod manifest;
 mod project;
+mod scripts;
 mod source;
 #[cfg(test)]
 mod testing;

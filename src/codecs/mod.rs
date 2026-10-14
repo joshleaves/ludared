@@ -22,6 +22,7 @@ pub(crate) mod cdrom;
 pub mod errors;
 pub(crate) mod generic;
 pub(crate) mod registry;
+pub(crate) mod scripts;
 pub(crate) mod snes;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -81,9 +82,9 @@ pub struct DecodedArtifact {
 /// are unchanged. A codec must preserve or reconstruct any information
 /// necessary to satisfy its round-trip contract.
 pub trait Codec: Send + Sync {
-  fn id(&self) -> &'static str;
-  fn name(&self) -> &'static str;
-  fn description(&self) -> &'static str;
+  fn id(&self) -> &str;
+  fn name(&self) -> &str;
+  fn description(&self) -> &str;
 
   /// Which of the two encoding strategies this codec implements.
   ///
@@ -94,7 +95,7 @@ pub trait Codec: Send + Sync {
   /// Reports how confidently this codec recognizes the given input.
   ///
   /// Detection must not produce artifacts or have side effects.
-  fn can_handle(&self, data: &[u8]) -> CodecHandlingConfidence;
+  fn can_handle(&self, data: &[u8]) -> Result<CodecHandlingConfidence, CodecError>;
 
   /// Suggests a name for a decode operation using this codec.
   ///

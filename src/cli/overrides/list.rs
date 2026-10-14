@@ -4,6 +4,7 @@ use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
 
 use crate::cli::completions::overrides::complete_override_listing;
+use crate::cli::listing;
 use crate::errors::app_error::AppError;
 use crate::project::Project;
 use crate::virtual_path::VirtualPath;
@@ -16,6 +17,10 @@ pub(crate) struct OverrideListArgs {
   /// under filters them all, whether or not it is an artifact of its own.
   #[arg(value_name = "PATH", add = ArgValueCompleter::new(complete_override_listing))]
   virtual_path: Option<String>,
+
+  /// Display the overrides as a tree
+  #[arg(long)]
+  tree: bool,
 }
 
 pub(crate) fn command_override_list(
@@ -29,14 +34,7 @@ pub(crate) fn command_override_list(
     None => None,
   };
 
-  for vpath in project
-    .manifest
-    .overrides()
-    .iter()
-    .filter(|vpath| root.as_ref().is_none_or(|root| vpath.is_within(root)))
-  {
-    println!("{vpath}");
-  }
+  listing::print(&project.manifest.overrides(), root.as_ref(), args.tree);
 
   Ok(())
 }

@@ -80,6 +80,13 @@ cache = "builds/cache"
   /// the three shapes the commands have to tell apart: a top-level leaf, a
   /// nested leaf, and an artifact with decodes of its own.
   fn decode_tree(&self) -> String {
+    // Arguments are opaque to ludared and recorded as the string the codec was
+    // handed, so each one is written into the manifest as a JSON string rather
+    // than as a nested JSON object.
+    let head = codec_args("head.bin", 0, 4);
+    let title = codec_args("TITLE.txt", 0, 4);
+    let tail = codec_args("tail.bin", 6, 4);
+
     format!(
       r#"{{
   "sources": {{
@@ -89,13 +96,13 @@ cache = "builds/cache"
     "{SOURCE}": [
       {{
         "name": "head",
-        "codec": {{ "id": "{EXTRACT}", "version": 1, "args": {{ "name": "head.bin", "offset": 0, "length": 4 }} }},
+        "codec": {{ "id": "{EXTRACT}", "version": 1, "args": {head} }},
         "outputs": [ "head.bin" ],
         "decodes": {{
           "head.bin": [
             {{
               "name": "TITLE",
-              "codec": {{ "id": "{EXTRACT}", "version": 1, "args": {{ "name": "TITLE.txt", "offset": 0, "length": 4 }} }},
+              "codec": {{ "id": "{EXTRACT}", "version": 1, "args": {title} }},
               "outputs": [ "TITLE.txt" ],
               "decodes": {{}}
             }}
@@ -104,7 +111,7 @@ cache = "builds/cache"
       }},
       {{
         "name": "tail",
-        "codec": {{ "id": "{EXTRACT}", "version": 1, "args": {{ "name": "tail.bin", "offset": 6, "length": 4 }} }},
+        "codec": {{ "id": "{EXTRACT}", "version": 1, "args": {tail} }},
         "outputs": [ "tail.bin" ],
         "decodes": {{}}
       }}
@@ -289,6 +296,16 @@ fn walk(dir: &Path, root: &Path) -> Vec<(PathBuf, Vec<u8>)> {
   files
 }
 
+/// The extract codec's arguments, quoted the way the manifest records them.
+///
+/// The manifest holds arguments as an opaque string, so the JSON the codec is
+/// handed is written there as a JSON string rather than as a nested object.
+fn codec_args(name: &str, offset: usize, length: usize) -> String {
+  let args = serde_json::json!({ "name": name, "offset": offset, "length": length }).to_string();
+
+  serde_json::Value::String(args).to_string()
+}
+
 /// The lines `ludared override list` printed.
 fn lines(output: &str) -> Vec<&str> {
   output
@@ -304,7 +321,14 @@ fn lists_nothing_before_anything_is_overridden() {
 
   // An empty list is a valid answer, and never a failure.
   assert_eq!(project.ok(&["override", "list"]), "");
-  assert_eq!(project.ok(&["override", "tree"]), "");
+  assert_eq!(
+    project.ok(&[
+      "override",
+      "list",
+      "--tree"
+    ]),
+    ""
+  );
 }
 
 #[test]
@@ -325,7 +349,11 @@ fn renders_the_overrides_as_a_tree() {
   project.override_path(TITLE);
 
   assert_eq!(
-    project.ok(&["override", "tree"]),
+    project.ok(&[
+      "override",
+      "list",
+      "--tree"
+    ]),
     "\
 game.sfc
 ├── head.bin
@@ -346,7 +374,8 @@ fn renders_only_the_requested_branch_of_the_override_tree() {
   assert_eq!(
     project.ok(&[
       "override",
-      "tree",
+      "list",
+      "--tree",
       HEAD
     ]),
     "\
@@ -824,12 +853,11 @@ fn has_no_implicit_override_of_a_path() {
   assert!(stderr.contains("unrecognized subcommand"), "{stderr}");
   assert!(stderr.contains("<COMMAND>"), "{stderr}");
 
-  // The five subcommands, and nothing that would take a bare path.
+  // The four subcommands, and nothing that would take a bare path.
   let help = project.ok(&["override", "--help"]);
 
   for subcommand in [
     "list",
-    "tree",
     "add",
     "refresh",
     "remove",
@@ -839,6 +867,10 @@ fn has_no_implicit_override_of_a_path() {
       "`override --help` lacks {subcommand}: {help}"
     );
   }
+
+  // The tree is a presentation of a listing rather than a command of its own, so
+  // `tree` is not one to fall back on.
+  assert!(!help.contains("tree"), "{help}");
 }
 
 #[test]
@@ -884,7 +916,11 @@ fn leaves_the_decode_cache_untouched() {
     "--clean",
   ]);
   project.ok(&["override", "list"]);
-  project.ok(&["override", "tree"]);
+  project.ok(&[
+    "override",
+    "list",
+    "--tree",
+  ]);
 
   assert_eq!(project.cache(), before);
 }
@@ -893,16 +929,21 @@ fn leaves_the_decode_cache_untouched() {
 /// does, and returns the candidates offered for `partial`.
 ///
 /// `COMP_CWORD` is the index of the word being completed, which is the virtual
-/// path here. The separator is returned as a control character, so the output is
-/// split back apart on the one that was asked for.
+/// path here and so the word just past the command. The separator is returned as
+/// a control character, so the output is split back apart on the one that was
+/// asked for.
 fn complete(project: &Project, command: &[&str], partial: &str) -> Vec<String> {
   const IFS: &str = "\u{1b}";
+
+  // `ludared` is the first word, the command the rest of it, and the partial the
+  // last — so its index is however long the command is, plus the program name.
+  let cword = (command.len() + 1).to_string();
 
   let output = Command::new(env!("CARGO_BIN_EXE_ludared"))
     .current_dir(project.dir.path())
     .env("COMPLETE", "bash")
     .env("_CLAP_IFS", IFS)
-    .env("_CLAP_COMPLETE_INDEX", "3")
+    .env("_CLAP_COMPLETE_INDEX", cword)
     .env("_CLAP_COMPLETE_COMP_TYPE", "9")
     .env("_CLAP_COMPLETE_SPACE", "true")
     .arg("--")
@@ -1023,7 +1064,18 @@ fn completes_the_overrides_and_their_implicit_parents_for_list_and_tree() {
   let expected = [SOURCE, HEAD, TITLE];
 
   assert_eq!(complete(&project, &["override", "list"], ""), expected);
-  assert_eq!(complete(&project, &["override", "tree"], ""), expected);
+  assert_eq!(
+    complete(
+      &project,
+      &[
+        "override",
+        "list",
+        "--tree"
+      ],
+      ""
+    ),
+    expected
+  );
   assert_eq!(
     complete(&project, &["override", "list"], HEAD),
     [HEAD, TITLE]
@@ -1054,24 +1106,24 @@ fn completes_nothing_for_a_partial_path_matching_nothing() {
 
   project.override_path(TITLE);
 
-  for (subcommand, partial) in [
-    ("add", "elsewhere.sfc"),
-    ("refresh", "elsewhere.sfc"),
-    ("remove", "elsewhere.sfc"),
-    ("list", "elsewhere.sfc"),
-    ("tree", "elsewhere.sfc"),
+  for command in [
+    &["override", "add"][..],
+    &[
+      "override",
+      "refresh",
+    ][..],
+    &["override", "remove"][..],
+    &["override", "list"][..],
+    &[
+      "override",
+      "list",
+      "--tree",
+    ][..],
   ] {
     assert_eq!(
-      complete(
-        &project,
-        &[
-          "override",
-          subcommand
-        ],
-        partial
-      ),
+      complete(&project, command, "elsewhere.sfc"),
       Vec::<String>::new(),
-      "`override {subcommand} {partial}` should complete nothing"
+      "`{command:?} elsewhere.sfc` should complete nothing"
     );
   }
 }
@@ -1100,7 +1152,11 @@ fn renders_the_declared_artifacts_as_a_tree() {
   // The parents are drawn as the branches leading to the outputs, without ever
   // being artifacts themselves.
   assert_eq!(
-    project.ok(&["artifacts", "tree"]),
+    project.ok(&[
+      "artifacts",
+      "list",
+      "--tree"
+    ]),
     "\
 game.sfc
 ├── head.bin
@@ -1155,7 +1211,8 @@ fn renders_only_the_requested_branch_of_the_tree() {
   assert_eq!(
     project.ok(&[
       "artifacts",
-      "tree",
+      "list",
+      "--tree",
       HEAD
     ]),
     "\
@@ -1172,7 +1229,8 @@ fn renders_nothing_for_a_root_declaring_no_artifact() {
   assert_eq!(
     project.ok(&[
       "artifacts",
-      "tree",
+      "list",
+      "--tree",
       "elsewhere.sfc"
     ]),
     ""
@@ -1197,8 +1255,22 @@ fn lists_the_same_artifacts_whether_or_not_the_cache_is_populated() {
     project_ok(&bare, &["artifacts", "list"])
   );
   assert_eq!(
-    project_ok(&unpacked, &["artifacts", "tree"]),
-    project_ok(&bare, &["artifacts", "tree"])
+    project_ok(
+      &unpacked,
+      &[
+        "artifacts",
+        "list",
+        "--tree"
+      ]
+    ),
+    project_ok(
+      &bare,
+      &[
+        "artifacts",
+        "list",
+        "--tree"
+      ]
+    )
   );
 }
 
@@ -1301,7 +1373,15 @@ fn completes_artifacts_from_the_manifest_rather_than_the_cache() {
     ]
   );
   assert_eq!(
-    complete(&bare, &["artifacts", "tree"], ""),
+    complete(
+      &bare,
+      &[
+        "artifacts",
+        "list",
+        "--tree"
+      ],
+      ""
+    ),
     complete(&bare, &["artifacts", "list"], "")
   );
   assert_eq!(
@@ -1540,4 +1620,55 @@ fn overrides_an_artifact_that_was_just_decoded() {
     lines(&project.ok(&["override", "list"])),
     ["game.sfc/fresh.bin"]
   );
+}
+#[test]
+fn no_longer_offers_a_tree_subcommand() {
+  let project = Project::unpacked();
+
+  // The tree is a presentation of a listing rather than a command of its own, so
+  // the subcommands that used to draw one are gone rather than deprecated.
+  for command in [
+    &["artifacts", "tree"][..],
+    &["override", "tree"][..],
+  ] {
+    let stderr = {
+      let output = project.run(command);
+
+      assert!(!output.status.success(), "`{command:?}` still exists");
+
+      String::from_utf8_lossy(&output.stderr).into_owned()
+    };
+
+    assert!(
+      stderr.contains("unrecognized subcommand"),
+      "`{command:?}` reported: {stderr}"
+    );
+  }
+
+  // Neither help text offers one either, and both listings still draw a tree.
+  for (command, tree) in [
+    (
+      &[
+        "artifacts",
+        "--help",
+      ][..],
+      &[
+        "artifacts",
+        "list",
+        "--tree",
+      ][..],
+    ),
+    (
+      &["override", "--help"][..],
+      &[
+        "override",
+        "list",
+        "--tree",
+      ][..],
+    ),
+  ] {
+    assert!(!project.ok(command).contains("tree"), "{command:?}");
+
+    project.ok(tree);
+  }
 }

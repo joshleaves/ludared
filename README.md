@@ -15,7 +15,7 @@ ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain
   - [x] `remove` - Remove a source file from the manifest
 
 - [x] `codecs`
-  - [x] `list` - List available codecs
+  - [x] `list [--tree]` - List available codecs, optionally as a tree
   - [x] `info` - Get information about a specific codec
   - [x] `detect` - Detect which codecs can be used on a file
 
@@ -25,16 +25,14 @@ ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain
 - [x] `unpack` - Execute the manifest's decode pipeline
 
 - [x] `artifacts`
-  - [x] `list [VPATH]` - List artifacts
-  - [x] `tree [VPATH]` - Display artifacts as a tree
+  - [x] `list [VPATH] [--tree]` - List artifacts, optionally as a tree
 
 - [x] `cache`
   - [x] `cat` - Output a cached artifact's contents to STDOUT
   - [x] `path` - Print a cached artifact's physical path
 
 - [x] `override` - Manage the decoded artifacts materialized in the workspace
-  - [x] `list [VPATH]` - Lists the artifacts declared as overrides
-  - [x] `tree [VPATH]` - Displays declared overrides as a tree
+  - [x] `list [VPATH] [--tree]` - Lists the artifacts declared as overrides, optionally as a tree
   - [x] `add <VPATH> [--force]` - Declares an override and materializes the artifact in the workspace
   - [x] `refresh <VPATH>` - Rewrites an overridden artifact with its canonical bytes
   - [x] `remove <VPATH> [--clean]` - Deactivates an override, optionally deleting its workspace file
@@ -58,9 +56,7 @@ Use `ludared completions [SHELL] | source`. If you don't provide a shell, it wil
 - [x] `sources remove <FILE: complete_source_remove>`
 - [x] `decode add <PATH: complete_artifacts_decodable> <CODEC: complete_codecs_list>`
 - [x] `artifacts list [PATH: complete_artifacts_listing]`
-- [x] `artifacts tree [PATH: complete_artifacts_listing]`
 - [x] `override list [PATH: complete_override_listing]`
-- [x] `override tree [PATH: complete_override_listing]`
 - [x] `override add <PATH: complete_override_addable>`
 - [x] `override refresh <PATH: complete_override_active>`
 - [x] `override remove <PATH: complete_override_active>`
@@ -81,6 +77,7 @@ A `Rebuild` codec consumes ALL of its input, so it is the only _decode_ that can
 - [x] `std/nintendo/snes/cart/sdd1`- Cut a SNES SDD-1 ROM into ROM banks
 - [x] `std/nintendo/snes/cart/spc7110`- Cut a SNES SPC7110 ROM into ROM banks
 - [x] `std/cdrom/iso9660` - Extract the filesystem of an ISO 9660 CD-ROM image. Uses [hadris-iso](https://github.com/hxyulin/hadris).
+- [x] `std/cdrom/mode2352` - Turn tracks with 2352-byte MODE1 sectors into a single ISO image artifact
 
 ### Patch codecs
 Multiple `Patch` codecs can be ran against a single artefact, as each will take a part. The ludared engine guarantees they are always ran in the manifest definition order.

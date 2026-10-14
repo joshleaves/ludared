@@ -3,7 +3,7 @@ use crate::codecs::CodecKind;
 use crate::codecs::DecodedArtifact;
 use crate::codecs::errors::CodecError;
 use crate::codecs::registry::CodecRegistry;
-use crate::errors::app_error::AppError::{self, ManifestFileJson};
+use crate::errors::app_error::AppError;
 use crate::manifest::decode_node::CodecNode;
 use crate::project::overrides::errors::OverrideError;
 use crate::source::Source;
@@ -283,6 +283,7 @@ impl Manifest {
   /// or conflicts with the existing manifest.
   pub(crate) fn add_decode(
     &mut self,
+    codecs: &CodecRegistry,
     path: &VirtualPath,
     codec_id: String,
     args: &Option<String>,
@@ -293,7 +294,8 @@ impl Manifest {
       return Err(OverrideError::OverriddenArtifactCannotBeDecoded(path.to_string()).into());
     }
 
-    let kind = CodecRegistry::get(&codec_id)
+    let kind = codecs
+      .get(&codec_id)
       .map(Codec::kind)
       .ok_or_else(|| AppError::CodecUnavailable(codec_id.clone()))?;
 
@@ -301,7 +303,7 @@ impl Manifest {
 
     let recorded: Vec<Option<CodecKind>> = decodes
       .iter()
-      .map(|node| CodecRegistry::get(&node.codec.id).map(Codec::kind))
+      .map(|node| codecs.get(&node.codec.id).map(Codec::kind))
       .collect();
 
     if !recorded.is_empty()
@@ -410,20 +412,15 @@ impl Manifest {
       }
     }
 
-    let args_json = match args {
-      Some(args) => match serde_json::from_str(args) {
-        Ok(v) => v,
-        Err(e) => return Err(ManifestFileJson(e)),
-      },
-      None => serde_json::Value::Object(Default::default()),
-    };
-
     decodes.push(DecodeNode {
       name,
       codec: CodecNode {
         id: codec_id,
         version: 1,
-        args: args_json,
+        // Recorded exactly as the codec was handed them. Nothing here parses,
+        // validates or rewrites them: reading them back must reach `encode` the
+        // same bytes `decode` was given.
+        args: args.clone(),
       },
       outputs: artifacts.iter().map(|a| a.name.clone()).collect(),
       overrides: Vec::new(),
@@ -472,13 +469,13 @@ mod tests {
   "decodes": {{
     "$SOURCE": [ {{
       "name": "rom_banks",
-      "codec": {{ "id": "std/nintendo/snes/cart/lorom", "version": 1, "args": {{}} }},
+      "codec": {{ "id": "std/nintendo/snes/cart/lorom", "version": 1, "args": null }},
       "outputs": [ "{FIRST_BANK}", "rom_bank_01.bin" ],
       {bank}
       "decodes": {{
         "{FIRST_BANK}": [ {{
           "name": "TITLE",
-          "codec": {{ "id": "std/generic/extract", "version": 1, "args": {{}} }},
+          "codec": {{ "id": "std/generic/extract", "version": 1, "args": null }},
           "outputs": [ "TITLE.txt" ],
           {title}
           "decodes": {{}}
@@ -509,13 +506,13 @@ mod tests {
       "decodes": {
         "b.sfc": [ {
           "name": "second",
-          "codec": { "id": "std/generic/extract", "version": 1, "args": {} },
+          "codec": { "id": "std/generic/extract", "version": 1, "args": null },
           "outputs": [ "tail.bin" ],
           "decodes": {}
         } ],
         "a.sfc": [ {
           "name": "first",
-          "codec": { "id": "std/generic/extract", "version": 1, "args": {} },
+          "codec": { "id": "std/generic/extract", "version": 1, "args": null },
           "outputs": [ "head.bin" ],
           "decodes": {}
         } ]
@@ -548,20 +545,20 @@ mod tests {
       "sources": { "$SOURCE": { "sha256": "unverified", "size": null, "label": null } },
       "decodes": { "$SOURCE": [ {
         "name": "rom_banks",
-        "codec": { "id": "std/nintendo/snes/cart/lorom", "version": 1, "args": {} },
+        "codec": { "id": "std/nintendo/snes/cart/lorom", "version": 1, "args": null },
         "outputs": [ "rom_bank_00.bin" ],
         "decodes": {
           "rom_bank_00.bin": [
             {
               "name": "gfx",
-              "codec": { "id": "std/generic/extract", "version": 1, "args": {} },
+              "codec": { "id": "std/generic/extract", "version": 1, "args": null },
               "outputs": [ "data/gfx/head.bin", "data/sound.bin" ],
               "overrides": [ "data/gfx/head.bin" ],
               "decodes": {}
             },
             {
               "name": "title",
-              "codec": { "id": "std/generic/extract", "version": 1, "args": {} },
+              "codec": { "id": "std/generic/extract", "version": 1, "args": null },
               "outputs": [ "TITLE.txt" ],
               "overrides": [ "TITLE.txt" ],
               "decodes": {}
@@ -697,7 +694,7 @@ mod tests {
     // readable now that the field is left out when empty.
     let json = r#"{
       "name": "head",
-      "codec": { "id": "std/generic/extract", "version": 1, "args": {} },
+      "codec": { "id": "std/generic/extract", "version": 1, "args": null },
       "outputs": [ "head.bin" ],
       "decodes": {}
     }"#;
@@ -717,14 +714,14 @@ mod tests {
       "decodes": {
         "b.sfc": [ {
           "name": "second",
-          "codec": { "id": "std/generic/extract", "version": 1, "args": {} },
+          "codec": { "id": "std/generic/extract", "version": 1, "args": null },
           "outputs": [ "tail.bin" ],
           "overrides": [ "tail.bin" ],
           "decodes": {}
         } ],
         "a.sfc": [ {
           "name": "first",
-          "codec": { "id": "std/generic/extract", "version": 1, "args": {} },
+          "codec": { "id": "std/generic/extract", "version": 1, "args": null },
           "outputs": [ "head.bin" ],
           "overrides": [ "head.bin" ],
           "decodes": {}
@@ -758,14 +755,14 @@ mod tests {
       "decodes": {
         "roms/eu/game.sfc": [ {
           "name": "extract",
-          "codec": { "id": "std/generic/extract", "version": 1, "args": {} },
+          "codec": { "id": "std/generic/extract", "version": 1, "args": null },
           "outputs": [ "data/head.bin" ],
           "overrides": [ "data/head.bin" ],
           "decodes": {}
         } ],
         "roms/jp/game.sfc": [ {
           "name": "extract",
-          "codec": { "id": "std/generic/extract", "version": 1, "args": {} },
+          "codec": { "id": "std/generic/extract", "version": 1, "args": null },
           "outputs": [ "data/head.bin" ],
           "overrides": [ "data/head.bin" ],
           "decodes": {}
@@ -812,7 +809,7 @@ mod tests {
       "decodes": {
         "roms/eu/game.sfc": [ {
           "name": "extract",
-          "codec": { "id": "std/generic/extract", "version": 1, "args": {} },
+          "codec": { "id": "std/generic/extract", "version": 1, "args": null },
           "outputs": [ "head.bin" ],
           "decodes": {}
         } ]
@@ -851,13 +848,13 @@ mod tests {
       "decodes": {
         "roms/game.sfc": [ {
           "name": "outer",
-          "codec": { "id": "std/generic/extract", "version": 1, "args": {} },
+          "codec": { "id": "std/generic/extract", "version": 1, "args": null },
           "outputs": [ "extra/head.bin" ],
           "decodes": {}
         } ],
         "roms/game.sfc/extra": [ {
           "name": "inner",
-          "codec": { "id": "std/generic/extract", "version": 1, "args": {} },
+          "codec": { "id": "std/generic/extract", "version": 1, "args": null },
           "outputs": [ "head.bin" ],
           "overrides": [ "head.bin" ],
           "decodes": {}
@@ -896,14 +893,14 @@ mod tests {
       "decodes": {
         "roms/game.sfc": [ {
           "name": "outer",
-          "codec": { "id": "std/generic/extract", "version": 1, "args": {} },
+          "codec": { "id": "std/generic/extract", "version": 1, "args": null },
           "outputs": [ "head.bin", "extra/head.bin" ],
           "overrides": [ "head.bin" ],
           "decodes": {}
         } ],
         "roms/game.sfc/extra": [ {
           "name": "inner",
-          "codec": { "id": "std/generic/extract", "version": 1, "args": {} },
+          "codec": { "id": "std/generic/extract", "version": 1, "args": null },
           "outputs": [ "head.bin" ],
           "decodes": {}
         } ]
@@ -934,14 +931,14 @@ mod tests {
       "decodes": {
         "game.sfc": [ {
           "name": "current",
-          "codec": { "id": "std/generic/extract", "version": 1, "args": {} },
+          "codec": { "id": "std/generic/extract", "version": 1, "args": null },
           "outputs": [ "head.bin" ],
           "overrides": [ "head.bin" ],
           "decodes": {}
         } ],
         "game.sfc.bak": [ {
           "name": "backup",
-          "codec": { "id": "std/generic/extract", "version": 1, "args": {} },
+          "codec": { "id": "std/generic/extract", "version": 1, "args": null },
           "outputs": [ "head.bin" ],
           "decodes": {}
         } ]
@@ -991,8 +988,11 @@ mod tests {
       })
       .collect();
 
+    let scripts = tempfile::tempdir().unwrap();
+    let codecs = CodecRegistry::new(scripts.path().to_path_buf()).unwrap();
     recorded
       .add_decode(
+        &codecs,
         &path,
         "std/generic/extract".to_owned(),
         &None,
@@ -1031,10 +1031,13 @@ mod tests {
       data: b"HELLO".to_vec(),
     }];
 
+    let scripts = tempfile::tempdir().unwrap();
+    let codecs = CodecRegistry::new(scripts.path().to_path_buf()).unwrap();
     let err = fixture
       .project
       .manifest
       .add_decode(
+        &codecs,
         &path,
         "std/generic/extract".to_owned(),
         &None,
@@ -1074,7 +1077,7 @@ mod tests {
   "decodes": {{ "{source}": [
     {{
       "name": "sibling",
-      "codec": {{ "id": "std/generic/extract", "version": 1, "args": {{}} }},
+      "codec": {{ "id": "std/generic/extract", "version": 1, "args": null }},
       "outputs": [ {outputs} ],
       "decodes": {{}}
     }}
@@ -1122,7 +1125,10 @@ mod tests {
     name: &str,
     outputs: &[&str],
   ) -> Result<(), AppError> {
+    let scripts = tempfile::tempdir().unwrap();
+    let codecs = CodecRegistry::new(scripts.path().to_path_buf()).unwrap();
     manifest.add_decode(
+      &codecs,
       &VirtualPath::new(source).unwrap(),
       codec.to_owned(),
       &None,

@@ -1,4 +1,3 @@
-use crate::codecs::errors::CodecError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -6,8 +5,17 @@ use std::collections::HashMap;
 pub(crate) struct CodecNode {
   pub id: String,
   pub version: u32,
-  #[serde(default)]
-  pub args: serde_json::Value,
+
+  /// The arguments the decode was recorded with, verbatim.
+  ///
+  /// Codec arguments are opaque to ludared: what they mean belongs to the codec,
+  /// and only the codec. They are therefore stored as the string they were given
+  /// rather than parsed into any structure, so that the bytes handed to `decode`
+  /// are the very bytes handed to `encode` on a later build — spacing, key order
+  /// and all. An absent argument is `None`, which stays distinct from an argument
+  /// that was given as an empty string.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub args: Option<String>,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -32,13 +40,12 @@ pub(crate) struct DecodeNode {
 }
 
 impl DecodeNode {
-  /// Serializes recorded arguments for the codec API.
-  /// JSON `null` is represented as `None`.
-  pub(crate) fn codec_args(&self) -> Result<Option<String>, CodecError> {
-    match &self.codec.args {
-      serde_json::Value::Null => Ok(None),
-      args => Ok(Some(serde_json::to_string(args)?)),
-    }
+  /// The recorded arguments, as the codec API takes them.
+  ///
+  /// Nothing is parsed or reinterpreted here: the stored string is handed back
+  /// exactly as it was recorded, and its absence is handed back as an absence.
+  pub(crate) fn codec_args(&self) -> Option<&str> {
+    self.codec.args.as_deref()
   }
 
   /// Returns whether this decode node declares `output` as an override.
@@ -323,6 +330,68 @@ mod tests {
       // that resolves and one that does not.
       vec![tail, palette],
     )
+  }
+
+  #[test]
+  fn records_arguments_as_an_opaque_string() {
+    // Arguments are whatever the codec was handed, so every one of these has to
+    // come back out the way it went in. None of them is JSON the manifest may
+    // rearrange: spacing, key order and nesting are all part of the string.
+    for args in [
+      // Not JSON at all.
+      "offset = 2, length = 4",
+      // JSON whose spacing and key order would not survive being parsed.
+      "{ \"zebra\": 1,\n   \"apple\":   [2,  3],\n  \"nested\": {\"b\":1,\"a\":2} }",
+      // A bare scalar, and a string that merely looks like JSON.
+      "42",
+      "{\"offset\":0}",
+    ] {
+      let node = DecodeNode {
+        name: "decode".to_owned(),
+        codec: CodecNode {
+          id: "some/codec".to_owned(),
+          version: 1,
+          args: Some(args.to_owned()),
+        },
+        outputs: Vec::new(),
+        overrides: Vec::new(),
+        decodes: HashMap::new(),
+      };
+
+      // Written and read back through the manifest's own format.
+      let written = serde_json::to_string(&node).unwrap();
+      let read: DecodeNode = serde_json::from_str(&written).unwrap();
+
+      assert_eq!(read.codec_args(), Some(args), "recorded as {written}");
+    }
+  }
+
+  #[test]
+  fn keeps_an_absent_argument_apart_from_an_empty_one() {
+    let node = |args| DecodeNode {
+      name: "decode".to_owned(),
+      codec: CodecNode {
+        id: "some/codec".to_owned(),
+        version: 1,
+        args,
+      },
+      outputs: Vec::new(),
+      overrides: Vec::new(),
+      decodes: HashMap::new(),
+    };
+
+    // No argument at all is not the same argument as an empty one.
+    assert_eq!(node(None).codec_args(), None);
+    assert_eq!(node(Some(String::new())).codec_args(), Some(""));
+
+    // Both survive the manifest, rather than one collapsing into the other.
+    let absent: DecodeNode =
+      serde_json::from_str(&serde_json::to_string(&node(None)).unwrap()).unwrap();
+    let empty: DecodeNode =
+      serde_json::from_str(&serde_json::to_string(&node(Some(String::new()))).unwrap()).unwrap();
+
+    assert_eq!(absent.codec_args(), None);
+    assert_eq!(empty.codec_args(), Some(""));
   }
 
   #[test]

@@ -73,15 +73,15 @@ Example:
 "#;
 
 impl Codec for Iso9660 {
-  fn id(&self) -> &'static str {
+  fn id(&self) -> &str {
     CODEC_ID
   }
 
-  fn name(&self) -> &'static str {
+  fn name(&self) -> &str {
     CODEC_NAME
   }
 
-  fn description(&self) -> &'static str {
+  fn description(&self) -> &str {
     CODEC_DESC
   }
 
@@ -99,21 +99,21 @@ impl Codec for Iso9660 {
   ///
   /// A matching header identifies the image as ISO 9660 with high confidence,
   /// without parsing the rest of the volume descriptor.
-  fn can_handle(&self, data: &[u8]) -> CodecHandlingConfidence {
+  fn can_handle(&self, data: &[u8]) -> Result<CodecHandlingConfidence, CodecError> {
     let Some(offset) = usize::try_from(DESCRIPTOR_SECTOR)
       .ok()
       .and_then(|sector| sector.checked_mul(DESCRIPTOR_SIZE))
     else {
-      return CodecHandlingConfidence::No;
+      return Ok(CodecHandlingConfidence::No);
     };
 
     match data.get(offset..offset + 6) {
       Some(header)
         if header[0] == DESCRIPTOR_TYPE_PRIMARY && &header[1..] == STANDARD_IDENTIFIER =>
       {
-        CodecHandlingConfidence::Certain
+        Ok(CodecHandlingConfidence::Certain)
       }
-      _ => CodecHandlingConfidence::No,
+      _ => Ok(CodecHandlingConfidence::No),
     }
   }
 

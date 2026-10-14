@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 
 use crate::codecs::CodecKind;
 use crate::codecs::DecodedArtifact;
-use crate::codecs::registry::CodecRegistry;
 use crate::errors::app_error::AppError;
 use crate::manifest::decode_node::DecodeNode;
 use crate::manifest::errors::ManifestError;
@@ -115,7 +114,9 @@ impl Project {
     let mut kind: Option<CodecKind> = None;
 
     for node in decodes {
-      let codec = CodecRegistry::get(&node.codec.id)
+      let codec = self
+        .codecs
+        .get(&node.codec.id)
         .ok_or_else(|| AppError::CodecUnavailable(node.codec.id.clone()))?;
 
       match (kind, codec.kind()) {
@@ -130,10 +131,10 @@ impl Project {
 
       debug!("Encoding '{}' ({}) on '{path}'", node.name, node.codec.id);
 
-      let args = node.codec_args()?;
+      let args = node.codec_args();
       let artifacts = self.resolve_outputs(path, node)?;
 
-      bytes = codec.encode(bytes, &artifacts, args.as_deref())?;
+      bytes = codec.encode(bytes, &artifacts, args)?;
     }
 
     Ok(bytes)
@@ -273,13 +274,18 @@ mod tests {
   }
 
   fn extract(name: &str, offset: usize, length: usize) -> String {
+    // The manifest records arguments as the string the codec is handed, so the
+    // JSON is written there as a JSON string rather than as a nested object.
+    let args = serde_json::json!({ "name": name, "offset": offset, "length": length }).to_string();
+    let args = serde_json::Value::String(args).to_string();
+
     format!(
       r#"{{
       "name": "{name}",
       "codec": {{
         "id": "{EXTRACT}",
         "version": 1,
-        "args": {{ "name": "{name}", "offset": {offset}, "length": {length} }}
+        "args": {args}
       }},
       "outputs": [ "{name}" ],
       "decodes": {{}}
@@ -295,7 +301,7 @@ mod tests {
     format!(
       r#"{{
       "name": "rom_banks",
-      "codec": {{ "id": "{LOROM}", "version": 1, "args": {{}} }},
+      "codec": {{ "id": "{LOROM}", "version": 1, "args": null }},
       "outputs": [ "rom_bank_00.bin", "rom_bank_01.bin" ],
       "decodes": {{}}
     }}"#
@@ -702,7 +708,7 @@ mod tests {
       SOURCE,
       &[r#"{
       "name": "gone",
-      "codec": { "id": "std/gone/missing", "version": 1, "args": {} },
+      "codec": { "id": "std/gone/missing", "version": 1, "args": null },
       "outputs": [ "gone.bin" ],
       "decodes": {}
     }"#

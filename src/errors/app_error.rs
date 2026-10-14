@@ -84,4 +84,7 @@ pub(crate) enum AppError {
 
   #[error("Could not write build output {}: {}", .0.display(), .1)]
   BuildIo(PathBuf, std::io::Error),
+
+  #[error("Script Error: {0}")]
+  Script(#[from] crate::scripts::errors::ScriptError),
 }

@@ -1,4 +1,5 @@
 use crate::codecs::CodecHandlingConfidence;
+use crate::codecs::errors::CodecError;
 use checksum::SnesChecksum;
 use log::*;
 
@@ -129,18 +130,18 @@ pub fn can_handle(
   data: &[u8],
   offset: usize,
   expected_type: &SnesRomMapType,
-) -> CodecHandlingConfidence {
+) -> Result<CodecHandlingConfidence, CodecError> {
   let header_offset = match rom_layout(data) {
     RomLayout::Invalid => {
       debug_result!("Invalid copier header" => false);
-      return CodecHandlingConfidence::No;
+      return Ok(CodecHandlingConfidence::No);
     }
     RomLayout::Headerless => offset,
     RomLayout::CopierHeader => offset + COPIER_HEADER_SIZE,
   };
   let Some(rom_header) = super::common::parse_snes_header(data, header_offset) else {
     debug_result!("Can extract a header" => false);
-    return CodecHandlingConfidence::No;
+    return Ok(CodecHandlingConfidence::No);
   };
 
   let heuristics = [
@@ -153,9 +154,9 @@ pub fn can_handle(
 
   let passed = heuristics.iter().filter(|result| **result).count();
   match passed {
-    0 => CodecHandlingConfidence::No,
-    1 => CodecHandlingConfidence::Possible,
-    n if n == heuristics.len() => CodecHandlingConfidence::Certain,
-    _ => CodecHandlingConfidence::Likely,
+    0 => Ok(CodecHandlingConfidence::No),
+    1 => Ok(CodecHandlingConfidence::Possible),
+    n if n == heuristics.len() => Ok(CodecHandlingConfidence::Certain),
+    _ => Ok(CodecHandlingConfidence::Likely),
   }
 }

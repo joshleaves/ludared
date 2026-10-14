@@ -35,6 +35,7 @@ manifest = "game.ludared"
 [paths]
 sources = "sources"
 workspace = "workspace"
+scripts = "scripts"
 builds = "builds"
 cache = "builds/cache"
 "#,

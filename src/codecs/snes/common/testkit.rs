@@ -163,7 +163,7 @@ pub fn assert_valid_header(codec: &dyn Codec, image: &[u8], header_offset: usize
     "the checksum and its complement at {header:#x} should be opposites"
   );
   assert_eq!(
-    codec.can_handle(image),
+    codec.can_handle(image).unwrap(),
     CodecHandlingConfidence::Certain,
     "a rebuilt image should pass every check the codec makes of one"
   );

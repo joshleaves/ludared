@@ -33,7 +33,7 @@ impl Project {
 
     self
       .manifest
-      .add_decode(path, codec_id, args, name, &artifacts)?;
+      .add_decode(&self.codecs, path, codec_id, args, name, &artifacts)?;
 
     for artifact in &artifacts {
       let artifact_path = path.join(&artifact.name)?;
@@ -150,7 +150,83 @@ mod tests {
 
     assert_eq!(node.name, "head");
     assert_eq!(output, "head.bin");
-    assert_eq!(node.codec.args["offset"], 0);
+    // The arguments are recorded verbatim, so what the codec was handed is what a
+    // later read of the manifest hands back.
+    assert_eq!(node.codec.args.as_deref(), Some(r#"{"offset":0}"#));
+  }
+
+  #[test]
+  fn records_arbitrary_arguments_unchanged() {
+    // Nothing about an argument is ludared's to interpret, so each of these has
+    // to reach the manifest and come back out of it byte for byte. None is JSON
+    // the manifest could have parsed, and the spacing and key order of the ones
+    // that happen to be are part of the string just as much as the content is.
+    for args in [
+      // Not JSON at all.
+      "offset = 2, length = 4",
+      "head.bin\t42",
+      // JSON whose spacing and key order would not survive being parsed.
+      "{ \"zebra\": 1,\n   \"apple\":   [2,  3],\n  \"nested\": {\"b\":1,\"a\":2} }",
+      // A bare scalar, and a string that merely looks like JSON.
+      "42",
+      "{\"offset\":0}",
+    ] {
+      let (mut fixture, source) = project();
+
+      fixture
+        .project
+        .add_decode(
+          &vpath(&source),
+          "std/generic/extract".to_owned(),
+          &Some(args.to_owned()),
+          "head".to_owned(),
+          artifacts(&["head.bin"]),
+        )
+        .unwrap();
+
+      fixture.reload();
+
+      let (node, _) = fixture
+        .project
+        .manifest
+        .resolve_virtual_path(&vpath(&format!("{source}/head.bin")))
+        .unwrap();
+
+      assert_eq!(node.codec_args(), Some(args), "recorded as {args:?}");
+    }
+  }
+
+  #[test]
+  fn records_an_absent_argument_apart_from_an_empty_one() {
+    let recorded = |args: Option<&str>| {
+      let (mut fixture, source) = project();
+
+      fixture
+        .project
+        .add_decode(
+          &vpath(&source),
+          "std/generic/extract".to_owned(),
+          &args.map(str::to_owned),
+          "head".to_owned(),
+          artifacts(&["head.bin"]),
+        )
+        .unwrap();
+
+      fixture.reload();
+
+      let (node, _) = fixture
+        .project
+        .manifest
+        .resolve_virtual_path(&vpath(&format!("{source}/head.bin")))
+        .unwrap();
+
+      node.codec_args().map(str::to_owned)
+    };
+
+    // `decode add` given no argument at all, and given an empty one, are two
+    // different operations and stay two different things in the manifest.
+    assert_eq!(recorded(None), None);
+    assert_eq!(recorded(Some("")), Some(String::new()));
   }
 
   #[test]
