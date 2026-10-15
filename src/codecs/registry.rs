@@ -5,13 +5,14 @@ use crate::codecs::cdrom::mode2352::Mode2352;
 use crate::codecs::errors::CodecError;
 use crate::codecs::generic::extract::Extract;
 use crate::codecs::generic::split::Split;
+use crate::codecs::nintendo::n3ds::container::cci::N3dsCci;
+use crate::codecs::nintendo::snes::cart_exhirom::SnesExHiRom;
+use crate::codecs::nintendo::snes::cart_hirom::SnesHiRom;
+use crate::codecs::nintendo::snes::cart_lorom::SnesLoRom;
+use crate::codecs::nintendo::snes::cart_sa1::SnesSa1Rom;
+use crate::codecs::nintendo::snes::cart_sdd1::SnesSdd1Rom;
+use crate::codecs::nintendo::snes::cart_spc7110::SnesSpc7110Rom;
 use crate::codecs::scripts::lua::LuaCodec;
-use crate::codecs::snes::cart_exhirom::SnesExHiRom;
-use crate::codecs::snes::cart_hirom::SnesHiRom;
-use crate::codecs::snes::cart_lorom::SnesLoRom;
-use crate::codecs::snes::cart_sa1::SnesSa1Rom;
-use crate::codecs::snes::cart_sdd1::SnesSdd1Rom;
-use crate::codecs::snes::cart_spc7110::SnesSpc7110Rom;
 use crate::scripts::errors::ScriptError;
 use log::*;
 use std::path::PathBuf;
@@ -22,6 +23,7 @@ const SHARED_DIRECTORIES: &[&str] = &[
 ];
 
 static BUILTINS: &[&dyn Codec] = &[
+  &N3dsCci,
   &Extract,
   &Iso9660,
   &Mode2352,

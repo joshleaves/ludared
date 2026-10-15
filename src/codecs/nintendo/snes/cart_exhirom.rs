@@ -3,8 +3,8 @@ use crate::codecs::CodecHandlingConfidence;
 use crate::codecs::CodecKind;
 use crate::codecs::DecodedArtifact;
 use crate::codecs::errors::CodecError;
-use crate::codecs::snes::common::EXHIROM_HEADER_OFFSET;
-use crate::codecs::snes::common::SnesRomMapType;
+use crate::codecs::nintendo::snes::common::EXHIROM_HEADER_OFFSET;
+use crate::codecs::nintendo::snes::common::SnesRomMapType;
 use log::*;
 
 const CODEC_ID: &str = "std/nintendo/snes/cart/exhirom";
@@ -68,8 +68,8 @@ impl Codec for SnesExHiRom {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::codecs::snes::common::BANK_SIZE;
-  use crate::codecs::snes::common::testkit;
+  use crate::codecs::nintendo::snes::common::BANK_SIZE;
+  use crate::codecs::nintendo::snes::common::testkit;
 
   /// The arguments asking for the numbering the console sees.
   const MAPPED: &str = r#"{"bank_numbers":"mapped"}"#;

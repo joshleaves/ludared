@@ -1,4 +1,4 @@
-use crate::codecs::snes::common::SnesRomMapType;
+use crate::codecs::nintendo::snes::common::SnesRomMapType;
 
 /// Where the two fields of the checksum sit in the internal header, which every
 /// mapping mode shares: the complement at `$ffdc` and the checksum at `$ffde`,

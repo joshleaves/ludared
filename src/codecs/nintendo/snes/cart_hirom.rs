@@ -4,12 +4,12 @@ use crate::codecs::CodecKind;
 use crate::codecs::DecodedArtifact;
 use crate::codecs::LudaredCodecArgs;
 use crate::codecs::errors::CodecError;
-use crate::codecs::snes::common::BANK_SIZE;
-use crate::codecs::snes::common::HIROM_HEADER_OFFSET;
-use crate::codecs::snes::common::SnesRomMapType;
-use crate::codecs::snes::common::rom_banks::BankNumbers;
-use crate::codecs::snes::common::rom_banks::SnesCodecArgs;
-use crate::codecs::snes::common::rom_banks::SnesRomExtractor;
+use crate::codecs::nintendo::snes::common::BANK_SIZE;
+use crate::codecs::nintendo::snes::common::HIROM_HEADER_OFFSET;
+use crate::codecs::nintendo::snes::common::SnesRomMapType;
+use crate::codecs::nintendo::snes::common::rom_banks::BankNumbers;
+use crate::codecs::nintendo::snes::common::rom_banks::SnesCodecArgs;
+use crate::codecs::nintendo::snes::common::rom_banks::SnesRomExtractor;
 use log::*;
 
 const CODEC_ID: &str = "std/nintendo/snes/cart/hirom";
@@ -118,7 +118,7 @@ impl Codec for SnesHiRom {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::codecs::snes::common::testkit;
+  use crate::codecs::nintendo::snes::common::testkit;
 
   /// The arguments asking for the numbering the console sees.
   const MAPPED: &str = r#"{"bank_numbers":"mapped"}"#;

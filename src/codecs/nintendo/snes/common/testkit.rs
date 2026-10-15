@@ -311,7 +311,7 @@ pub fn assert_physical_order(artifacts: &[DecodedArtifact], image: &[u8]) {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::codecs::snes::common::{
+  use crate::codecs::nintendo::snes::common::{
     BANK_SIZE, EXHIROM_HEADER_OFFSET, HIROM_HEADER_OFFSET, LOROM_HEADER_OFFSET,
   };
 

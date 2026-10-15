@@ -1,8 +1,8 @@
 use crate::codecs::DecodedArtifact;
 use crate::codecs::LudaredCodecArgs;
 use crate::codecs::errors::CodecError;
-use crate::codecs::snes::common;
-use crate::codecs::snes::common::checksum::SnesChecksum;
+use crate::codecs::nintendo::snes::common;
+use crate::codecs::nintendo::snes::common::checksum::SnesChecksum;
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -305,7 +305,7 @@ pub fn encode_rom_banks(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::codecs::snes::common::testkit;
+  use crate::codecs::nintendo::snes::common::testkit;
 
   /// The number of banks the extended layout numbers, and so the number an
   /// image has to hold before every group is used.

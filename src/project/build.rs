@@ -233,9 +233,9 @@ mod tests {
 
   use crate::codecs::cdrom::iso9660::Iso9660;
   use crate::codecs::errors::CodecError;
-  use crate::codecs::snes::cart_lorom::SnesLoRom;
-  use crate::codecs::snes::common::LOROM_HEADER_OFFSET;
-  use crate::codecs::snes::common::testkit;
+  use crate::codecs::nintendo::snes::cart_lorom::SnesLoRom;
+  use crate::codecs::nintendo::snes::common::LOROM_HEADER_OFFSET;
+  use crate::codecs::nintendo::snes::common::testkit;
   use crate::testing::fixtures::lorom;
   use crate::testing::fixtures::project::ProjectFixture;
   use crate::virtual_path::errors::VirtualPathError;

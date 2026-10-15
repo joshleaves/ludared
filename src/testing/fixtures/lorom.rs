@@ -4,7 +4,7 @@ use super::project::ProjectFixture;
 ///
 /// 64 KiB of test data, which the LoROM codec splits into exactly two 32 KiB
 /// banks. It is binary test data rather than source, so the package excludes it.
-pub const SOURCE: &[u8] = include_bytes!("data/smashing_the_stack.sfc");
+pub const SOURCE: &[u8] = include_bytes!("snes/smashing_the_stack.sfc");
 
 /// The bytes of the article title the nested decode pulls out of the first bank.
 pub const TITLE: &[u8] = b"Smashing The Stack For Fun And Profit";
@@ -31,23 +31,7 @@ const TITLE_LENGTH: usize = 37;
 const LOROM: &str = "std/nintendo/snes/cart/lorom";
 const EXTRACT: &str = "std/generic/extract";
 
-/// A project whose single source is the real LoROM fixture, carrying a decode
-/// tree the real codecs can replay.
-///
-/// The tree is the one this project's tests care about: the LoROM codec splits
-/// the source into banks, and a nested `extrat` decode pulls the article
-/// title out of the first of them. A test that unpacks the project therefore
-/// ends up with the virtual paths a real source produces, nested artifact
-/// included, without having to spell the tree out.
-///
-/// The source name is randomised so that each test's virtual paths stay to
-/// itself, and the fixture owns its cache, so nothing leaks between tests.
-///
-/// Nothing is unpacked here: a test is free to leave the cache empty and build it
-/// itself, or to hand it to [`Project::unpack`]. The fixture is returned alongside
-/// its source name, since the virtual paths of every artifact depend on it.
-///
-/// [`Project::unpack`]: crate::project::Project::unpack
+/// Creates an isolated project with a LoROM decode and a nested title extraction.
 pub fn project() -> (ProjectFixture, String) {
   let (source_name, source_path) = ProjectFixture::random_source_name();
   let mut fixture = ProjectFixture::new();
