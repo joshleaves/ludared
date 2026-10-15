@@ -65,11 +65,9 @@ impl Project {
     let blob = self.blob_of(path)?;
     let destination = self.workspace_path(path);
 
-    if destination.exists() && !force {
-      return Err(OverrideError::FileAlreadyExists(path.to_string()).into());
+    if !destination.exists() || force {
+      write_workspace_file(&blob, &destination)?;
     }
-
-    write_workspace_file(&blob, &destination)?;
 
     let (node, output) = self.manifest.resolve_virtual_path_mut(path)?;
     node.overrides.push(output);

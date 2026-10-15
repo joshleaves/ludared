@@ -20,7 +20,4 @@ pub(crate) enum OverrideError {
 
   #[error("Artifact '{0}' is not overridden")]
   NotOverridden(String),
-
-  #[error("Workspace file already exists for '{0}' (use --force to overwrite)")]
-  FileAlreadyExists(String),
 }

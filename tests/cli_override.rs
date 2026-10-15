@@ -596,25 +596,20 @@ fn refuses_an_already_overridden_artifact_even_with_force() {
 }
 
 #[test]
-fn refuses_a_workspace_file_that_is_already_there() {
+fn preserves_a_workspace_file_that_is_already_there() {
   let project = Project::unpacked();
 
   project.write_workspace(TAIL, b"HAND WRITTEN");
 
-  let stderr = project.fails(&[
+  project.ok(&[
     "override",
     "add",
     TAIL,
   ]);
 
-  assert!(
-    stderr.contains("already exists"),
-    "unexpected error: {stderr}"
-  );
-  assert!(stderr.contains("--force"), "{stderr}");
-  // The operator's file is left alone.
+  // The existing file is adopted without being overwritten.
   project.assert_workspace_bytes(TAIL, b"HAND WRITTEN");
-  assert_eq!(project.ok(&["override", "list"]), "");
+  assert_eq!(project.ok(&["override", "list"]), format!("{TAIL}\n"));
 }
 
 #[test]
@@ -634,28 +629,31 @@ fn replaces_a_workspace_file_with_force() {
 }
 
 #[test]
-fn refuses_a_workspace_file_a_previous_remove_kept() {
+fn reuses_a_workspace_file_a_previous_remove_kept() {
   let project = Project::unpacked();
 
   project.override_path(TAIL);
+  project.write_workspace(TAIL, b"HAND WRITTEN");
+
   project.ok(&[
     "override",
     "remove",
     TAIL,
   ]);
 
-  // `remove` without `--clean` keeps the file, so a later `add` must not take it
-  // over without being told to.
-  let stderr = project.fails(&[
+  // Removing the override leaves the workspace file untouched.
+  project.assert_workspace_bytes(TAIL, b"HAND WRITTEN");
+  assert_eq!(project.ok(&["override", "list"]), "");
+
+  project.ok(&[
     "override",
     "add",
     TAIL,
   ]);
 
-  assert!(
-    stderr.contains("already exists"),
-    "unexpected error: {stderr}"
-  );
+  // Re-adding the override preserves the operator's modifications.
+  project.assert_workspace_bytes(TAIL, b"HAND WRITTEN");
+  assert_eq!(project.ok(&["override", "list"]), format!("{TAIL}\n"));
 }
 
 #[test]
