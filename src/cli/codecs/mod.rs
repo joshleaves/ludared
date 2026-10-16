@@ -1,9 +1,11 @@
 use crate::cli::codecs::detect::CodecsDetectArgs;
 use crate::cli::codecs::info::CodecsInfoArgs;
 use crate::cli::codecs::list::CodecsListArgs;
+use crate::codecs::ScriptEnvironment;
 use crate::codecs::registry::CodecRegistry;
 use crate::errors::app_error::AppError;
 use crate::project::Project;
+
 use clap::{Args, Subcommand};
 use std::path::{Path, PathBuf};
 
@@ -41,7 +43,10 @@ pub(crate) enum CodecsCommands {
 /// holding the built-in codecs on its own.
 pub(crate) fn registry() -> Result<CodecRegistry, AppError> {
   if !Path::new("ludared.toml").exists() {
-    return Ok(CodecRegistry::new(PathBuf::new())?);
+    return Ok(CodecRegistry::new(
+      PathBuf::new(),
+      ScriptEnvironment::default(),
+    )?);
   }
 
   Ok(Project::load_default()?.codecs)

@@ -114,14 +114,30 @@ All codecs **MUST** support round-tripping: they can `decode` content and `encod
 ## Scripts codec
 
 ### Lua
-Lua is embedded through [mlua](https://github.com/mlua-rs/mlua), with lua 5.5 being supported.
+
+Lua is embedded through [mlua](https://github.com/mlua-rs/mlua), with Lua 5.5 support.
+
+Scripts have access to the following project-specific globals:
+
+```lua
+local workspace = LUDARED.WORKSPACE
+local project_root = LUDARED.PROJECT_ROOT
+local scripts = LUDARED.SCRIPTS
+```
+
+Standard environment variables are also accessible through `os.getenv()`.
+
+> [!WARNING]
+> Lua scripts are not sandboxed. They have access to the filesystem, environment variables, and other standard Lua facilities. Only run scripts from trusted sources.
+
+A Lua codec must return a table with the following fields:
 
 ```lua
 return {
   name = "My Codec",
   description = "Description of the codec",
   version = 1,
-  kind = "patch", -- "patch" ou "rebuild"
+  kind = "patch", -- "patch" or "rebuild"
 
   can_handle = function(data)
     return "no" -- "no", "possible", "likely", "certain"

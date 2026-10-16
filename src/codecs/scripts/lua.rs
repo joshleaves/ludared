@@ -2,6 +2,7 @@ use crate::codecs::Codec;
 use crate::codecs::CodecHandlingConfidence;
 use crate::codecs::CodecKind;
 use crate::codecs::DecodedArtifact;
+use crate::codecs::ScriptEnvironment;
 use crate::codecs::errors::CodecError;
 use crate::scripts::errors::ScriptError;
 use std::path::PathBuf;
@@ -21,10 +22,16 @@ pub(crate) struct LuaCodec {
   description: String,
   #[allow(dead_code)]
   version: u32,
+  environment: ScriptEnvironment,
 }
 
 impl LuaCodec {
-  pub fn new(lua: &mlua::Lua, path: PathBuf, id: String) -> Result<Self, ScriptError> {
+  pub fn new(
+    lua: &mlua::Lua,
+    path: PathBuf,
+    id: String,
+    environment: ScriptEnvironment,
+  ) -> Result<Self, ScriptError> {
     let source = std::fs::read(&path)?;
     let module: mlua::Table = lua.load(&source).set_name(path.to_string_lossy()).eval()?;
 
@@ -52,6 +59,7 @@ impl LuaCodec {
       kind,
       description,
       version,
+      environment,
     })
   }
 
@@ -67,6 +75,12 @@ impl LuaCodec {
     call: impl FnOnce(&mlua::Lua, &mlua::Table) -> Result<T, ScriptError>,
   ) -> Result<T, CodecError> {
     let lua = mlua::Lua::new();
+    let ludared = lua.create_table()?;
+    for (key, value) in &self.environment.0 {
+      ludared.set(key.as_str(), value.as_str())?;
+    }
+    lua.globals().set("LUDARED", ludared)?;
+
     let source = std::fs::read(&self.path)?;
     let module: mlua::Table = lua
       .load(&source)

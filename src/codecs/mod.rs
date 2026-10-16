@@ -2,6 +2,10 @@ use errors::CodecError;
 use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use std::collections::HashMap;
+
+#[derive(Clone, Default)]
+pub(crate) struct ScriptEnvironment(pub(crate) HashMap<String, String>);
 
 pub(crate) trait LudaredCodecArgs: Sized + DeserializeOwned {
   fn from_args(args: Option<&str>) -> Result<Self, serde_json::Error> {
@@ -27,9 +31,13 @@ pub(crate) mod scripts;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CodecHandlingConfidence {
+  /// "I cannot decode that data meaningfully, no way."
   No,
+  /// "I may extract something out of that data, maybe garbage, maybe gold."
   Possible,
+  /// "All signs point to yes, but false positives are possible."
   Likely,
+  /// "I know that data, I know that format, I'm in charge."
   Certain,
 }
 

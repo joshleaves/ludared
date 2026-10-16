@@ -1,5 +1,6 @@
 use crate::codecs::Codec;
 use crate::codecs::CodecHandlingConfidence;
+use crate::codecs::ScriptEnvironment;
 use crate::codecs::cdrom::iso9660::Iso9660;
 use crate::codecs::cdrom::mode2352::Mode2352;
 use crate::codecs::errors::CodecError;
@@ -42,23 +43,29 @@ pub(crate) struct CodecRegistry {
 }
 
 impl CodecRegistry {
-  pub fn new(scripts_root: PathBuf) -> Result<Self, ScriptError> {
+  pub fn new(scripts_root: PathBuf, env: ScriptEnvironment) -> Result<Self, ScriptError> {
     let mut registry = Self {
       scripts_root,
       scripts: Vec::new(),
     };
 
-    registry.discover_scripts()?;
+    registry.discover_scripts(env)?;
 
     Ok(registry)
   }
 
-  fn discover_scripts(&mut self) -> Result<(), ScriptError> {
+  fn discover_scripts(&mut self, env: ScriptEnvironment) -> Result<(), ScriptError> {
     if !self.scripts_root.exists() {
       return Ok(());
     }
 
     let lua = mlua::Lua::new();
+    let ludared = lua.create_table()?;
+    for (key, value) in &env.0 {
+      ludared.set(key.as_str(), value.as_str())?;
+    }
+    lua.globals().set("LUDARED", ludared)?;
+
     let mut pending = vec![PathBuf::new()];
 
     while let Some(prefix) = pending.pop() {
@@ -94,7 +101,7 @@ impl CodecRegistry {
             let path = self.scripts_root.join(&relative);
             let id = format!("scripts/{}", relative.to_string_lossy());
 
-            let codec = LuaCodec::new(&lua, path, id)?;
+            let codec = LuaCodec::new(&lua, path, id, env.clone())?;
 
             self.scripts.push(Box::new(codec));
           }

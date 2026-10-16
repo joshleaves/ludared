@@ -739,3 +739,57 @@ fn rebuilds_a_source_a_lua_codec_never_touched() {
 
   assert_eq!(project.built(), SOURCE_BYTES);
 }
+
+#[test]
+fn exposes_project_paths_to_lua_codecs() {
+  let project = Project::with_source();
+
+  project.write_codec(
+    "environment.lua",
+    r#"
+return {
+  name = "Environment",
+  description = "Checks the Ludared project globals.",
+  version = 1,
+  kind = "patch",
+
+  can_handle = function(data) return "certain" end,
+  decode_name = function(args) return "environment" end,
+
+  decode = function(data, args)
+    return {
+      {
+        name = "paths.txt",
+        data = table.concat({
+          LUDARED.PROJECT_ROOT,
+          LUDARED.WORKSPACE,
+          LUDARED.SCRIPTS,
+        }, "\n"),
+      },
+    }
+  end,
+
+  encode = function(original, artifacts, args)
+    return original
+  end,
+}
+"#,
+  );
+
+  project.decode_with_args("scripts/environment.lua", None);
+
+  let paths = project.ok_bytes(&[
+    "cache",
+    "cat",
+    "game.sfc/paths.txt",
+  ]);
+
+  let expected = [
+    ".",
+    "./workspace",
+    "./scripts",
+  ]
+  .join("\n");
+
+  assert_eq!(paths, expected.as_bytes());
+}

@@ -5,6 +5,9 @@ pub enum CodecError {
   #[error(transparent)]
   Io(#[from] std::io::Error),
 
+  #[error(transparent)]
+  Lua(#[from] mlua::Error),
+
   #[error("Invalid output name: empty")]
   ArtifactEmptyName,
 

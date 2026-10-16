@@ -434,6 +434,7 @@ impl Manifest {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::codecs::ScriptEnvironment;
   use crate::project::overrides::errors::OverrideError;
   use crate::testing::fixtures::lorom;
   use crate::testing::fixtures::project::ProjectFixture;
@@ -989,7 +990,8 @@ mod tests {
       .collect();
 
     let scripts = tempfile::tempdir().unwrap();
-    let codecs = CodecRegistry::new(scripts.path().to_path_buf()).unwrap();
+    let codecs =
+      CodecRegistry::new(scripts.path().to_path_buf(), ScriptEnvironment::default()).unwrap();
     recorded
       .add_decode(
         &codecs,
@@ -1032,7 +1034,8 @@ mod tests {
     }];
 
     let scripts = tempfile::tempdir().unwrap();
-    let codecs = CodecRegistry::new(scripts.path().to_path_buf()).unwrap();
+    let codecs =
+      CodecRegistry::new(scripts.path().to_path_buf(), ScriptEnvironment::default()).unwrap();
     let err = fixture
       .project
       .manifest
@@ -1126,7 +1129,8 @@ mod tests {
     outputs: &[&str],
   ) -> Result<(), AppError> {
     let scripts = tempfile::tempdir().unwrap();
-    let codecs = CodecRegistry::new(scripts.path().to_path_buf()).unwrap();
+    let codecs =
+      CodecRegistry::new(scripts.path().to_path_buf(), ScriptEnvironment::default()).unwrap();
     manifest.add_decode(
       &codecs,
       &VirtualPath::new(source).unwrap(),

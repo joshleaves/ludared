@@ -1,6 +1,8 @@
 use log::*;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use crate::codecs::ScriptEnvironment;
 use crate::codecs::registry::CodecRegistry;
 use crate::configuration::Configuration;
 use crate::errors::app_error::AppError;
@@ -40,7 +42,33 @@ impl Project {
     trace!("{manifest:?}");
 
     let cache = Cache::new(configuration.paths.cache.join("decodes"))?;
-    let codecs = CodecRegistry::new(root.join(&configuration.paths.scripts))?;
+    let mut env = HashMap::new();
+
+    env.insert(
+      "PROJECT_ROOT".to_string(),
+      root.to_string_lossy().into_owned(),
+    );
+
+    env.insert(
+      "WORKSPACE".to_string(),
+      root
+        .join(&configuration.paths.workspace)
+        .to_string_lossy()
+        .into_owned(),
+    );
+
+    env.insert(
+      "SCRIPTS".to_string(),
+      root
+        .join(&configuration.paths.scripts)
+        .to_string_lossy()
+        .into_owned(),
+    );
+
+    let codecs = CodecRegistry::new(
+      root.join(&configuration.paths.scripts),
+      ScriptEnvironment(env),
+    )?;
 
     Ok(Self {
       root: root.to_path_buf(),
