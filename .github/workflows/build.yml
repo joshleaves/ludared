@@ -1,0 +1,99 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            target: aarch64-apple-darwin
+            extension: ''
+
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+            extension: ''
+
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            extension: ''
+
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            extension: ''
+
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            extension: '.exe'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Prepare artifact
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp "target/${{ matrix.target }}/release/ludared${{ matrix.extension }}" \
+            "dist/ludared-${{ matrix.target }}${{ matrix.extension }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ludared-${{ matrix.target }}
+          path: dist/ludared-${{ matrix.target }}${{ matrix.extension }}
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: ludared-*
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums
+        working-directory: dist
+        run: sha256sum ludared-* > sha256.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            dist/ludared-aarch64-apple-darwin
+            dist/ludared-x86_64-apple-darwin
+            dist/ludared-aarch64-unknown-linux-gnu
+            dist/ludared-x86_64-unknown-linux-gnu
+            dist/ludared-x86_64-pc-windows-msvc.exe
+            dist/sha256.txt
+          generate_release_notes: true
+          fail_on_unmatched_files: true
