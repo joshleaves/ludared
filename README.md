@@ -2,10 +2,12 @@
 
 ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain ROM hacking and game modding projects.
 
-# Current status
-> **Status:** Kind usable actually.
+**NOTE**: This project uses LLMs (AI), you can find out how in [AI_USAGE.md](./AI_USAGE.md), written exclusively by a human (and it shows).
 
-## Available commands
+# Current status
+> **Status:** Kinda usable actually, the [Sakura Taisen FR romhack project](https://github.com/sakurayaku/re.sakurataisen) just published [their first beta](https://github.com/sakurayaku/re.sakurataisen/releases/tag/b20261018).
+
+## Commands
 
 - [x] `init` - Set up a project
 
@@ -20,9 +22,11 @@ ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain
   - [x] `detect` - Detect which codecs can be used on a file
 
 - [x] `decode`
-  - [x] `add` - Add a decode step
+  - [x] `add <PATH> <CODEC> [ARGS] [--name NAME]` - Add a decode step
+  - [ ] `list <PATH>` - List decode steps on a node
+  - [ ] `remove <PATH> [NAME]` - Remove a decode step
 
-- [x] `unpack` - Execute the manifest's decode pipeline
+- [x] `unpack` - Execute the manifest's full decode pipeline
 
 - [x] `artifacts`
   - [x] `list [VPATH] [--tree]` - List artifacts, optionally as a tree
@@ -41,6 +45,8 @@ ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain
 
 - [x] `doctor` - Verify project configuration and source files
 - [x] `clean` - Remove generated build and cache artifacts
+
+- [ ] `patch [--format ips|bps|xdelta]` - Builds, and produces a patch against source 
 
 - [x] `completions` - Generate completions for your shell
 
@@ -66,7 +72,7 @@ Use `ludared completions [SHELL] | source`. If you don't provide a shell, it wil
 
 ## Available codecs
 
-Codecs come in two types: `Rebuild` and `Patch`. Simply put [one is archival, the other is replacement](there_are_two_codec_types.png).
+Codecs come in two types: `Rebuild` and `Patch`. Simply put [one is archival, the other is byte replacement](the_two_types_of_codecs.jpeg).
 
 ### Rebuild codecs
 A `Rebuild` codec consumes ALL of its input, so it is the only _decode_ that can be ran on an artifact.
@@ -86,7 +92,6 @@ A `Rebuild` codec consumes ALL of its input, so it is the only _decode_ that can
 Multiple `Patch` codecs can be ran against a single artefact, as each will take a part. The ludared engine guarantees they are always ran in the manifest definition order.
 
 - [x] `std/generic/extract` - Extract arbitrary bytes from a blob
-
 
 ### Content preservation
 
@@ -149,26 +154,18 @@ return {
 
   decode = function(data, args)
     return {
-      ["output.bin"] = data,
+        { name = "output.bin", data = data },
+        { name = "metadata.bin", data = metadata },
     }
   end,
 
   encode = function(original, artifacts, args)
-    return artifacts["output.bin"]
+    return artifacts["input.bin"]
   end,
 }
 ```
 
 ## To-do list
-
-### Planned commands
-
-- [ ] `decode`
-  - [ ] `list` - `decode list [VPATH]`
-  - [ ] `remove` - `decode remove <VPATH> <NAME> `
-
-- [ ] `archive`
-- [ ] `tool`
 
 ### Codecs
 - [ ] Add versioning and metadata, with an ABI-friendly key/value metadata representation for future dynamic plugins.
@@ -178,4 +175,4 @@ return {
 
 ### Other stuff
 - [ ] Migrate to [usage-rs](https://usage.jdx.dev/rust/migrating-from-clap#migrating-from-clap)
-- [ ] Interace with [ratatui](https://ratatui.rs/installation/)
+- [ ] Interface with [ratatui](https://ratatui.rs/installation/)
