@@ -7,6 +7,8 @@ use crate::codecs::errors::CodecError;
 use crate::scripts::errors::ScriptError;
 use std::path::PathBuf;
 
+pub mod functions;
+
 const REQUIRED_FUNCTIONS: [&str; 4] = [
   "can_handle",
   "decode_name",
@@ -79,6 +81,7 @@ impl LuaCodec {
     for (key, value) in &self.environment.0 {
       ludared.set(key.as_str(), value.as_str())?;
     }
+    functions::register_functions(&lua, &ludared)?;
     lua.globals().set("LUDARED", ludared)?;
 
     let source = std::fs::read(&self.path)?;

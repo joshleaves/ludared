@@ -130,7 +130,11 @@ local project_root = LUDARED.PROJECT_ROOT
 local scripts = LUDARED.SCRIPTS
 ```
 
-Standard environment variables are also accessible through `os.getenv()`.
+Ludared also exposes the following utility functions:
+
+```lua
+local hash = LUDARED.sha256(data) -- SHA-256 digest as a lowercase hexadecimal string
+```
 
 > [!WARNING]
 > Lua scripts are not sandboxed. They have access to the filesystem, environment variables, and other standard Lua facilities. Only run scripts from trusted sources.

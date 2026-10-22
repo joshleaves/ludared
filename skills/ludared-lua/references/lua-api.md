@@ -91,6 +91,14 @@ local packed = string.pack("<I4", value)
 
 Lua string positions are 1-based; `string.unpack` returns the next position. Validate bounds and integer ranges for untrusted binary inputs.
 
+## Helper functions
+
+Ludared also exposes the following utility functions:
+
+```lua
+local hash = LUDARED.sha256(data) -- SHA-256 digest as a lowercase hexadecimal string
+```
+
 ## Error behavior
 
 Use descriptive Lua errors for malformed inputs and invalid reconstruction artifacts. A failed module load may prevent project initialization because discovery eagerly loads codec scripts. For exact engine-specific error messages, consult the current Rust bindings rather than assuming stable text.
