@@ -111,7 +111,7 @@ All codecs **MUST** support round-tripping: they can `decode` content and `encod
 | `std/nintendo/snes/cart/sa1` | N/A | N/A |
 | `std/nintendo/snes/cart/sdd1` | N/A | N/A |
 | `std/nintendo/snes/cart/spc7110` | N/A | N/A |
-| `std/cdrom/iso9660` | N/A | N/A |
+| `std/cdrom/iso9660` | ✅ | ✅ |
 | `std/cdrom/mode2352` | ✅ | ✅ |
 
 **Note:** `N/A` means the property has not yet been verified, not that the codec lacks it. A codec must pass the corresponding [E2E tests](src/testing/codecs/e2e/mod.rs) before claiming either guarantee.

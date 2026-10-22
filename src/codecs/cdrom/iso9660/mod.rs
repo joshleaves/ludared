@@ -4,72 +4,144 @@ use crate::codecs::CodecKind;
 use crate::codecs::DecodedArtifact;
 use crate::codecs::LudaredCodecArgs;
 use crate::codecs::errors::CodecError;
-use hadris_iso::file::EntryType;
-use hadris_iso::read::{IsoImage, PathSeparator};
-use hadris_iso::sync::Parsable;
-use hadris_iso::volume::VolumeDescriptor;
-use hadris_iso::write::options::{BaseIsoLevel, CreationFeatures, IsoFormatOptions};
-use hadris_iso::write::{File as IsoFile, InputFiles, IsoImageWriter};
-use itertools::Itertools;
 use log::*;
 use serde::Deserialize;
 use std::collections::BTreeSet;
-use std::io::Cursor;
-use std::sync::Arc;
 
 mod metadata;
+mod rebuild;
+mod volume;
 
 #[cfg(test)]
 mod tests;
 
-use metadata::{IsoMetadata, METADATA_NAME};
+use metadata::{BLOCK_SIZE, IsoMetadata, METADATA_NAME};
+use volume::{DESCRIPTOR_SECTOR, DESCRIPTOR_TYPE_PRIMARY, STANDARD_IDENTIFIER};
 
 const CODEC_ID: &str = "std/cdrom/iso9660";
 const CODEC_NAME: &str = "ISO 9660 CD-ROM image";
 const CODEC_DESC: &str = r#"ISO 9660 CD-ROM image codec
 
 Extracts the files of an ISO 9660 image, preserving its directory hierarchy,
-alongside an ISO9660.json artifact describing the image: the Volume Identifier it
-carries, and the order its files sit in on the disc. Reassembling rebuilds the
-image from the artifacts alone, naming the volume and setting out the files in
-the order the metadata records.
+alongside an ISO9660.json artifact describing the image's layout: the Volume
+Identifier it carries, where each of its structures sits, and where every file
+lies on the disc.
 
-That order is a best effort. The writer lays a directory's own files down before
-those of the directories it holds, so a file_order that interleaves files across
-directories cannot be honoured: the rebuild still holds every file, but reads
-them back in an order the metadata will then record instead.
+Reassembling follows that layout rather than laying the files out again. Every
+file goes back in the blocks it held, every directory keeps the records it held
+and the bytes they filled, and the path tables, the volume descriptor and the
+System Area are written from what the image declared. An unchanged decode and
+rebuild therefore reproduces the image byte for byte, which matters for a disc
+whose game seeks to blocks of its own rather than through the filesystem.
+
+Images are read and written as plain ISO 9660 in 2048-byte logical blocks. The
+codec works on the logical image; converting to and from the 2352-byte sectors
+of a raw disc image is the Mode 1/2352 codec's business.
+
+What the layout records
 
 The metadata is never a file of the image, and is always the first artifact a
 decode produces, which is where a rebuild looks for it.
 
-Its file_order must name every file artifact exactly once: a file added to or
-removed from the image has to be added to or removed from both the manifest's
-outputs and the metadata, and a mismatch between the two is refused rather than
-guessed at.
+Its file_order must name every file artifact exactly once, and the layout must
+describe every file the image holds: a file added to or removed from the image
+has to be added to or removed from both, and a mismatch between the two is
+refused rather than guessed at. A file added to file_order alone is written into
+the directory its path names, if that directory has room.
 
-Names are read and written as plain ISO 9660 identifiers, and the rebuild is
-written as plain ISO 9660 Level 1 with neither Rock Ridge nor Joliet, so that
-older readers and emulators can mount it. Level 1 admits a name of up to 8
-characters, an extension of up to 3, each drawn from A-Z, 0-9 and _, and
-directories take neither an extension nor a version. A name outside that is
-refused rather than quietly folded into something that fits, so an image whose
-files cannot be expressed in Level 1 cannot be rebuilt.
+Changing a file
 
-Files are extracted under their identifiers with the ;1 version suffix removed,
-which the rebuild supplies again. The original byte layout is not preserved.
+A file of the same size goes back where it was, and a smaller one keeps its
+blocks, which the layout saves it from having to find again: the space it no
+longer fills is left empty, since re-laying out an image is what a file that grew
+asks for, not what one that gave room back does.
+
+What happens to a file that no longer fits the blocks it held is what the
+placement argument decides:
+
+  * shift (what a decode added now is recorded with) keeps every region in the
+    order the image had it: the file grows where it was, and every region after it
+    moves along by exactly the blocks it needs and no more. No file changes
+    position relative to its neighbours, and the image is lengthened only when the
+    last region runs past its end. The cost is that every region after a grown
+    file moves, and a region whose position something outside the filesystem
+    states — a boot record's own block numbers, say — moves with it whether or not
+    that something still describes it.
+  * relocate is what the codec did before it had policies. A file keeps its
+    extent while it fits, is extended in place when the blocks that follow are
+    free, and otherwise moves to the first free room in the image, or past the
+    image's end. Moving a file changes its block, which a game that seeks to that
+    block would notice, so a move is logged; a move that would leave a structure
+    this codec does not rewrite describing where the file used to be is refused.
+  * preserve moves nothing: a change is written when it fits the blocks the file
+    holds or the free blocks that follow them, and refused otherwise rather than
+    answered by moving a file or shifting one. An image is lengthened only for an
+    image that holds nothing beyond its end, since a longer image moves whatever
+    lies past it.
+
+An image past the blocks it holds is grown when a file under `relocate` or
+`shift` needs the room. A mixed-mode disc keeps its last file on the track that
+follows, and growing the data track moves that track along: the records that
+describe data beyond the image move with the blocks the image grew by, keeping
+their distance from its end, and so does the Volume Space Size where it declared
+blocks past that end. A file whose extent straddles the image's end is refused
+instead: one run of blocks across the boundary cannot be kept whole by a longer
+image.
+
+Under `shift` every reference the codec knows how to rewrite follows the regions
+it moves: each file's record, each directory's own record and the record its
+parent holds for it, the path table entry that names it, the blocks the descriptor
+names for the path tables, and the Volume Space Size. What it cannot follow is
+anything outside the filesystem that states a block number of its own — a boot
+record's pointers, a program that seeks to a block it was built with — which keeps
+its number while the blocks under it move.
+
+The System Area, the areas a volume descriptor reserves, padding, and any data
+lying outside the filesystem are preserved exactly as they were, and a rebuild
+that would write over them is refused.
 
 Arguments (JSON):
-  out_of_bounds_entries (default: "error")
-    How to handle file entries pointing outside the ISO image, as may occur
-    with mixed-mode CDs referencing audio tracks.
+  out_of_bounds_entries (default: "preserve")
+    How to handle directory records pointing at blocks the image does not hold,
+    as a mixed-mode disc does for files kept on a later track.
 
-    error      Reject these entries (default)
-    ignore     Skip entries starting beyond the ISO image. They are not
-               preserved when rebuilding the image.
-    preserve   Planned for a future version
+    preserve   Keep the records as the image holds them, and their contents where
+               they lie. Nothing carries those contents, so their records are
+               written back unchanged (default)
+    error      Reject the image
+    ignore     Drop those entries. They are not preserved when rebuilding the
+               image
+
+  placement (default: "relocate" where args name none)
+    How a file that no longer fits the blocks it held is given room.
+
+    relocate   Keep a file's extent where it fits, grow it into the free blocks
+               that follow, and otherwise move it to free room elsewhere
+    shift      Reconstruct the image in its original order, shifting the regions
+               that follow a file that grew and updating every reference to them
+    preserve   Keep every extent exactly where it is, and refuse a change that
+               would need a file moved or shifted
+
+    Args that name no policy keep the planner the codec planned with before it
+    had policies, which is "relocate": a manifest written earlier rebuilds the
+    way it did. A decode added now is recorded with {"placement":"shift"} in the
+    manifest, like args the caller named, so a decode keeps the policy it was
+    added under rather than changing under it.
 
 Example:
-  {"out_of_bounds_entries":"ignore"}
+  {"placement":"shift","out_of_bounds_entries":"error"}
+
+Not supported, and refused rather than written wrongly:
+
+  * logical block sizes other than 2048 bytes
+  * files written in several extents, interleaved files, and files with an
+    extended attribute record, for any file whose contents change
+  * volume descriptors besides the primary one, and second copies of the path
+    tables, for any change that would move a file or resize a directory: those
+    structures describe the same tree and this codec does not rewrite them. A
+    second copy of the path tables also refuses a shift that would move a
+    directory or a path table, which is where a directory's own block is stated
+    besides its records
 "#;
 
 impl Codec for Iso9660 {
@@ -102,7 +174,7 @@ impl Codec for Iso9660 {
   fn can_handle(&self, data: &[u8]) -> Result<CodecHandlingConfidence, CodecError> {
     let Some(offset) = usize::try_from(DESCRIPTOR_SECTOR)
       .ok()
-      .and_then(|sector| sector.checked_mul(DESCRIPTOR_SIZE))
+      .and_then(|sector| sector.checked_mul(BLOCK_SIZE))
     else {
       return Ok(CodecHandlingConfidence::No);
     };
@@ -121,61 +193,52 @@ impl Codec for Iso9660 {
     Ok("iso9660".to_owned())
   }
 
+  /// Reads the image's files and the layout they sit in.
+  ///
+  /// The files lead the artifacts in the order they sit on the disc, after the
+  /// metadata describing that order and the rest of the layout.
   fn decode(&self, data: &[u8], args: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
     trace!("Decoding ISO 9660 image");
+
     let args = Iso9660CodecArgs::from_args(args)?;
-
-    let image = IsoImage::open(Cursor::new(data))
-      .map_err(|err| CodecError::Message(format!("Could not open the ISO 9660 image: {err}")))?;
-
-    let volume_identifier = Self::volume_identifier(data)?;
-    let mut entries = Self::walk(
-      &image,
-      data.len(),
-      args.out_of_bounds_entries == OutOfBoundsEntries::Ignore,
-    )?;
-
-    entries.sort_by(|left, right| {
-      left
-        .extent
-        .cmp(&right.extent)
-        .then_with(|| left.name.cmp(&right.name))
-    });
-
-    if let Some(name) = entries.iter().map(|entry| &entry.name).duplicates().next() {
-      return Err(CodecError::Message(format!(
-        "ISO 9660 image holds two files under the path '{name}'"
-      )));
-    }
+    let reading = volume::read(data, args.out_of_bounds_entries)?;
 
     let metadata = IsoMetadata {
-      volume_identifier,
-      file_order: entries.iter().map(|entry| entry.name.clone()).collect(),
+      volume_identifier: reading.volume_identifier,
+      file_order: reading.files.iter().map(|file| file.name.clone()).collect(),
+      layout: reading.layout,
     };
 
     // The metadata leads, so the manifest records it first and a rebuild finds
     // it by position.
-    let mut artifacts = Vec::with_capacity(entries.len() + 1);
+    let mut artifacts = Vec::with_capacity(reading.files.len() + 1);
+
     artifacts.push(DecodedArtifact {
       name: METADATA_NAME.to_owned(),
       data: metadata.to_json()?,
     });
 
-    artifacts.extend(entries.into_iter().map(|entry| DecodedArtifact {
-      name: entry.name,
-      data: entry.data,
+    artifacts.extend(reading.files.into_iter().map(|file| DecodedArtifact {
+      name: file.name,
+      data: file.data,
     }));
 
     Ok(artifacts)
   }
 
+  /// Rebuilds the image the metadata describes, with the files it was given.
   fn encode(
     &self,
     _: Vec<u8>,
     artifacts: &[DecodedArtifact],
-    _: Option<&str>,
+    args: Option<&str>,
   ) -> Result<Vec<u8>, CodecError> {
     trace!("Encoding ISO 9660 image");
+
+    let Iso9660CodecArgs {
+      placement,
+      out_of_bounds_entries: _,
+    } = Iso9660CodecArgs::from_args(args)?;
 
     // The metadata describes the image rather than belonging to it.
     let (metadata_artifact, files) = artifacts.split_first().ok_or_else(|| {
@@ -186,6 +249,7 @@ impl Codec for Iso9660 {
     })?;
 
     let mut names = BTreeSet::new();
+
     for artifact in files {
       if !names.insert(artifact.name.as_str()) {
         return Err(CodecError::DuplicateArtifact(artifact.name.clone()));
@@ -195,302 +259,65 @@ impl Codec for Iso9660 {
     let metadata = IsoMetadata::from_json(&metadata_artifact.data)?;
     let ordered = Self::order(&metadata, files)?;
 
-    let mut image = Cursor::new(Vec::new());
-
-    IsoImageWriter::create(
-      &mut image,
-      Self::input_files(&ordered)?,
-      Self::write_options(&metadata.volume_identifier),
-    )
-    .map_err(|err| CodecError::Message(format!("Could not write the ISO 9660 image: {err}")))?;
-
-    Ok(image.into_inner())
+    rebuild::build(&metadata, &ordered, placement)
   }
 }
 
-/// The logical sector the volume descriptor set starts at.
-const DESCRIPTOR_SECTOR: u64 = 16;
-
-/// The size of a single volume descriptor.
-const DESCRIPTOR_SIZE: usize = 2048;
-
-/// The descriptor type opening a volume descriptor set.
-const DESCRIPTOR_TYPE_PRIMARY: u8 = 0x01;
-
-/// The identifier every ISO 9660 volume descriptor carries.
-const STANDARD_IDENTIFIER: &[u8; 5] = b"CD001";
-
-/// The width of a Level 1 file name, and of a directory name.
-const LEVEL1_NAME: usize = 8;
-
-/// The width of a Level 1 file extension.
-const LEVEL1_EXTENSION: usize = 3;
-
-/// How many directories a walk will open before the tree is taken to be looping.
-const MAX_DIRECTORIES: usize = 4096;
-
-pub(crate) struct Iso9660;
-
 #[derive(Debug, Default, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-enum OutOfBoundsEntries {
-  #[default]
+pub(crate) enum OutOfBoundsEntries {
   Error,
   Ignore,
+  #[default]
+  Preserve,
+}
+
+/// How a rebuild that has to find a file more room goes about it.
+///
+/// The three are the same planner with a different idea of what an extent is
+/// worth: `shift` treats the image as one sequence it re-lays out, `relocate`
+/// moves the one file that no longer fits, and `preserve` will not move
+/// anything at all.
+#[derive(Debug, Default, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum Placement {
+  /// Reconstruct the image in its original order: a file that grows past the
+  /// blocks it had keeps its extent and shifts what follows it along, so that
+  /// every region keeps its place in the sequence. Nothing is ever relocated.
+  Shift,
+
+  /// Keep a file at its extent where it fits, grow it into the free room that
+  /// follows, and otherwise move it to free room elsewhere in the image (or
+  /// lengthen the image), leaving every other region where it was. A moved file
+  /// is logged, since a game that seeks to a block of its own would notice.
+  ///
+  /// This is what the codec did before it had placement policies, and it is what
+  /// a decode whose args name no policy still gets.
+  #[default]
+  Relocate,
+
+  /// Keep every existing extent exactly where it is: a change is allowed when
+  /// it fits the blocks the file already holds or the free room that follows
+  /// them, and refused otherwise, rather than moving a file or shifting one.
+  /// The image is lengthened only for an image that holds nothing beyond its
+  /// end, since a longer image moves the blocks that follow it.
+  Preserve,
 }
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct Iso9660CodecArgs {
   #[serde(default)]
   out_of_bounds_entries: OutOfBoundsEntries,
+
+  #[serde(default)]
+  placement: Placement,
 }
 
 impl LudaredCodecArgs for Iso9660CodecArgs {}
 
-struct IsoFileEntry {
-  name: String,
-  data: Vec<u8>,
-  /// Extent numbers count the whole image, so they order the files by where they
-  /// physically sit rather than by the order directories list their entries in.
-  extent: u32,
-}
+pub(crate) struct Iso9660;
 
 impl Iso9660 {
-  /// Validates an ISO 9660 Level 1 directory name.
-  ///
-  /// Must be non-empty, at most 8 characters, contain only A-Z, 0-9 and _,
-  /// and have no extension.
-  fn validate_directory_name(name: &str) -> Result<(), String> {
-    if name.is_empty() {
-      return Err("directory name is empty".to_owned());
-    }
-
-    if name.len() > LEVEL1_NAME {
-      return Err(format!(
-        "directory name '{name}' exceeds {LEVEL1_NAME} characters"
-      ));
-    }
-
-    if name.contains('.') {
-      return Err("a directory name takes no extension".to_owned());
-    }
-
-    if !name
-      .bytes()
-      .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || byte == b'_')
-    {
-      return Err(format!(
-        "directory name '{name}' may contain only A-Z, 0-9 and _"
-      ));
-    }
-
-    Ok(())
-  }
-
-  /// Validates an ISO 9660 Level 1 file name.
-  ///
-  /// Must have a non-empty base name of at most 8 characters and an extension
-  /// of at most 3 characters. Both may contain only A-Z, 0-9 and _.
-  fn validate_file_name(name: &str) -> Result<(), String> {
-    let (base, extension) = name.split_once('.').unwrap_or((name, ""));
-
-    if base.is_empty() {
-      return Err("file name is empty".to_owned());
-    }
-
-    if base.len() > LEVEL1_NAME {
-      return Err(format!(
-        "file name '{base}' exceeds {LEVEL1_NAME} characters"
-      ));
-    }
-
-    if !base
-      .bytes()
-      .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || byte == b'_')
-    {
-      return Err(format!(
-        "file name '{base}' may contain only A-Z, 0-9 and _"
-      ));
-    }
-
-    if extension.len() > LEVEL1_EXTENSION {
-      return Err(format!(
-        "file extension '{extension}' exceeds {LEVEL1_EXTENSION} characters"
-      ));
-    }
-
-    if !extension
-      .bytes()
-      .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || byte == b'_')
-    {
-      return Err(format!(
-        "file extension '{extension}' may contain only A-Z, 0-9 and _"
-      ));
-    }
-
-    Ok(())
-  }
-
-  /// The Volume Identifier recorded in the Primary Volume Descriptor.
-  ///
-  /// Only the padding ISO 9660 mandates is removed. A value that is not text is
-  /// refused rather than mangled into something that fits.
-  fn volume_identifier(data: &[u8]) -> Result<String, CodecError> {
-    let start = usize::try_from(DESCRIPTOR_SECTOR)
-      .ok()
-      .and_then(|sector| sector.checked_mul(DESCRIPTOR_SIZE))
-      .ok_or_else(|| {
-        CodecError::Message("ISO 9660 image is too small to hold a descriptor set".to_owned())
-      })?;
-
-    let descriptor = data.get(start..start + DESCRIPTOR_SIZE).ok_or_else(|| {
-      CodecError::Message(format!(
-        "ISO 9660 volume descriptor set is truncated (Minimum: {} bytes)",
-        start + DESCRIPTOR_SIZE
-      ))
-    })?;
-
-    if descriptor.first() != Some(&DESCRIPTOR_TYPE_PRIMARY)
-      || &descriptor[1..6] != STANDARD_IDENTIFIER.as_slice()
-    {
-      return Err(CodecError::Message(
-        "ISO 9660 primary volume descriptor is missing or malformed".to_owned(),
-      ));
-    }
-
-    let descriptor = <VolumeDescriptor as Parsable>::parse(&mut &descriptor[..])
-      .map_err(|err| CodecError::Message(format!("Could not read the volume descriptor: {err}")))?;
-
-    let VolumeDescriptor::Primary(primary) = descriptor else {
-      return Err(CodecError::Message(
-        "ISO 9660 volume descriptor set does not begin with a primary volume descriptor".to_owned(),
-      ));
-    };
-
-    // `len` is where the field stops being padding, so it is the length of the
-    // value rather than the width of the field.
-    let significant = &primary.volume_identifier.as_bytes()[..primary.volume_identifier.len()];
-
-    std::str::from_utf8(significant)
-      .map(str::to_owned)
-      .map_err(|err| {
-        CodecError::Message(format!(
-          "ISO 9660 volume identifier is not valid UTF-8 and cannot be recorded: {err}"
-        ))
-      })
-  }
-
-  fn walk(
-    image: &IsoImage<Cursor<&[u8]>>,
-    image_len: usize,
-    ignore_out_of_bounds: bool,
-  ) -> Result<Vec<IsoFileEntry>, CodecError> {
-    let root = Self::root_of(image)?;
-    let mut entries = Vec::new();
-    let mut pending = vec![(root.iter(image), String::new())];
-    let mut visited = 0;
-
-    while let Some((directory, prefix)) = pending.pop() {
-      visited += 1;
-      if visited > MAX_DIRECTORIES {
-        return Err(CodecError::Message(format!(
-          "ISO 9660 image contains more than {MAX_DIRECTORIES} directories"
-        )));
-      }
-
-      for entry in directory.entries() {
-        let entry = entry
-          .map_err(|err| CodecError::Message(format!("Could not read a directory entry: {err}")))?;
-
-        // Every directory carries entries for itself and for its parent.
-        if entry.is_special() {
-          continue;
-        }
-
-        let name = Self::entry_name(&entry)?;
-        let path = format!("{prefix}{name}");
-
-        if entry.is_directory() {
-          let reference = entry
-            .as_dir_ref(image)
-            .map_err(|err| CodecError::Message(format!("Could not open '{path}': {err}")))?;
-
-          pending.push((image.open_dir(reference), format!("{path}/")));
-          continue;
-        }
-
-        let extent = entry.header().extent.read();
-        let length = entry.header().data_len.read();
-
-        if ignore_out_of_bounds
-          && length > 0
-          && u64::from(extent) * DESCRIPTOR_SIZE as u64 >= image_len as u64
-        {
-          debug!("Skipping out-of-bounds ISO 9660 entry '{path}'");
-          continue;
-        }
-
-        let data = image
-          .read_file(&entry)
-          .map_err(|err| CodecError::Message(format!("Could not read '{path}': {err}")))?;
-
-        entries.push(IsoFileEntry {
-          name: path,
-          data,
-          extent,
-        });
-      }
-    }
-
-    Ok(entries)
-  }
-
-  /// The image's ISO 9660 directory tree, which its Primary Volume Descriptor
-  /// holds.
-  ///
-  /// Matched on the Level 1 variant rather than an exact `EntryType`: Hadris
-  /// flags the primary tree with `supports_rrip` when the image carries Rock
-  /// Ridge, so an exact match would miss precisely the images that carry it.
-  fn root_of(image: &IsoImage<Cursor<&[u8]>>) -> Result<hadris_iso::read::RootDir, CodecError> {
-    image
-      .root_dirs()
-      .iter()
-      .find(|root| matches!(root.entry_type(), EntryType::Level1 { .. }))
-      .copied()
-      .ok_or_else(|| {
-        CodecError::Message("ISO 9660 image carries no primary directory tree to read".to_owned())
-      })
-  }
-
-  /// The name a directory entry is known by inside the image.
-  ///
-  /// Taken from the record's own identifier rather than from `display_name`,
-  /// which prefers a Rock Ridge alternate name and would answer `FOO.BIN` where
-  /// the ISO 9660 namespace holds `FOO.BAR;1`. The `;1` belongs to the
-  /// identifier but not to the name, and the writer supplies its own, so it is
-  /// dropped here and comes back on the rebuild.
-  fn entry_name(entry: &hadris_iso::read::DirEntry) -> Result<String, CodecError> {
-    let raw = entry.record.name();
-    let raw = match raw.iter().position(|byte| *byte == b';') {
-      Some(index) => &raw[..index],
-      None => raw,
-    };
-
-    let name = std::str::from_utf8(raw).map_err(|err| {
-      CodecError::Message(format!(
-        "ISO 9660 file identifier is not valid text and cannot be named: {err}"
-      ))
-    })?;
-
-    if name.is_empty() {
-      return Err(CodecError::Message(
-        "ISO 9660 directory entry carries an empty file identifier".to_owned(),
-      ));
-    }
-
-    Ok(name.to_owned())
-  }
-
   /// Places the artifacts in the order the metadata gives.
   ///
   /// The two must agree exactly: an unnamed file has nowhere to go and a
@@ -530,96 +357,5 @@ impl Iso9660 {
     }
 
     Ok(ordered)
-  }
-
-  fn input_files(ordered: &[&DecodedArtifact]) -> Result<InputFiles, CodecError> {
-    let mut roots = Vec::new();
-
-    for artifact in ordered {
-      let path = artifact.name.as_str();
-      let mut components: Vec<&str> = path.split('/').collect();
-      let leaf = components.pop().unwrap_or_default();
-
-      Self::insert_file(&mut roots, path, &components, leaf, artifact.data.clone())?;
-    }
-
-    Ok(InputFiles {
-      path_separator: PathSeparator::ForwardSlash,
-      files: roots,
-    })
-  }
-
-  fn insert_file(
-    entries: &mut Vec<IsoFile>,
-    path: &str,
-    components: &[&str],
-    leaf: &str,
-    data: Vec<u8>,
-  ) -> Result<(), CodecError> {
-    let Some((directory, rest)) = components.split_first() else {
-      Self::validate_file_name(leaf).map_err(|reason| {
-        CodecError::Message(format!(
-          "'{path}' cannot be rebuilt as plain ISO 9660 Level 1: {reason}"
-        ))
-      })?;
-
-      entries.push(IsoFile::File {
-        name: Arc::new(leaf.to_owned()),
-        contents: data,
-      });
-
-      return Ok(());
-    };
-
-    let index = match entries.iter().position(
-      |entry| matches!(entry, IsoFile::Directory { name, .. } if name.as_ref() == directory),
-    ) {
-      Some(index) => index,
-      None => {
-        Self::validate_directory_name(directory).map_err(|reason| {
-          CodecError::Message(format!(
-            "'{path}' cannot be rebuilt as plain ISO 9660 Level 1: {reason}"
-          ))
-        })?;
-
-        entries.push(IsoFile::Directory {
-          name: Arc::new((*directory).to_owned()),
-          children: Vec::new(),
-        });
-
-        entries.len() - 1
-      }
-    };
-
-    let IsoFile::Directory { children, .. } = &mut entries[index] else {
-      unreachable!("the position was found on a directory")
-    };
-
-    Self::insert_file(children, path, rest, leaf, data)
-  }
-
-  fn write_options(volume_identifier: &str) -> IsoFormatOptions {
-    IsoFormatOptions {
-      volume_name: volume_identifier.to_owned(),
-      system_id: None,
-      volume_set_id: None,
-      publisher_id: None,
-      preparer_id: None,
-      application_id: None,
-      sector_size: DESCRIPTOR_SIZE,
-      path_separator: PathSeparator::ForwardSlash,
-      features: CreationFeatures {
-        filenames: BaseIsoLevel::Level1 {
-          supports_lowercase: false,
-          supports_rrip: false,
-        },
-        long_filenames: false,
-        joliet: None,
-        rock_ridge: None,
-        el_torito: None,
-        hybrid_boot: None,
-      },
-      strict_charset: false,
-    }
   }
 }

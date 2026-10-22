@@ -455,31 +455,4 @@ mod tests {
 
     assert_eq!(decoded[0].data, artifacts[0].data);
   }
-
-  #[test]
-  #[ignore = "Requires a local Sakura Taisen BIN image"]
-  fn sakura_taisen_track1_roundtrip() {
-    let path = "/Users/red/Games/Sega Saturn/#ISOs/Sakura Taisen (Japan) (Disc 1) (6M)/Sakura Taisen (Japan) (Disc 1) (6M) (Track 1).bin";
-
-    let original = std::fs::read(path).expect("Failed to read Sakura Taisen BIN");
-    let codec = Mode2352;
-
-    assert_eq!(
-      codec.can_handle(&original).unwrap(),
-      CodecHandlingConfidence::Likely,
-    );
-
-    let artifacts = codec.decode(&original, None).unwrap();
-
-    assert_eq!(artifacts.len(), 1);
-    assert_eq!(artifacts[0].name, "data.bin");
-    assert_eq!(
-      artifacts[0].data.len(),
-      original.len() / RAW_SECTOR_SIZE * USER_SECTOR_SIZE,
-    );
-
-    let rebuilt = codec.encode(Vec::new(), &artifacts, None).unwrap();
-
-    assert_eq!(rebuilt, original, "Roundtrip mismatch");
-  }
 }
