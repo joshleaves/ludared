@@ -5,6 +5,18 @@ pub(crate) enum ManifestError {
   #[error("Could not resolve virtual path: {0}")]
   CouldNotResolve(String),
 
+  #[error("No decode found at '{0}'")]
+  NoDecode(String),
+
+  #[error("Multiple decodes found at '{0}'; specify a name")]
+  DecodeNameRequired(String),
+
+  #[error("Decode '{0}' not found at '{1}'")]
+  DecodeNotFound(String, String),
+
+  #[error("Cannot remove decode '{0}' at '{1}': it has children")]
+  DecodeNotTerminal(String, String),
+
   #[error("Duplicate decode name: {0} under {1}")]
   DuplicateDecodeName(String, String),
 

@@ -125,6 +125,26 @@ impl Manifest {
       .collect()
   }
 
+  pub(crate) fn decodes(&self) -> Vec<VirtualPath> {
+    let mut paths = Vec::new();
+    let mut collect = |path: &str| paths.push(path.to_owned());
+
+    for (source, decodes) in &self.decodes {
+      for decode in decodes {
+        collect(source);
+        decode.visit_decodes(source, &mut collect);
+      }
+    }
+
+    paths.sort();
+    paths.dedup();
+
+    paths
+      .iter()
+      .filter_map(|path| VirtualPath::new(path).ok())
+      .collect()
+  }
+
   /// Returns the virtual path of every artifact declared as an override.
   ///
   /// The manifest is the only thing consulted: overrides are read from the
@@ -429,6 +449,80 @@ impl Manifest {
 
     Ok(())
   }
+
+  /// Removes a terminal decode from the manifest.
+  ///
+  /// `name` is required when multiple decodes share `path`.
+  /// Returns the removed node so callers can clean up its cache and overrides.
+  pub(crate) fn remove_decode(
+    &mut self,
+    path: &VirtualPath,
+    name: Option<&str>,
+  ) -> Result<DecodeNode, AppError> {
+    let (source, remaining) = self
+      .split_source(path)
+      .ok_or_else(|| ManifestError::NoDecode(path.to_string()))?;
+
+    let Some(decodes) = self.decodes.get_mut(&source) else {
+      return Err(ManifestError::NoDecode(path.to_string()).into());
+    };
+
+    let removed = match remaining.is_empty() {
+      true => remove_from_decodes(decodes, name, &path.to_string())?,
+      false => {
+        let mut removed = None;
+
+        for decode in decodes.iter_mut() {
+          if let Some(node) = decode.remove_decode_mut(&remaining, name, &path.to_string())? {
+            removed = Some(node);
+            break;
+          }
+        }
+
+        removed
+      }
+    };
+
+    let Some(node) = removed else {
+      return Err(ManifestError::NoDecode(path.to_string()).into());
+    };
+
+    // A source with no decodes left needs no bucket of its own. Nested buckets
+    // are dropped by `remove_decode_mut` as they empty.
+    if remaining.is_empty() && decodes.is_empty() {
+      self.decodes.remove(&source);
+    }
+
+    Ok(node)
+  }
+}
+
+/// Selects and removes a terminal decode from a bucket.
+fn remove_from_decodes(
+  decodes: &mut Vec<DecodeNode>,
+  name: Option<&str>,
+  path: &str,
+) -> Result<Option<DecodeNode>, ManifestError> {
+  let index = match name {
+    Some(name) => decodes
+      .iter()
+      .position(|decode| decode.name == name)
+      .ok_or_else(|| ManifestError::DecodeNotFound(name.to_owned(), path.to_owned()))?,
+    None => match decodes.len() {
+      0 => return Ok(None),
+      1 => 0,
+      _ => return Err(ManifestError::DecodeNameRequired(path.to_owned())),
+    },
+  };
+
+  if decodes[index].has_child_decodes() {
+    return Err(ManifestError::DecodeNotTerminal(
+      decodes[index].name.clone(),
+      path.to_owned(),
+    ));
+  }
+
+  Ok(Some(decodes.remove(index)))
 }
 
 #[cfg(test)]
@@ -1388,6 +1482,165 @@ mod tests {
         expected
       );
     }
+  }
+
+  #[test]
+  fn removes_the_only_decode_of_an_artifact_without_a_name() {
+    let (source, mut manifest) = source_manifest(
+      r#"[ {
+        "name": "head",
+        "codec": { "id": "std/generic/extract", "version": 1, "args": null },
+        "outputs": [ "head.bin" ],
+        "decodes": {}
+      } ]"#,
+    );
+
+    let removed = manifest.remove_decode(&vpath(&source), None).unwrap();
+
+    assert_eq!(removed.name, "head");
+    assert_eq!(removed.outputs, ["head.bin"]);
+    assert!(removed.overrides.is_empty());
+
+    // The output is gone with its recipe, and the empty source bucket too.
+    assert_eq!(names(manifest.artifacts()), vec![source.to_owned()]);
+    assert!(!manifest.decodes.contains_key(&source));
+  }
+
+  #[test]
+  fn requires_a_name_when_several_decodes_share_an_artifact() {
+    let (source, mut manifest) = source_manifest(
+      r#"[ {
+        "name": "head",
+        "codec": { "id": "std/generic/extract", "version": 1, "args": null },
+        "outputs": [ "head.bin" ],
+        "decodes": {}
+      }, {
+        "name": "tail",
+        "codec": { "id": "std/generic/extract", "version": 1, "args": null },
+        "outputs": [ "tail.bin" ],
+        "decodes": {}
+      } ]"#,
+    );
+
+    match manifest.remove_decode(&vpath(&source), None).unwrap_err() {
+      AppError::ManifestError(ManifestError::DecodeNameRequired(reported)) => {
+        assert_eq!(reported, source);
+      }
+      err => panic!("Unexpected error: {err:?}"),
+    }
+
+    // Nothing was selected, so nothing was removed.
+    assert_eq!(
+      names(manifest.artifacts()),
+      [
+        source.clone(),
+        format!("{source}/head.bin"),
+        format!("{source}/tail.bin"),
+      ]
+    );
+
+    // A name selects the decode to remove and leaves its sibling alone.
+    let removed = manifest
+      .remove_decode(&vpath(&source), Some("tail"))
+      .unwrap();
+
+    assert_eq!(removed.name, "tail");
+    assert_eq!(removed.outputs, ["tail.bin"]);
+    assert_eq!(
+      names(manifest.artifacts()),
+      [
+        source.clone(),
+        format!("{source}/head.bin"),
+      ]
+    );
+  }
+
+  #[test]
+  fn refuses_to_remove_a_decode_with_child_decodes() {
+    let (source, mut manifest) = source_manifest(
+      r#"[ {
+        "name": "head",
+        "codec": { "id": "std/generic/extract", "version": 1, "args": null },
+        "outputs": [ "head.bin" ],
+        "decodes": {
+          "head.bin": [ {
+            "name": "TITLE",
+            "codec": { "id": "std/generic/extract", "version": 1, "args": null },
+            "outputs": [ "TITLE.txt" ],
+            "decodes": {}
+          } ]
+        }
+      } ]"#,
+    );
+
+    match manifest.remove_decode(&vpath(&source), None).unwrap_err() {
+      AppError::ManifestError(ManifestError::DecodeNotTerminal(name, under)) => {
+        assert_eq!((name.as_str(), under.as_str()), ("head", source.as_str()));
+      }
+      err => panic!("Unexpected error: {err:?}"),
+    }
+
+    assert_eq!(
+      names(manifest.artifacts()),
+      [
+        source.clone(),
+        format!("{source}/head.bin"),
+        format!("{source}/head.bin/TITLE.txt"),
+      ]
+    );
+
+    // The terminal decode below it can go, taking only its own bucket with it.
+    let removed = manifest
+      .remove_decode(&vpath(&format!("{source}/head.bin")), None)
+      .unwrap();
+
+    assert_eq!(removed.name, "TITLE");
+    assert_eq!(removed.outputs, ["TITLE.txt"]);
+    assert_eq!(
+      names(manifest.artifacts()),
+      [
+        source.clone(),
+        format!("{source}/head.bin"),
+      ]
+    );
+
+    let (head, _) = manifest
+      .resolve_virtual_path(&vpath(&format!("{source}/head.bin")))
+      .unwrap();
+    assert!(!head.decodes.contains_key("head.bin"));
+  }
+
+  #[test]
+  fn reports_a_name_no_decode_on_the_artifact_has() {
+    let (source, mut manifest) = source_manifest(
+      r#"[ {
+        "name": "head",
+        "codec": { "id": "std/generic/extract", "version": 1, "args": null },
+        "outputs": [ "head.bin" ],
+        "decodes": {}
+      } ]"#,
+    );
+
+    match manifest
+      .remove_decode(&vpath(&source), Some("missing"))
+      .unwrap_err()
+    {
+      AppError::ManifestError(ManifestError::DecodeNotFound(name, under)) => {
+        assert_eq!(
+          (name.as_str(), under.as_str()),
+          ("missing", source.as_str())
+        );
+      }
+      err => panic!("Unexpected error: {err:?}"),
+    }
+
+    assert_eq!(
+      names(manifest.artifacts()),
+      [
+        source.clone(),
+        format!("{source}/head.bin"),
+      ]
+    );
   }
 
   /// A manifest holding one registered source, with `decodes` recorded against it.

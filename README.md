@@ -24,7 +24,7 @@ ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain
 - [x] `decode`
   - [x] `add <PATH> <CODEC> [ARGS] [--name NAME]` - Add a decode step
   - [ ] `list <PATH>` - List decode steps on a node
-  - [ ] `remove <PATH> [NAME]` - Remove a decode step
+  - [x] `remove <PATH> [NAME] [--clean]` - Remove a terminal decode step
 
 - [x] `unpack` - Execute the manifest's full decode pipeline
 
@@ -61,6 +61,7 @@ Use `ludared completions [SHELL] | source`. If you don't provide a shell, it wil
 - [x] `sources add <FILE: complete_source_add>`
 - [x] `sources remove <FILE: complete_source_remove>`
 - [x] `decode add <PATH: complete_artifacts_decodable> <CODEC: complete_codecs_list>`
+- [x] `decode remove <PATH: complete_artifacts_decoded> [NAME]`
 - [x] `artifacts list [PATH: complete_artifacts_listing]`
 - [x] `cache path [PATH: complete_artifacts_listing]`
 - [x] `cache cat [PATH: complete_artifacts_listing]`

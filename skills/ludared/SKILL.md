@@ -88,6 +88,7 @@ ludared init [--name N] [--manifest P] [--sources D] [--workspace D]
 ludared sources add <FILE> | list [--status] | remove <FILE>
 ludared codecs list [--tree] | info <CODEC> | detect <FILE>
 ludared decode add <PATH> <CODEC> [ARGS] [--name NAME] [--force]
+ludared decode remove <PATH> [NAME] [--clean]
 ludared unpack
 ludared artifacts list [PATH] [--tree]
 ludared cache cat <PATH> | path <PATH>
@@ -127,6 +128,15 @@ ludared decode add mygame.sfc/rom_bank_00.bin std/generic/extract \
 
 The target artifact must already be cached. Run `unpack` after a fresh clone or clean before adding deeper decodes. In the observed CLI version, missing cached input can trigger a `TODO: Missing file in Manifest` panic.
 
+### Remove a decode
+
+```sh
+ludared decode remove mygame.sfc/rom_bank_00.bin
+ludared decode remove mygame.sfc tail --clean
+```
+
+`<PATH>` is the artifact the decode is attached to. `NAME` is only optional when that artifact has a single decode; when several share it, name the one to remove. Only a terminal decode can be removed: a decode with child decodes is refused until those children are removed first. Any overrides declared by the removed decode are lifted; `--clean` also deletes their workspace files, exactly as `override remove --clean` does. The outputs of the removed decode are forgotten from the cache index. A content-addressed blob is deleted only after that updated index is persisted and only when no entry references it; a blob still shared with another virtual path stays on disk. Once the manifest is saved, cache-index persistence and physical cleanup are best-effort, so a failed index write or deletion can leave a stale cache entry or an orphaned blob or workspace file without undoing the removal.
+
 ### Edit and rebuild
 
 ```sh
@@ -152,7 +162,7 @@ ludared clean --dry-run
 
 ## Invariants and pitfalls
 
-- **Use the CLI to modify the manifest** where supported: source registration, `decode add`, and override operations validate names, duplicates, and declarations. `decode remove` and `decode list` are not available in the documented CLI; removing a decode currently requires careful JSON editing followed by `ludared unpack`.
+- **Use the CLI to modify the manifest** where supported: source registration, `decode add`/`decode remove`, and override operations validate names, duplicates, and declarations. `decode list` is not available in the documented CLI.
 - **The manifest is JSON**, despite its `.ludared` extension.
 - **SHA-256 checks** protect registered sources during source-level `decode add`, `unpack`, `build`, and `doctor`.
 - **Only declared overrides matter.** An undeclared workspace file is ignored by `build`; `override remove` leaves its file unless `--clean` is used.

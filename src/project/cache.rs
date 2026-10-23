@@ -1,8 +1,9 @@
 use crate::errors::app_error::AppError;
 use crate::hash::sha256_bytes;
 use crate::virtual_path::VirtualPath;
+use log::*;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs::create_dir_all;
 use std::path::PathBuf;
 
@@ -62,10 +63,71 @@ impl Cache {
     Some(self.root.join(self.index.entries.get(&path.to_string())?))
   }
 
-  // pub fn remove_entry(&mut self, path: &VirtualPath) -> Result<(), AppError> {
-  //   self.index.entries.remove_entry(&path.to_string());
-  //   Ok(())
-  // }
+  /// Forgets `paths` from the index, persists it, and only then deletes the
+  /// blobs no remaining entry references.
+  ///
+  /// Blobs are content-addressed and may be shared with other virtual paths, so
+  /// a blob another entry still names is left untouched. Removing several entries
+  /// in one call handles that too: their shared blob is deleted once, and only
+  /// after none of them reference it.
+  ///
+  /// The index is saved before any blob is touched. A deletion that fails can
+  /// therefore only leave an orphaned blob behind, never an index entry pointing
+  /// at content that is gone. Blob deletion is best-effort: the logical removal
+  /// has already succeeded and an orphan is preferable to a dangling reference.
+  ///
+  /// If the index cannot be saved, the removed entries are put back and no blob
+  /// is touched, leaving the cache as it was.
+  ///
+  /// Paths that are not indexed are already in the state the caller asked for.
+  ///
+  /// # Errors
+  ///
+  /// Returns an [`AppError`] if the updated index cannot be saved.
+  pub fn remove_entries(&mut self, paths: &[VirtualPath]) -> Result<(), AppError> {
+    let mut removed = Vec::new();
+    for path in paths {
+      let key = path.to_string();
+      if let Some(hash) = self.index.entries.remove(&key) {
+        removed.push((key, hash));
+      }
+    }
+
+    if removed.is_empty() {
+      return Ok(());
+    }
+
+    if let Err(err) = self.save() {
+      for (key, hash) in &removed {
+        self.index.entries.insert(key.clone(), hash.clone());
+      }
+      return Err(err);
+    }
+
+    let hashes: BTreeSet<&str> = removed.iter().map(|(_, hash)| hash.as_str()).collect();
+
+    for hash in hashes {
+      if self.index.entries.values().any(|current| current == hash) {
+        continue;
+      }
+
+      let blob = self.root.join(hash);
+      match std::fs::remove_file(&blob) {
+        Ok(()) => debug!("Deleted unreferenced cache blob '{}'", blob.display()),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+          trace!("Cache blob '{}' was already gone", blob.display());
+        }
+        Err(err) => {
+          warn!(
+            "Could not delete unreferenced cache blob '{}': {err}",
+            blob.display()
+          );
+        }
+      }
+    }
+
+    Ok(())
+  }
 
   pub fn save(&self) -> Result<(), AppError> {
     let json = serde_json::to_string_pretty(&self.index).map_err(AppError::CacheIndexJson)?;
@@ -245,6 +307,163 @@ mod tests {
     // Neither the index nor the blobs are rewritten, and nothing is added to or
     // removed from the cache root.
     assert_eq!(snapshot(temp.path()), before);
+  }
+
+  #[test]
+  fn keeps_a_blob_another_entry_still_references() {
+    let entries: [(&str, &[u8]); 2] = [
+      ("game.sfc/head.bin", b"HELL"),
+      ("other.sfc/head.bin", b"HELL"),
+    ];
+    let (temp, mut cache) = cache_with(&entries);
+    let removed = vpath("game.sfc/head.bin");
+    let kept = vpath("other.sfc/head.bin");
+    let blob = cache.get_entry(&kept).unwrap();
+
+    cache
+      .remove_entries(std::slice::from_ref(&removed))
+      .unwrap();
+
+    // Only the entry goes: the blob is still the content of the other path.
+    assert_eq!(listed(&cache), [kept.to_string().as_str()]);
+    assert!(blob.is_file());
+    assert_eq!(std::fs::read(&blob).unwrap(), b"HELL");
+    assert_eq!(cache.get_entry(&kept), Some(blob.clone()));
+
+    let reloaded = Cache::new(temp.path().to_path_buf()).unwrap();
+    assert_eq!(listed(&reloaded), [kept.to_string().as_str()]);
+    assert_eq!(reloaded.get_entry(&kept), Some(blob));
+  }
+
+  #[test]
+  fn deletes_the_blob_once_no_entry_references_it() {
+    let (temp, mut cache) = cache_with(&ENTRIES);
+    let target = vpath("game.sfc/rom_bank_00.bin");
+    let blob = cache.get_entry(&target).unwrap();
+
+    cache.remove_entries(std::slice::from_ref(&target)).unwrap();
+
+    // The last entry naming the content is gone, so the content is too.
+    assert!(!listed(&cache).contains(&target.to_string().as_str()));
+    assert!(!blob.exists());
+
+    // The other entries and their blobs are untouched.
+    let reloaded = Cache::new(temp.path().to_path_buf()).unwrap();
+    assert_eq!(
+      listed(&reloaded),
+      [
+        "game.sfc/rom_bank_00.bin/TITLE.txt",
+        "other.sfc/head.bin",
+      ]
+    );
+    for path in listed(&reloaded) {
+      assert!(reloaded.get_entry(&vpath(path)).unwrap().is_file());
+    }
+  }
+
+  #[test]
+  fn removing_an_entry_that_is_not_indexed_does_nothing() {
+    let (temp, mut cache) = cache_with(&ENTRIES);
+    let before = snapshot(temp.path());
+
+    cache
+      .remove_entries(&[vpath(
+        "game.sfc/never-indexed.bin",
+      )])
+      .unwrap();
+
+    // A path with no entry names no blob, so nothing is touched at all.
+    assert_eq!(snapshot(temp.path()), before);
+  }
+
+  #[test]
+  fn removing_the_same_entry_twice_is_idempotent() {
+    let (temp, mut cache) = cache_with(&ENTRIES);
+    let target = vpath("game.sfc/rom_bank_00.bin");
+
+    cache.remove_entries(std::slice::from_ref(&target)).unwrap();
+    let after_first = snapshot(temp.path());
+
+    cache.remove_entries(std::slice::from_ref(&target)).unwrap();
+
+    // The second removal has no entry to find and no blob to delete.
+    assert_eq!(snapshot(temp.path()), after_first);
+    assert!(!after_first.contains_key(&sha256_bytes(b"\x00\x01\x02\x03")));
+  }
+
+  #[test]
+  fn deletes_a_shared_blob_after_every_entry_naming_it_is_removed() {
+    let entries: [(&str, &[u8]); 2] = [
+      ("game.sfc/head.bin", b"HELL"),
+      ("other.sfc/head.bin", b"HELL"),
+    ];
+    let (temp, mut cache) = cache_with(&entries);
+    let targets = [
+      vpath("game.sfc/head.bin"),
+      vpath("other.sfc/head.bin"),
+    ];
+    let blob = cache.get_entry(&targets[0]).unwrap();
+
+    assert_eq!(blob, cache.get_entry(&targets[1]).unwrap());
+
+    cache.remove_entries(&targets).unwrap();
+
+    // Both references went in one call, so the shared blob is deleted once.
+    assert!(listed(&cache).is_empty());
+    assert!(!blob.exists());
+
+    let reloaded = Cache::new(temp.path().to_path_buf()).unwrap();
+    assert!(listed(&reloaded).is_empty());
+  }
+
+  #[test]
+  fn leaves_an_orphan_when_the_blob_cannot_be_deleted() {
+    let (temp, mut cache) = cache_with(&ENTRIES);
+    let target = vpath("game.sfc/rom_bank_00.bin");
+    let blob = cache.get_entry(&target).unwrap();
+
+    // A directory where the blob belongs cannot be removed as a file.
+    std::fs::remove_file(&blob).unwrap();
+    std::fs::create_dir(&blob).unwrap();
+
+    // The logical removal has already succeeded, so physical cleanup stays
+    // best-effort and the orphan is allowed to remain.
+    cache.remove_entries(std::slice::from_ref(&target)).unwrap();
+
+    assert_eq!(cache.get_entry(&target), None);
+    assert!(blob.is_dir());
+
+    let reloaded = Cache::new(temp.path().to_path_buf()).unwrap();
+    assert_eq!(reloaded.get_entry(&target), None);
+    assert!(blob.is_dir());
+  }
+
+  #[test]
+  fn keeps_every_blob_when_the_index_cannot_be_saved() {
+    let (temp, mut cache) = cache_with(&ENTRIES);
+    let target = vpath("game.sfc/rom_bank_00.bin");
+    let blob = cache.get_entry(&target).unwrap();
+    let before: Vec<String> = cache.entries().map(str::to_owned).collect();
+
+    // A directory where the index belongs cannot be written as a file.
+    let index = temp.path().join("index.json");
+    std::fs::remove_file(&index).unwrap();
+    std::fs::create_dir(&index).unwrap();
+
+    match cache
+      .remove_entries(std::slice::from_ref(&target))
+      .unwrap_err()
+    {
+      AppError::CacheIndexIo(_) => {}
+      err => panic!("Unexpected error: {err:?}"),
+    }
+
+    // The persisted index was not updated, the blob is still there, and the
+    // in-memory index was rolled back to match it.
+    assert!(blob.is_file());
+    let after: Vec<String> = cache.entries().map(str::to_owned).collect();
+    assert_eq!(after, before);
+    assert_eq!(cache.get_entry(&target), Some(blob));
   }
 
   #[test]

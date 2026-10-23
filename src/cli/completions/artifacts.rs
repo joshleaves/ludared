@@ -51,3 +51,22 @@ pub(crate) fn complete_artifacts_decodable(current: &std::ffi::OsStr) -> Vec<Com
 
   results
 }
+
+pub(crate) fn complete_artifacts_decoded(current: &std::ffi::OsStr) -> Vec<CompletionCandidate> {
+  let Ok(project) = Project::load_default() else {
+    return Vec::new();
+  };
+
+  let Some(current) = current.to_str() else {
+    return Vec::new();
+  };
+
+  project
+    .manifest
+    .decodes()
+    .into_iter()
+    .filter(|vpath| vpath.has_text_prefix(current))
+    .map(|vpath| vpath.to_string())
+    .map(CompletionCandidate::new)
+    .collect()
+}

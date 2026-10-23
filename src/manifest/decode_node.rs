@@ -68,6 +68,56 @@ impl DecodeNode {
       .is_none_or(|decodes| decodes.is_empty())
   }
 
+  /// Returns whether any decode node hangs off one of this node's outputs.
+  ///
+  /// An empty bucket is not a child decode: it is only the place one would be
+  /// recorded if there were one.
+  pub(crate) fn has_child_decodes(&self) -> bool {
+    self.decodes.values().any(|decodes| !decodes.is_empty())
+  }
+
+  /// Removes a decode at `remaining`, returning the removed node if found.
+  ///
+  /// Empty decode buckets are pruned.
+  pub(crate) fn remove_decode_mut(
+    &mut self,
+    remaining: &[&str],
+    name: Option<&str>,
+    path: &str,
+  ) -> Result<Option<DecodeNode>, super::errors::ManifestError> {
+    let Some(output) = self.producing_output(remaining).map(str::to_owned) else {
+      return Ok(None);
+    };
+
+    let rest = &remaining[components_of(&output).len()..];
+
+    if rest.is_empty() {
+      let Some(decodes) = self.decodes.get_mut(&output) else {
+        return Ok(None);
+      };
+
+      let removed = super::remove_from_decodes(decodes, name, path)?;
+
+      if decodes.is_empty() {
+        self.decodes.remove(&output);
+      }
+
+      return Ok(removed);
+    }
+
+    let Some(decodes) = self.decodes.get_mut(&output) else {
+      return Ok(None);
+    };
+
+    for decode in decodes {
+      if let Some(removed) = decode.remove_decode_mut(rest, name, path)? {
+        return Ok(Some(removed));
+      }
+    }
+
+    Ok(None)
+  }
+
   /// Visits every output this decode node declares, and every output the decodes
   /// hanging off those declare in turn, depth first and in declaration order.
   ///
@@ -86,6 +136,23 @@ impl DecodeNode {
       if let Some(nested) = self.decodes.get(output) {
         for decode in nested {
           decode.visit_paths(&path, visit);
+        }
+      }
+    }
+  }
+
+  /// Visits the paths of artifacts with attached decodes, including nested ones.
+  pub(crate) fn visit_decodes(&self, prefix: &str, visit: &mut impl FnMut(&str)) {
+    for output in &self.outputs {
+      let path = format!("{prefix}/{output}");
+
+      if let Some(nested) = self.decodes.get(output) {
+        if !nested.is_empty() {
+          visit(&path);
+        }
+
+        for decode in nested {
+          decode.visit_decodes(&path, visit);
         }
       }
     }
