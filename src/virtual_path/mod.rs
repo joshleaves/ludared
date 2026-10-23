@@ -15,6 +15,10 @@ pub(crate) struct VirtualPath {
 }
 
 impl VirtualPath {
+  pub fn as_str(&self) -> &str {
+    &self.path
+  }
+
   /// Parses and validates a virtual path.
   pub fn new(path: &str) -> Result<Self, VirtualPathError> {
     if path.is_empty() {

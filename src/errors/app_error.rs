@@ -99,4 +99,7 @@ pub(crate) enum AppError {
 
   #[error("Script Error: {0}")]
   Script(#[from] crate::scripts::errors::ScriptError),
+
+  #[error("No glob matches for pattern '{0}'")]
+  NoGlobMatches(String),
 }

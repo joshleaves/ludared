@@ -30,17 +30,17 @@ ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain
 - [x] `unpack` - Execute the manifest's full decode pipeline
 
 - [x] `artifacts`
-  - [x] `list [VPATH] [--tree]` - List artifacts, optionally as a tree
+  - [x] `list [PATH] [--tree]` - List artifacts, optionally as a tree
 
 - [x] `cache`
-  - [x] `cat <VPATH>` - Output a cached artifact's contents to STDOUT
-  - [x] `path <VPATH>` - Print a cached artifact's physical path
+  - [x] `cat <PATH>` - Output a cached artifact's contents to STDOUT
+  - [x] `path <PATH>` - Print a cached artifact's physical path
 
 - [x] `override` - Manage the decoded artifacts materialized in the workspace
-  - [x] `list [VPATH] [--tree]` - Lists the artifacts declared as overrides, optionally as a tree
-  - [x] `add <VPATH> [--force]` - Declares an override and materializes the artifact in the workspace
-  - [x] `refresh <VPATH>` - Rewrites an overridden artifact with its canonical bytes
-  - [x] `remove <VPATH> [--clean]` - Deactivates an override, optionally deleting its workspace file
+  - [x] `list [PATH] [--tree]` - Lists the artifacts declared as overrides, optionally as a tree
+  - [x] `add <PATH> [--force]` - Declares an override and materializes the artifact in the workspace
+  - [x] `refresh <PATH*>` - Rewrites an overridden artifact with its canonical bytes
+  - [x] `remove <PATH> [--clean]` - Deactivates an override, optionally deleting its workspace file
 
 - [x] `build [SOURCE]` - Run the manifest to produce build(s) from the source(s)
 - [ ] `patch [SOURCE] [--format ips|bps|xdelta]` - Builds, and produces a patch against source 
@@ -54,10 +54,29 @@ ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain
 
 ludared provides dynamic shell completions, including project-aware completion for sources and other project resources.
 
-Use `ludared completions [SHELL] | source`. If you don't provide a shell, it will be identified best-effort from your `$SHELL` environment variable.
+### Available globbing
+
+You can use globbing on paths. The allowed patterns are:
+- `?` - Single character match
+- `*` - Sequence match
+- `[a-z0-9-]` - Character class match
+- `[a-z0-9-]+` - The same, but repeated
+- `{aba,abc}` - Alternative string match
+
+Globbing only triggers on those patterns, and the matching is done per path component, so no `source.bin/**/*.ttf`.
+
+The commands allowing globs are:
+
+- [x] `decode add <PATH*> <CODEC>`
+- [x] `decode remove <PATH*> [NAME]`
+- [x] `override add <PATH*>`
+- [x] `override remove <PATH*>`
+- [x] `override refresh <PATH*>` 
+- [x] `codecs detect <PATH*>`
 
 ### Available completions
 - [x] `codecs info <CODEC: completion_codecs_list>`
+- [x] `codecs detect <PATH: completion_artifacts_list>`
 - [x] `sources add <FILE: completion_sources_available>`
 - [x] `sources remove <FILE: completion_sources_list>`
 - [x] `decode add <PATH: completion_artifacts_decodable> <CODEC: completion_codecs_list>`

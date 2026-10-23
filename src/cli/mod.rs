@@ -1,4 +1,5 @@
 pub(crate) mod completions;
+pub(crate) mod path_glob;
 
 pub(crate) mod artifacts;
 pub(crate) mod build;

@@ -2,6 +2,7 @@ use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
 
 use crate::cli::completions::overrides::completion_override_active;
+use crate::cli::path_glob::PathGlob;
 use crate::errors::app_error::AppError;
 use crate::project::Project;
 use crate::virtual_path::VirtualPath;
@@ -13,7 +14,7 @@ pub(crate) struct OverrideRefreshArgs {
   /// This rewrites the workspace file from the decode cache, discarding every
   /// local modification to it and recreating it if it was deleted. Nothing is
   /// asked for confirmation.
-  #[arg(value_name = "PATH", add = ArgValueCompleter::new(completion_override_active))]
+  #[arg(value_name = "PATH*", add = ArgValueCompleter::new(completion_override_active))]
   virtual_path: String,
 }
 
@@ -21,11 +22,29 @@ pub(crate) fn command_override_refresh(
   project: &mut Project,
   args: &OverrideRefreshArgs,
 ) -> Result<(), AppError> {
-  let vpath = VirtualPath::new(&args.virtual_path)?;
+  let glob = PathGlob::new(&args.virtual_path);
 
-  project.refresh_override(&vpath)?;
+  let matches: Vec<_> = if glob.is_glob() {
+    project
+      .manifest
+      .overrides()
+      .into_iter()
+      .filter(|path| glob.matches(path.as_str()))
+      .collect()
+  } else {
+    vec![VirtualPath::new(
+      &args.virtual_path,
+    )?]
+  };
 
-  println!("✓ Refreshed '{vpath}' from its canonical bytes");
+  if matches.is_empty() {
+    return Err(AppError::NoGlobMatches(args.virtual_path.clone()));
+  }
+
+  for vpath in matches {
+    project.refresh_override(&vpath)?;
+    println!("✓ Refreshed '{vpath}' from its canonical bytes");
+  }
 
   Ok(())
 }

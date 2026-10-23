@@ -160,7 +160,6 @@ impl Manifest {
       .is_ok_and(|decodes| !decodes.is_empty())
   }
 
-  #[allow(dead_code)]
   pub(crate) fn is_terminal(&self, path: &VirtualPath) -> bool {
     self
       .resolve_virtual_path(path)
@@ -440,7 +439,7 @@ impl Manifest {
     name: Option<&str>,
   ) -> Result<DecodeNode, AppError> {
     let path_str = path.to_string();
-    let decodes = self.decodes_at_mut(path)?;
+    let decodes = self.decodes_at(path)?;
 
     let index = match name {
       Some(name) => decodes
@@ -458,6 +457,7 @@ impl Manifest {
       return Err(ManifestError::DecodeNotTerminal(decodes[index].name.clone(), path_str).into());
     }
 
+    let decodes = self.decodes_at_mut(path)?;
     let removed = decodes.remove(index);
 
     if decodes.is_empty() {
