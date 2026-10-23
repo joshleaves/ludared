@@ -7,6 +7,8 @@ description: Implement, modify, review, debug, or test Lua codecs for Ludared pr
 
 Use this skill for **codec development**, not ordinary work on a Ludared project. For the complete Lua module API, globals, signatures, and error messages, consult [`references/lua-api.md`](references/lua-api.md) before implementing or changing a codec. Check the current implementation when the reference and runtime disagree.
 
+You can also use `ludared codecs create [my-codec-name].lua` to create a skeleton codec in "{paths.scripts}/[my-codec-name].lua". Intermediate directories are created automatically. Paths are relative to paths.scripts. Components `..`, `shared`, and `libraries` are forbidden anywhere in the path.
+
 ## Mental model and contracts
 
 - A decode applies **one codec to one input** and records **one decode node with an ordered list of zero or more output artifacts**. A codec does not create other decode nodes or edit the manifest. Additional decode steps are declared separately through Ludared.

@@ -18,7 +18,7 @@ use crate::scripts::errors::ScriptError;
 use log::*;
 use std::path::PathBuf;
 
-const SHARED_DIRECTORIES: &[&str] = &[
+pub(crate) const SHARED_DIRECTORIES: &[&str] = &[
   "shared",
   "libraries",
 ];

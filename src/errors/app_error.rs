@@ -28,6 +28,18 @@ pub(crate) enum AppError {
   #[error("Incompatible codec: {0}. Use --force to continue anyway.")]
   CodecIncompatible(String),
 
+  #[error("Codec already exists: {0}")]
+  CodecAlreadyExists(PathBuf),
+
+  #[error("Cannot use {0} in script paths")]
+  InvalidCodecScriptPath(String),
+
+  #[error("Unknown codec extensions: '{0}'")]
+  UnknownCodecExtension(String),
+
+  #[error("Missing codec extension")]
+  MissingCodecExtension,
+
   #[error("Cache index JSON error: {0}")]
   CacheIndexJson(serde_json::Error),
 

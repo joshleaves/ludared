@@ -7,6 +7,8 @@ use crate::codecs::errors::CodecError;
 use crate::scripts::errors::ScriptError;
 use std::path::PathBuf;
 
+pub const SKELETON: &str = include_str!("./skeleton.lua");
+
 pub mod functions;
 
 const REQUIRED_FUNCTIONS: [&str; 4] = [

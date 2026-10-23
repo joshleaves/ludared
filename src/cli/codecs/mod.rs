@@ -1,3 +1,4 @@
+use crate::cli::codecs::create::CodecsCreateArgs;
 use crate::cli::codecs::detect::CodecsDetectArgs;
 use crate::cli::codecs::info::CodecsInfoArgs;
 use crate::cli::codecs::list::CodecsListArgs;
@@ -9,6 +10,7 @@ use crate::project::Project;
 use clap::{Args, Subcommand};
 use std::path::{Path, PathBuf};
 
+pub(crate) mod create;
 pub(crate) mod detect;
 pub(crate) mod info;
 pub(crate) mod list;
@@ -27,8 +29,11 @@ pub(crate) enum CodecsCommands {
   /// Get Info about a codec
   Info(CodecsInfoArgs),
 
-  // // Detect codecs fit for a file
+  // Detect codecs fit for a file
   Detect(CodecsDetectArgs),
+
+  // Create a skeleton script file
+  Create(CodecsCreateArgs),
 }
 
 /// The registry the read-only codec commands answer from.
@@ -57,5 +62,6 @@ pub fn command_codecs(args: &CodecsArgs) -> Result<(), AppError> {
     CodecsCommands::List(args) => list::command_codecs_list(args),
     CodecsCommands::Info(args) => info::command_codecs_info(args),
     CodecsCommands::Detect(args) => detect::command_codecs_detect(args),
+    CodecsCommands::Create(args) => create::command_codecs_create(args),
   }
 }
