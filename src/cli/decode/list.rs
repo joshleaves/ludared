@@ -21,7 +21,7 @@ pub(crate) fn command_decode_list(args: &DecodeListArgs) -> Result<(), AppError>
   let vpath = VirtualPath::new(&args.virtual_path)?;
   let project = Project::load_default()?;
 
-  let decodes = project.manifest.decodes_for(&vpath)?;
+  let decodes = project.manifest.decodes_at(&vpath)?;
 
   let width = decodes
     .iter()

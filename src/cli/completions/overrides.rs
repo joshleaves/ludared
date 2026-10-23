@@ -48,12 +48,7 @@ pub(crate) fn completion_override_addable(current: &OsStr) -> Vec<CompletionCand
     // What an override may be declared on is the manifest's call, not this
     // command's: the same rules `override add` goes on to enforce.
     .filter(|artifact| {
-      project
-        .manifest
-        .resolve_virtual_path(artifact)
-        .is_ok_and(|(node, output)| {
-          node.is_terminal_output(output) && !node.has_override_for(output)
-        })
+      project.manifest.is_terminal(artifact) && !project.manifest.is_overridden(artifact)
     })
     .filter(|artifact| artifact.has_text_prefix(prefix))
     .map(|artifact| artifact.to_string())

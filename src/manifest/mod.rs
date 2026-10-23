@@ -17,6 +17,13 @@ pub(crate) mod errors;
 use decode_node::DecodeNode;
 use errors::ManifestError;
 
+#[derive(Clone, Copy)]
+pub(crate) enum WalkTarget {
+  Paths,
+  Decodes,
+  Overrides,
+}
+
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub(crate) struct Manifest {
   #[serde(default)]
@@ -39,6 +46,47 @@ impl Manifest {
     Ok(())
   }
 
+  pub(crate) fn artifacts(&self) -> Vec<VirtualPath> {
+    self.list_paths(WalkTarget::Paths)
+  }
+
+  pub(crate) fn decodes(&self) -> Vec<VirtualPath> {
+    self.list_paths(WalkTarget::Decodes)
+  }
+
+  pub(crate) fn overrides(&self) -> Vec<VirtualPath> {
+    self.list_paths(WalkTarget::Overrides)
+  }
+
+  /// Private convenience method: walk through the whole tree
+  fn list_paths(&self, target: WalkTarget) -> Vec<VirtualPath> {
+    let mut paths = Vec::new();
+
+    for source in self.sources.keys().filter_map(|source| source.to_str()) {
+      if matches!(target, WalkTarget::Paths) {
+        paths.push(source.to_owned());
+      }
+
+      if let Some(decodes) = self.decodes.get(source) {
+        for decode in decodes {
+          if matches!(target, WalkTarget::Decodes) {
+            paths.push(source.to_owned());
+          }
+
+          decode.visit_into(source, target, &mut paths);
+        }
+      }
+    }
+
+    paths.sort();
+    paths.dedup();
+
+    paths
+      .iter()
+      .filter_map(|path| VirtualPath::new(path).ok())
+      .collect()
+  }
+
   /// Returns the mutable decode bucket attached to the artifact at the given
   /// virtual path, creating the bucket if necessary.
   ///
@@ -57,7 +105,7 @@ impl Manifest {
   /// Resolution can fail when the path does not begin with a known source, or
   /// when a later path component does not correspond to an artifact produced by
   /// any decode node along the resolved branch.
-  pub(crate) fn get_or_create_decodes_mut(
+  pub(crate) fn decodes_at_mut(
     &mut self,
     path: &VirtualPath,
   ) -> Result<&mut Vec<DecodeNode>, ManifestError> {
@@ -74,7 +122,7 @@ impl Manifest {
     };
 
     for decode in decodes.iter_mut() {
-      if let Some(decodes) = decode.get_or_create_decodes_mut(&remaining) {
+      if let Some(decodes) = decode.decodes_at_mut(&remaining) {
         return Ok(decodes);
       }
     }
@@ -82,70 +130,7 @@ impl Manifest {
     Err(ManifestError::CouldNotResolve(path.to_string()))
   }
 
-  /// Returns the virtual path of every artifact this manifest knows about.
-  ///
-  /// An artifact is a registered source or an output some decode node declared,
-  /// however deeply that output sits below the source it came from. What is left
-  /// out is anything the manifest never declared: the parents a nested output
-  /// implies are navigation, and only exist as components of the paths returned
-  /// here.
-  ///
-  /// The decode cache is a separate thing and plays no part: an artifact is a
-  /// fact about the manifest whether or not a decode has ever been replayed, so
-  /// the cache may be empty, stale, or cleaned and this still answers in full.
-  ///
-  /// The list is sorted and free of duplicates, since sources and decode nodes
-  /// are held in hash maps whose iteration order is not part of the manifest's
-  /// meaning.
-  pub(crate) fn artifacts(&self) -> Vec<VirtualPath> {
-    let mut paths: Vec<String> = self
-      .sources
-      .keys()
-      .filter_map(|source| source.to_str())
-      .map(ToOwned::to_owned)
-      .collect();
-
-    let mut collect = |path: &str| paths.push(path.to_owned());
-
-    for (source, decodes) in &self.decodes {
-      for decode in decodes {
-        decode.visit_paths(source, &mut collect);
-      }
-    }
-
-    paths.sort();
-    paths.dedup();
-
-    // A path naming no virtual path is dropped. Every one here is built from a
-    // source name and the output names recorded under it, so this only ever
-    // drops a hand-edited manifest.
-    paths
-      .iter()
-      .filter_map(|path| VirtualPath::new(path).ok())
-      .collect()
-  }
-
-  pub(crate) fn decodes(&self) -> Vec<VirtualPath> {
-    let mut paths = Vec::new();
-    let mut collect = |path: &str| paths.push(path.to_owned());
-
-    for (source, decodes) in &self.decodes {
-      for decode in decodes {
-        collect(source);
-        decode.visit_decodes(source, &mut collect);
-      }
-    }
-
-    paths.sort();
-    paths.dedup();
-
-    paths
-      .iter()
-      .filter_map(|path| VirtualPath::new(path).ok())
-      .collect()
-  }
-
-  pub(crate) fn decodes_for(&self, path: &VirtualPath) -> Result<&[DecodeNode], ManifestError> {
+  pub(crate) fn decodes_at(&self, path: &VirtualPath) -> Result<&[DecodeNode], ManifestError> {
     let (source, remaining) = self
       .split_source(path)
       .ok_or_else(|| ManifestError::CouldNotResolve(path.to_string()))?;
@@ -158,38 +143,6 @@ impl Manifest {
     Ok(node.decodes.get(output).map(Vec::as_slice).unwrap_or(&[]))
   }
 
-  /// Returns the virtual path of every artifact declared as an override.
-  ///
-  /// The manifest is the only thing consulted: overrides are read from the
-  /// `overrides` names local to each decode node, and neither the cache nor the
-  /// workspace is looked at, so a listing never depends on the physical files
-  /// existing. An artifact nested below a decode node is reported under its full
-  /// virtual path, implicit parents included.
-  ///
-  /// The list is sorted and free of duplicates, because sources and decode nodes
-  /// are stored in hash maps and their iteration order is not part of the
-  /// manifest's meaning.
-  pub(crate) fn overrides(&self) -> Vec<VirtualPath> {
-    let mut paths = Vec::new();
-    let mut collect = |path: &str| paths.push(path.to_owned());
-
-    for (source, decodes) in &self.decodes {
-      for decode in decodes {
-        decode.visit_overrides(source, &mut collect);
-      }
-    }
-
-    paths.sort();
-    paths.dedup();
-
-    // A path naming no virtual path is dropped, for the same reason as in
-    // `artifacts`: the names come from the manifest, not from anywhere else.
-    paths
-      .iter()
-      .filter_map(|path| VirtualPath::new(path).ok())
-      .collect()
-  }
-
   /// Returns whether the artifact at the given virtual path is declared as an
   /// override.
   ///
@@ -198,6 +151,20 @@ impl Manifest {
     self
       .resolve_virtual_path(path)
       .is_ok_and(|(node, output)| node.has_override_for(output))
+  }
+
+  #[allow(dead_code)]
+  pub(crate) fn has_decodes(&self, path: &VirtualPath) -> bool {
+    self
+      .decodes_at(path)
+      .is_ok_and(|decodes| !decodes.is_empty())
+  }
+
+  #[allow(dead_code)]
+  pub(crate) fn is_terminal(&self, path: &VirtualPath) -> bool {
+    self
+      .resolve_virtual_path(path)
+      .is_ok_and(|(node, output)| node.is_terminal_output(output))
   }
 
   /// Resolves a virtual path to the decode node that produced the artifact, and
@@ -224,7 +191,7 @@ impl Manifest {
     }
 
     for decode in self.decodes.get(&source).map(Vec::as_slice).unwrap_or(&[]) {
-      if let Some(producer) = decode.resolve_output(&remaining) {
+      if let Some(producer) = decode.decode_at(&remaining) {
         return Ok(producer);
       }
     }
@@ -332,7 +299,7 @@ impl Manifest {
       .map(Codec::kind)
       .ok_or_else(|| AppError::CodecUnavailable(codec_id.clone()))?;
 
-    let decodes = self.get_or_create_decodes_mut(path)?;
+    let decodes = self.decodes_at(path)?;
 
     let recorded: Vec<Option<CodecKind>> = decodes
       .iter()
@@ -445,7 +412,7 @@ impl Manifest {
       }
     }
 
-    decodes.push(DecodeNode {
+    self.decodes_at_mut(path)?.push(DecodeNode {
       name,
       codec: CodecNode {
         id: codec_id,
@@ -472,70 +439,42 @@ impl Manifest {
     path: &VirtualPath,
     name: Option<&str>,
   ) -> Result<DecodeNode, AppError> {
-    let (source, remaining) = self
-      .split_source(path)
-      .ok_or_else(|| ManifestError::NoDecode(path.to_string()))?;
+    let path_str = path.to_string();
+    let decodes = self.decodes_at_mut(path)?;
 
-    let Some(decodes) = self.decodes.get_mut(&source) else {
-      return Err(ManifestError::NoDecode(path.to_string()).into());
+    let index = match name {
+      Some(name) => decodes
+        .iter()
+        .position(|decode| decode.name == name)
+        .ok_or_else(|| ManifestError::DecodeNotFound(name.to_owned(), path_str.clone()))?,
+      None => match decodes.len() {
+        0 => return Err(ManifestError::NoDecode(path_str).into()),
+        1 => 0,
+        _ => return Err(ManifestError::DecodeNameRequired(path_str).into()),
+      },
     };
 
-    let removed = match remaining.is_empty() {
-      true => remove_from_decodes(decodes, name, &path.to_string())?,
-      false => {
-        let mut removed = None;
-
-        for decode in decodes.iter_mut() {
-          if let Some(node) = decode.remove_decode_mut(&remaining, name, &path.to_string())? {
-            removed = Some(node);
-            break;
-          }
-        }
-
-        removed
-      }
-    };
-
-    let Some(node) = removed else {
-      return Err(ManifestError::NoDecode(path.to_string()).into());
-    };
-
-    // A source with no decodes left needs no bucket of its own. Nested buckets
-    // are dropped by `remove_decode_mut` as they empty.
-    if remaining.is_empty() && decodes.is_empty() {
-      self.decodes.remove(&source);
+    if decodes[index].has_child_decodes() {
+      return Err(ManifestError::DecodeNotTerminal(decodes[index].name.clone(), path_str).into());
     }
 
-    Ok(node)
+    let removed = decodes.remove(index);
+
+    if decodes.is_empty() {
+      let (source, remaining) = self
+        .split_source(path)
+        .ok_or_else(|| ManifestError::CouldNotResolve(path.to_string()))?;
+
+      if remaining.is_empty() {
+        self.decodes.remove(&source);
+      } else {
+        let (producer, output) = self.resolve_virtual_path_mut(path)?;
+        producer.decodes.remove(&output);
+      }
+    }
+
+    Ok(removed)
   }
-}
-
-/// Selects and removes a terminal decode from a bucket.
-fn remove_from_decodes(
-  decodes: &mut Vec<DecodeNode>,
-  name: Option<&str>,
-  path: &str,
-) -> Result<Option<DecodeNode>, ManifestError> {
-  let index = match name {
-    Some(name) => decodes
-      .iter()
-      .position(|decode| decode.name == name)
-      .ok_or_else(|| ManifestError::DecodeNotFound(name.to_owned(), path.to_owned()))?,
-    None => match decodes.len() {
-      0 => return Ok(None),
-      1 => 0,
-      _ => return Err(ManifestError::DecodeNameRequired(path.to_owned())),
-    },
-  };
-
-  if decodes[index].has_child_decodes() {
-    return Err(ManifestError::DecodeNotTerminal(
-      decodes[index].name.clone(),
-      path.to_owned(),
-    ));
-  }
-
-  Ok(Some(decodes.remove(index)))
 }
 
 #[cfg(test)]

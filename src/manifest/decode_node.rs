@@ -1,3 +1,4 @@
+use super::WalkTarget;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -76,106 +77,24 @@ impl DecodeNode {
     self.decodes.values().any(|decodes| !decodes.is_empty())
   }
 
-  /// Removes a decode at `remaining`, returning the removed node if found.
-  ///
-  /// Empty decode buckets are pruned.
-  pub(crate) fn remove_decode_mut(
-    &mut self,
-    remaining: &[&str],
-    name: Option<&str>,
-    path: &str,
-  ) -> Result<Option<DecodeNode>, super::errors::ManifestError> {
-    let Some(output) = self.producing_output(remaining).map(str::to_owned) else {
-      return Ok(None);
-    };
+  pub(super) fn visit_into(&self, prefix: &str, target: WalkTarget, paths: &mut Vec<String>) {
+    for output in &self.outputs {
+      let path = format!("{prefix}/{output}");
+      let nested = self.decodes.get(output);
 
-    let rest = &remaining[components_of(&output).len()..];
-
-    if rest.is_empty() {
-      let Some(decodes) = self.decodes.get_mut(&output) else {
-        return Ok(None);
+      let include = match target {
+        WalkTarget::Paths => true,
+        WalkTarget::Decodes => nested.is_some_and(|nodes| !nodes.is_empty()),
+        WalkTarget::Overrides => self.overrides.contains(output),
       };
 
-      let removed = super::remove_from_decodes(decodes, name, path)?;
-
-      if decodes.is_empty() {
-        self.decodes.remove(&output);
+      if include {
+        paths.push(path.clone());
       }
 
-      return Ok(removed);
-    }
-
-    let Some(decodes) = self.decodes.get_mut(&output) else {
-      return Ok(None);
-    };
-
-    for decode in decodes {
-      if let Some(removed) = decode.remove_decode_mut(rest, name, path)? {
-        return Ok(Some(removed));
-      }
-    }
-
-    Ok(None)
-  }
-
-  /// Visits every output this decode node declares, and every output the decodes
-  /// hanging off those declare in turn, depth first and in declaration order.
-  ///
-  /// `prefix` is the virtual path the outputs sit under, and `visit` is handed
-  /// each output's full virtual path.
-  ///
-  /// Only outputs are visited. The parents an output name implies are navigation
-  /// rather than artifacts of their own, so `data` is not visited on account of
-  /// some other node producing `data/gfx/head.bin` below it.
-  pub(crate) fn visit_paths(&self, prefix: &str, visit: &mut impl FnMut(&str)) {
-    for output in &self.outputs {
-      let path = format!("{prefix}/{output}");
-
-      visit(&path);
-
-      if let Some(nested) = self.decodes.get(output) {
+      if let Some(nested) = nested {
         for decode in nested {
-          decode.visit_paths(&path, visit);
-        }
-      }
-    }
-  }
-
-  /// Visits the paths of artifacts with attached decodes, including nested ones.
-  pub(crate) fn visit_decodes(&self, prefix: &str, visit: &mut impl FnMut(&str)) {
-    for output in &self.outputs {
-      let path = format!("{prefix}/{output}");
-
-      if let Some(nested) = self.decodes.get(output) {
-        if !nested.is_empty() {
-          visit(&path);
-        }
-
-        for decode in nested {
-          decode.visit_decodes(&path, visit);
-        }
-      }
-    }
-  }
-
-  /// Visits only the outputs this decode node and the decodes hanging off those
-  /// declare as overrides, traversing exactly as [`Self::visit_paths`] does.
-  ///
-  /// Whether an output is an override is the producing node's to say: a node
-  /// naming a nested artifact it did not produce overrides nothing.
-  pub(crate) fn visit_overrides(&self, prefix: &str, visit: &mut impl FnMut(&str)) {
-    for output in &self.outputs {
-      let path = format!("{prefix}/{output}");
-
-      if self.overrides.contains(output) {
-        visit(&path);
-      }
-
-      // Being overridden says nothing about what hangs below the output, so the
-      // descent happens either way.
-      if let Some(nested) = self.decodes.get(output) {
-        for decode in nested {
-          decode.visit_overrides(&path, visit);
+          decode.visit_into(&path, target, paths);
         }
       }
     }
@@ -201,32 +120,20 @@ impl DecodeNode {
   /// This distinction ensures that decode buckets may be created lazily without
   /// allowing arbitrary virtual paths to create artifacts that were never
   /// produced by a decoder.
-  pub(crate) fn get_or_create_decodes_mut(
-    &mut self,
-    remaining: &[&str],
-  ) -> Option<&mut Vec<DecodeNode>> {
-    for output in &self.outputs {
-      let output_components: Vec<&str> = output.split('/').collect();
+  pub(super) fn decodes_at_mut(&mut self, remaining: &[&str]) -> Option<&mut Vec<DecodeNode>> {
+    let output = self.producing_output(remaining)?.to_owned();
+    let rest = &remaining[components_of(&output).len()..];
 
-      if !remaining.starts_with(&output_components) {
-        continue;
+    if rest.is_empty() {
+      return Some(self.decodes.entry(output).or_default());
+    }
+
+    let decodes = self.decodes.get_mut(&output)?;
+
+    for decode in decodes {
+      if let Some(decodes) = decode.decodes_at_mut(rest) {
+        return Some(decodes);
       }
-
-      let remaining = &remaining[output_components.len()..];
-
-      if remaining.is_empty() {
-        return Some(self.decodes.entry(output.clone()).or_default());
-      }
-
-      let decodes = self.decodes.get_mut(output)?;
-
-      for decode in decodes {
-        if let Some(decodes) = decode.get_or_create_decodes_mut(remaining) {
-          return Some(decodes);
-        }
-      }
-
-      return None;
     }
 
     None
@@ -234,25 +141,7 @@ impl DecodeNode {
 
   /// Resolves the decode node that produced an artifact for a path relative to
   /// this decode node.
-  ///
-  /// An output name can hold several `/`-separated components, and two outputs of
-  /// the same node may share a prefix: `data` and `data/head.bin` can both be
-  /// produced here, which leaves `data/head.bin` with two readings. An output
-  /// matching the path outright wins over one it merely continues past, so the
-  /// path resolves to the artifact this node produced rather than to whatever
-  /// hangs below the output it starts with. That holds however the outputs happen
-  /// to be declared.
-  ///
-  /// # Returns
-  ///
-  /// - `Some((node, output))` when `remaining` resolves to an output of this
-  ///   node, `output` being the name of that output and `node` the decode node
-  ///   producing it.
-  /// - `None` when no output in this branch can resolve `remaining`.
-  pub(crate) fn resolve_output<'s>(
-    &'s self,
-    remaining: &[&str],
-  ) -> Option<(&'s DecodeNode, &'s str)> {
+  pub(super) fn decode_at<'s>(&'s self, remaining: &[&str]) -> Option<(&'s DecodeNode, &'s str)> {
     let output = self.producing_output(remaining)?;
 
     if components_of(output).as_slice() == remaining {
@@ -265,7 +154,7 @@ impl DecodeNode {
     let nested = &remaining[components_of(output).len()..];
 
     for decode in decodes {
-      if let Some(producer) = decode.resolve_output(nested) {
+      if let Some(producer) = decode.decode_at(nested) {
         return Some(producer);
       }
     }
@@ -275,18 +164,6 @@ impl DecodeNode {
 
   /// Resolves the decode node that produced an artifact for a path relative to
   /// this decode node, for callers holding a unique borrow of that node.
-  ///
-  /// This mirrors [`Self::resolve_output`] in every respect, down to the branch
-  /// both of them settle on, handing the output name back by value so that the
-  /// decode node stays exclusively borrowed and can be amended afterwards. Like
-  /// [`Self::get_or_create_decodes_mut`], it never creates a decode bucket.
-  ///
-  /// # Returns
-  ///
-  /// - `Some((node, output))` when `remaining` resolves to an output of this
-  ///   node, `output` being the name of that output and `node` the decode node
-  ///   producing it.
-  /// - `None` when no output in this branch can resolve `remaining`.
   pub(crate) fn resolve_output_mut(
     &mut self,
     remaining: &[&str],
@@ -465,7 +342,7 @@ mod tests {
   fn resolves_an_output_of_the_node_itself() {
     let tree = nested_tree();
 
-    let (producer, output) = tree.resolve_output(&components("bank.bin")).unwrap();
+    let (producer, output) = tree.decode_at(&components("bank.bin")).unwrap();
 
     assert_eq!(output, "bank.bin");
     assert_eq!(producer.name, "bank");
@@ -475,9 +352,7 @@ mod tests {
   fn resolves_an_output_produced_by_a_nested_decode() {
     let tree = nested_tree();
 
-    let (producer, output) = tree
-      .resolve_output(&components("bank.bin/pal.bin"))
-      .unwrap();
+    let (producer, output) = tree.decode_at(&components("bank.bin/pal.bin")).unwrap();
 
     // The producer is the node that made the artifact, not the one that made its
     // parent.
@@ -490,7 +365,7 @@ mod tests {
     let tree = nested_tree();
 
     let (producer, output) = tree
-      .resolve_output(&components("bank.bin/pal.bin/entry.txt"))
+      .decode_at(&components("bank.bin/pal.bin/entry.txt"))
       .unwrap();
 
     assert_eq!(output, "entry.txt");
@@ -503,9 +378,7 @@ mod tests {
     // the whole of it is consumed before the search descends any further.
     let tree = node("nested", &["data/gfx/head.bin"], &["data/gfx/head.bin"]);
 
-    let (producer, output) = tree
-      .resolve_output(&components("data/gfx/head.bin"))
-      .unwrap();
+    let (producer, output) = tree.decode_at(&components("data/gfx/head.bin")).unwrap();
 
     assert_eq!(output, "data/gfx/head.bin");
     assert_eq!(producer.name, "nested");
@@ -521,7 +394,7 @@ mod tests {
       )],
     );
     let (producer, output) = tree
-      .resolve_output(&components("data/gfx/head.bin/tail.bin"))
+      .decode_at(&components("data/gfx/head.bin/tail.bin"))
       .unwrap();
 
     assert_eq!(output, "tail.bin");
@@ -594,7 +467,7 @@ mod tests {
       let tree = ambiguous();
       let mut tree_mut = ambiguous();
 
-      let expected = tree.resolve_output(&components(path));
+      let expected = tree.decode_at(&components(path));
       let actual = tree_mut.resolve_output_mut(&components(path));
 
       match (expected, actual) {
@@ -617,14 +490,10 @@ mod tests {
 
     // The output was consumed in full, so what follows is not a continuation of
     // the artifact but an unknown path.
-    assert!(
-      tree
-        .resolve_output(&components("head.bin/tail.bin"))
-        .is_none()
-    );
-    assert!(tree.resolve_output(&components("head")).is_none());
-    assert!(tree.resolve_output(&components("missing.bin")).is_none());
-    assert!(tree.resolve_output(&[]).is_none());
+    assert!(tree.decode_at(&components("head.bin/tail.bin")).is_none());
+    assert!(tree.decode_at(&components("head")).is_none());
+    assert!(tree.decode_at(&components("missing.bin")).is_none());
+    assert!(tree.decode_at(&[]).is_none());
   }
 
   #[test]
@@ -632,7 +501,7 @@ mod tests {
     let tree = node("bank", &["head.bin"], &[]);
 
     // An artifact nobody decodes is a leaf, whatever else the tree holds.
-    assert!(tree.resolve_output(&components("missing.bin")).is_none());
+    assert!(tree.decode_at(&components("missing.bin")).is_none());
   }
 
   #[test]
@@ -648,7 +517,7 @@ mod tests {
     );
 
     assert_eq!(
-      tree.resolve_output(&components("head.bin")).unwrap().1,
+      tree.decode_at(&components("head.bin")).unwrap().1,
       "head.bin"
     );
   }
@@ -667,7 +536,7 @@ mod tests {
       "bank.bin/pal.bin/entry.txt",
     ] {
       let expected = nested_tree()
-        .resolve_output(&components(path))
+        .decode_at(&components(path))
         .map(|(node, output)| (node.name.clone(), output.to_owned()));
       let actual = tree
         .resolve_output_mut(&components(path))
