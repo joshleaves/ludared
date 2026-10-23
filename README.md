@@ -23,7 +23,7 @@ ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain
 
 - [x] `decode`
   - [x] `add <PATH> <CODEC> [ARGS] [--name NAME]` - Add a decode step
-  - [ ] `list <PATH>` - List decode steps on a node
+  - [x] `list <PATH>` - List decode steps on a node
   - [x] `remove <PATH> [NAME] [--clean]` - Remove a terminal decode step
 
 - [x] `unpack` - Execute the manifest's full decode pipeline
@@ -41,12 +41,11 @@ ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain
   - [x] `refresh <VPATH>` - Rewrites an overridden artifact with its canonical bytes
   - [x] `remove <VPATH> [--clean]` - Deactivates an override, optionally deleting its workspace file
 
-- [x] `build` - Run the manifest to produce build(s) from the source(s)
+- [x] `build [SOURCE]` - Run the manifest to produce build(s) from the source(s)
+- [ ] `patch [SOURCE] [--format ips|bps|xdelta]` - Builds, and produces a patch against source 
 
 - [x] `doctor` - Verify project configuration and source files
 - [x] `clean` - Remove generated build and cache artifacts
-
-- [ ] `patch [--format ips|bps|xdelta]` - Builds, and produces a patch against source 
 
 - [x] `completions` - Generate completions for your shell
 
@@ -57,19 +56,20 @@ ludared provides dynamic shell completions, including project-aware completion f
 Use `ludared completions [SHELL] | source`. If you don't provide a shell, it will be identified best-effort from your `$SHELL` environment variable.
 
 ### Available completions
-- [x] `codecs info <CODEC: complete_codecs_list>`
-- [x] `sources add <FILE: complete_source_add>`
-- [x] `sources remove <FILE: complete_source_remove>`
-- [x] `decode add <PATH: complete_artifacts_decodable> <CODEC: complete_codecs_list>`
-- [x] `decode remove <PATH: complete_artifacts_decoded> [NAME]`
-- [x] `artifacts list [PATH: complete_artifacts_listing]`
-- [x] `cache path [PATH: complete_artifacts_listing]`
-- [x] `cache cat [PATH: complete_artifacts_listing]`
-- [x] `override list [PATH: complete_override_listing]`
-- [x] `override add <PATH: complete_override_addable>`
-- [x] `override refresh <PATH: complete_override_active>`
-- [x] `override remove <PATH: complete_override_active>`
-- [x] `build [SOURCE: complete_source_remove]`
+- [x] `codecs info <CODEC: completion_codecs_list>`
+- [x] `sources add <FILE: completion_sources_available>`
+- [x] `sources remove <FILE: completion_sources_list>`
+- [x] `decode add <PATH: completion_artifacts_decodable> <CODEC: completion_codecs_list>`
+- [x] `decode remove <PATH: completion_artifacts_decoded> [NAME]`
+- [x] `artifacts list [PATH: completion_artifacts_list]`
+- [x] `cache path [PATH: completion_artifacts_list]`
+- [x] `cache cat [PATH: completion_artifacts_list]`
+- [x] `override list [PATH: completion_override_list]`
+- [x] `override add <PATH: completion_override_addable>`
+- [x] `override refresh <PATH: completion_override_active>`
+- [x] `override remove <PATH: completion_override_active>`
+- [x] `build [SOURCE: completion_sources_list]`
+- [x] `patch [SOURCE: completion_sources_list]`
 
 ## Available codecs
 

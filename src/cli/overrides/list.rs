@@ -3,7 +3,7 @@ use log::*;
 use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
 
-use crate::cli::completions::overrides::complete_override_listing;
+use crate::cli::completions::overrides::completion_override_list;
 use crate::cli::listing;
 use crate::errors::app_error::AppError;
 use crate::project::Project;
@@ -15,7 +15,7 @@ pub(crate) struct OverrideListArgs {
   ///
   /// The path is matched against whole components, so a parent that overrides sit
   /// under filters them all, whether or not it is an artifact of its own.
-  #[arg(value_name = "PATH", add = ArgValueCompleter::new(complete_override_listing))]
+  #[arg(value_name = "PATH", add = ArgValueCompleter::new(completion_override_list))]
   virtual_path: Option<String>,
 
   /// Display the overrides as a tree

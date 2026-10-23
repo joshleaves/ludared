@@ -2,7 +2,7 @@ use crate::project::Project;
 use clap_complete::engine::CompletionCandidate;
 use std::path::PathBuf;
 
-pub(crate) fn complete_source_add(current: &std::ffi::OsStr) -> Vec<CompletionCandidate> {
+pub(crate) fn completion_sources_available(current: &std::ffi::OsStr) -> Vec<CompletionCandidate> {
   let Ok(project) = Project::load_default() else {
     return Vec::new();
   };
@@ -20,7 +20,7 @@ pub(crate) fn complete_source_add(current: &std::ffi::OsStr) -> Vec<CompletionCa
     .collect()
 }
 
-pub(crate) fn complete_source_remove(current: &std::ffi::OsStr) -> Vec<CompletionCandidate> {
+pub(crate) fn completion_sources_list(current: &std::ffi::OsStr) -> Vec<CompletionCandidate> {
   let Ok(project) = Project::load_default() else {
     return Vec::new();
   };

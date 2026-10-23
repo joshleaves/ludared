@@ -3,7 +3,7 @@ use log::*;
 use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
 
-use crate::cli::completions::overrides::complete_override_active;
+use crate::cli::completions::overrides::completion_override_active;
 use crate::errors::app_error::AppError;
 use crate::project::Project;
 use crate::project::overrides::errors::OverrideError;
@@ -12,7 +12,7 @@ use crate::virtual_path::VirtualPath;
 #[derive(Args)]
 pub(crate) struct OverrideRemoveArgs {
   /// Virtual path of the artifact to stop overriding
-  #[arg(value_name = "PATH", add = ArgValueCompleter::new(complete_override_active))]
+  #[arg(value_name = "PATH", add = ArgValueCompleter::new(completion_override_active))]
   virtual_path: String,
 
   /// Delete the workspace file backing the artifact

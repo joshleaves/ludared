@@ -1,7 +1,7 @@
 use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
 
-use crate::cli::completions::artifacts::complete_artifacts_decoded;
+use crate::cli::completions::artifacts::completion_artifacts_decoded;
 use crate::errors::app_error::AppError;
 use crate::project::Project;
 use crate::virtual_path::VirtualPath;
@@ -9,7 +9,7 @@ use crate::virtual_path::VirtualPath;
 #[derive(Args)]
 pub(crate) struct DecodeRemoveArgs {
   /// Virtual path of the artifact whose decode to remove
-  #[arg(value_name = "PATH", add = ArgValueCompleter::new(complete_artifacts_decoded))]
+  #[arg(value_name = "PATH", add = ArgValueCompleter::new(completion_artifacts_decoded))]
   virtual_path: String,
 
   /// Name of the decode to remove

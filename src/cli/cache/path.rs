@@ -3,7 +3,7 @@ use log::*;
 use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
 
-use crate::cli::completions::artifacts::complete_artifacts_listing;
+use crate::cli::completions::artifacts::completion_artifacts_list;
 
 use crate::errors::app_error::AppError;
 use crate::project::Project;
@@ -13,7 +13,7 @@ use crate::virtual_path::VirtualPath;
 #[derive(Args)]
 pub(crate) struct CachePathArgs {
   /// Virtual path
-  #[arg(value_name = "PATH", add = ArgValueCompleter::new(complete_artifacts_listing))]
+  #[arg(value_name = "PATH", add = ArgValueCompleter::new(completion_artifacts_list))]
   virtual_path: String,
 }
 

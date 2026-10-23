@@ -3,8 +3,8 @@ use clap_complete::engine::ArgValueCompleter;
 
 use std::path::{Path, PathBuf};
 
-use crate::cli::completions::artifacts::complete_artifacts_decodable;
-use crate::cli::completions::codecs::complete_codecs_list;
+use crate::cli::completions::artifacts::completion_artifacts_decodable;
+use crate::cli::completions::codecs::completion_codecs_list;
 use crate::codecs::CodecHandlingConfidence;
 use crate::errors::app_error::AppError;
 use crate::project::Project;
@@ -13,11 +13,11 @@ use crate::virtual_path::VirtualPath;
 #[derive(Args)]
 pub(crate) struct DecodeAddArgs {
   /// Virtual path
-  #[arg(value_name = "PATH", add = ArgValueCompleter::new(complete_artifacts_decodable))]
+  #[arg(value_name = "PATH", add = ArgValueCompleter::new(completion_artifacts_decodable))]
   virtual_path: String,
 
   /// Codec name
-  #[arg(add = ArgValueCompleter::new(complete_codecs_list))]
+  #[arg(add = ArgValueCompleter::new(completion_codecs_list))]
   codec: String,
 
   /// Codec args

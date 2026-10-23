@@ -3,7 +3,7 @@ use clap_complete::engine::ArgValueCompleter;
 use log::*;
 use std::path::{Path, PathBuf};
 
-use crate::cli::completions::sources::complete_source_remove;
+use crate::cli::completions::sources::completion_sources_list;
 use crate::errors::app_error::AppError;
 use crate::project::Project;
 use crate::virtual_path::VirtualPath;
@@ -12,7 +12,7 @@ use crate::virtual_path::errors::VirtualPathError;
 #[derive(Args)]
 pub(crate) struct BuildArgs {
   /// Source to build; every registered source when omitted
-  #[arg(value_name = "SOURCE", add = ArgValueCompleter::new(complete_source_remove))]
+  #[arg(value_name = "SOURCE", add = ArgValueCompleter::new(completion_sources_list))]
   source: Option<String>,
 }
 

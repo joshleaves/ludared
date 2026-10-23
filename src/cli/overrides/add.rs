@@ -1,7 +1,7 @@
 use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
 
-use crate::cli::completions::overrides::complete_override_addable;
+use crate::cli::completions::overrides::completion_override_addable;
 use crate::errors::app_error::AppError;
 use crate::project::Project;
 use crate::virtual_path::VirtualPath;
@@ -9,7 +9,7 @@ use crate::virtual_path::VirtualPath;
 #[derive(Args)]
 pub(crate) struct OverrideAddArgs {
   /// Virtual path of the decoded artifact to override
-  #[arg(value_name = "PATH", add = ArgValueCompleter::new(complete_override_addable))]
+  #[arg(value_name = "PATH", add = ArgValueCompleter::new(completion_override_addable))]
   virtual_path: String,
 
   /// Replace a workspace file that is not the output of an active override

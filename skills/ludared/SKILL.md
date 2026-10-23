@@ -162,7 +162,7 @@ ludared clean --dry-run
 
 ## Invariants and pitfalls
 
-- **Use the CLI to modify the manifest** where supported: source registration, `decode add`/`decode remove`, and override operations validate names, duplicates, and declarations. `decode list` is not available in the documented CLI.
+- **Use the CLI to modify the manifest** where supported: source registration, `decode add`/`decode list`/`decode remove`, and override operations validate names, duplicates, and declarations. `decode list <PATH>` lists the decodes directly attached to a virtual artifact.
 - **The manifest is JSON**, despite its `.ludared` extension.
 - **SHA-256 checks** protect registered sources during source-level `decode add`, `unpack`, `build`, and `doctor`.
 - **Only declared overrides matter.** An undeclared workspace file is ignored by `build`; `override remove` leaves its file unless `--clean` is used.

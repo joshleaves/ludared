@@ -1,7 +1,7 @@
 use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
 
-use crate::cli::completions::overrides::complete_override_active;
+use crate::cli::completions::overrides::completion_override_active;
 use crate::errors::app_error::AppError;
 use crate::project::Project;
 use crate::virtual_path::VirtualPath;
@@ -13,7 +13,7 @@ pub(crate) struct OverrideRefreshArgs {
   /// This rewrites the workspace file from the decode cache, discarding every
   /// local modification to it and recreating it if it was deleted. Nothing is
   /// asked for confirmation.
-  #[arg(value_name = "PATH", add = ArgValueCompleter::new(complete_override_active))]
+  #[arg(value_name = "PATH", add = ArgValueCompleter::new(completion_override_active))]
   virtual_path: String,
 }
 

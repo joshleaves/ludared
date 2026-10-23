@@ -3,7 +3,7 @@ use crate::virtual_path::VirtualPath;
 use clap_complete::engine::CompletionCandidate;
 use std::ffi::OsStr;
 
-pub(crate) fn complete_override_listing(current: &OsStr) -> Vec<CompletionCandidate> {
+pub(crate) fn completion_override_list(current: &OsStr) -> Vec<CompletionCandidate> {
   let Ok(project) = Project::load_default() else {
     return Vec::new();
   };
@@ -32,7 +32,7 @@ pub(crate) fn complete_override_listing(current: &OsStr) -> Vec<CompletionCandid
     .collect()
 }
 
-pub(crate) fn complete_override_addable(current: &OsStr) -> Vec<CompletionCandidate> {
+pub(crate) fn completion_override_addable(current: &OsStr) -> Vec<CompletionCandidate> {
   let Ok(project) = Project::load_default() else {
     return Vec::new();
   };
@@ -61,7 +61,7 @@ pub(crate) fn complete_override_addable(current: &OsStr) -> Vec<CompletionCandid
     .collect()
 }
 
-pub(crate) fn complete_override_active(current: &OsStr) -> Vec<CompletionCandidate> {
+pub(crate) fn completion_override_active(current: &OsStr) -> Vec<CompletionCandidate> {
   let Ok(project) = Project::load_default() else {
     return Vec::new();
   };

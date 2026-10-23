@@ -145,6 +145,19 @@ impl Manifest {
       .collect()
   }
 
+  pub(crate) fn decodes_for(&self, path: &VirtualPath) -> Result<&[DecodeNode], ManifestError> {
+    let (source, remaining) = self
+      .split_source(path)
+      .ok_or_else(|| ManifestError::CouldNotResolve(path.to_string()))?;
+
+    if remaining.is_empty() {
+      return Ok(self.decodes.get(&source).map(Vec::as_slice).unwrap_or(&[]));
+    }
+
+    let (node, output) = self.resolve_virtual_path(path)?;
+    Ok(node.decodes.get(output).map(Vec::as_slice).unwrap_or(&[]))
+  }
+
   /// Returns the virtual path of every artifact declared as an override.
   ///
   /// The manifest is the only thing consulted: overrides are read from the
