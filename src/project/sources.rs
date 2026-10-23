@@ -1,6 +1,7 @@
 use crate::errors::app_error::AppError;
 use crate::source::Source;
-
+use crate::virtual_path::VirtualPath;
+use log::*;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -58,10 +59,32 @@ impl Project {
   /// - the source is not present in the manifest;
   /// - the manifest cannot be written.
   pub(crate) fn remove_source(&mut self, source_name: &Path) -> Result<(), AppError> {
-    if self.manifest.sources.remove(source_name).is_none() {
+    let source = VirtualPath::new(&source_name.to_string_lossy())?;
+
+    if !self.manifest.sources.contains_key(source_name) {
       return Err(AppError::SourceNotFound(source_name.to_path_buf()));
-    };
+    }
+
+    // Collect cached artifacts before removing the decode tree.
+    let artifacts: Vec<_> = self
+      .manifest
+      .artifacts()
+      .into_iter()
+      .filter(|path| path != &source && path.is_within(&source))
+      .collect();
+
+    let source = source_name.to_string_lossy();
+    self.manifest.sources.remove(source_name);
+    self.manifest.decodes.remove(source.as_ref());
+
     self.save_manifest()?;
+
+    if let Err(err) = self.cache.remove_entries(&artifacts) {
+      warn!(
+        "Failed to clean cache for source '{}': {err}",
+        source_name.display()
+      );
+    }
 
     Ok(())
   }
