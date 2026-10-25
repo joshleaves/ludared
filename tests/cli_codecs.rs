@@ -609,18 +609,21 @@ std
 ├── generic
 │   ├── extract
 │   └── split
-└── nintendo
-    ├── 3ds
-    │   └── container
-    │       └── cci
-    └── snes
-        └── cart
-            ├── exhirom
-            ├── hirom
-            ├── lorom
-            ├── sa1
-            ├── sdd1
-            └── spc7110
+├── nintendo
+│   ├── 3ds
+│   │   └── container
+│   │       └── cci
+│   └── snes
+│       └── cart
+│           ├── exhirom
+│           ├── hirom
+│           ├── lorom
+│           ├── sa1
+│           ├── sdd1
+│           └── spc7110
+└── sega
+    └── compression
+        └── prs
 ";
 
   assert_eq!(tree, expected);
@@ -655,7 +658,7 @@ fn lists_the_builtin_codecs_without_a_scripts_directory() {
 
   // A project shipping no codec of its own is an ordinary one.
   assert!(!project.path("scripts").exists());
-  assert_eq!(listed_ids(&project).len(), 11);
+  assert_eq!(listed_ids(&project).len(), 12);
 }
 
 #[test]

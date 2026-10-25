@@ -17,5 +17,13 @@ The codec implementation was based on the following references:
 
 Those two are the definitive implementations.
 
+# Codec: `std/sega/compression/prs`
+
+As their GH description claims, indeed, the fastest PRS implementation in rust belongs to [Sewer56's prs-rs](https://github.com/Sewer56/prs-rs).
+
+While the codec's approach is different and independent (and in safe-Rust!), some tricks (notably contiguous storage of positions) were inspired by their algorithm. 
+
+Their crate is also included in the dev-dependencies to produce test fixtures, and double-check that our encodes can be decoded by another PRS decompressor.
+
 ***
 [^1]: Whom I hope I can one day call "peers".

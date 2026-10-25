@@ -75,6 +75,18 @@ I decided to throw [DeepSeek](https://en.wikipedia.org/wiki/DeepSeek) at it:
 - the TRUE value of that code resides in the labor of their [original](https://github.com/devkitPro/3dstools) [authors](https://github.com/ObsidianX/3dstools), not in me translating those algorithms to rust, for which I will NEVER ever pretend any ownership nor authorship (nor even "knowledge" lol). Plus I believe that's the kind of "tedious" work that's good to give to an LLM, since it won't be asked to make architectural decisions beyond the limited scope of a codec.
 - lol okay I won't even hide it, I just hate reading python.
 
+## Codec: `std/sega/compression/prs`
+* Done by: `DeepSeek` for the Lua code, with `ChatGPT 6` rewrite in Rust
+
+The [Sakura Wars FR project](https://github.com/sakurayaku/re.sakurataisen) is advancing well, with a port of the original US team's code to lua (by DeepSeek) to integrate as scripts (since their algorithms can't justify an `std/` codec). However, after a few graphical integrations, it appeared that the [PRS Compression](https://segaretro.org/PRS_compression) was very slow, accumulating to 25 seconds for a single build[^incremental-builds].
+
+I wrote a harness to see what was happening, then asked [ChatGPT](https://en.wikipedia.org/wiki/ChatGPT) for a rust port, and improvements:
+- My first instinct was to use [prs-rs](https://github.com/Sewer56/prs-rs), but the code was using custom allocators, and [unsafe code](https://doc.rust-lang.org/book/ch20-01-unsafe-rust.html), which are things I do not want to touch if I can avoid them[^unsafe].
+- The point of [SakuraYaku](https://github.com/sakurayaku/re.sakurataisen) is not to re-do the (great!) work that has already been done.
+- Again, porting algorithms is the kind of task an LLM is good at.
+- Making an agent work on the codec allowed me to take the time to extend the Lua codec to give it access to the builtins from Lua scripts, making PRS decode/encode routines usable in Lua with the performance of Rust.
+- Giving the task (and the harness!) to [Codex](https://en.wikipedia.org/wiki/OpenAI_Codex) allowed it to quickly loop over the implementation to find ways improve its performance, getting us from 90ms to 2ms on some cases (when the original Lua was...six seconds).
+
 # LLM Restrictions
 
 As said earlier, LLMs are not given free reign over this codebase. There are even strict rules of what no LLM is allowed to do:
@@ -86,3 +98,5 @@ As said earlier, LLMs are not given free reign over this codebase. There are eve
 [^ai-llm]: I hate how the term “AI” has been taken over by LLMs. Sure, that's artificial, but the "intelligence" part is a marketing stretch: it's just [Markov chains](https://en.wikipedia.org/wiki/Markov_chain) on steroids, and we've had funnier ones [for years](https://en.wikipedia.org/wiki/Horse_ebooks).
 [^beauty]: You are welcome to disagree, and I'll be happy to discuss that, but you're not welcome to tell my wife is ugly and you'd have chosen another one.
 [^he-it]: My native language is french, and we don't have a "neutral" gender like the english "it". Therefore, I mostly think of things in "he or she", very rarely in "it". I try my best to always use "it" in this document, but were I to use an "he" to describe an LLM, please don't conflate it as me advocating for the "humanity" of LLMs. Nope, LLMs aren't human, just like my shell scripts are not conscious, and they have no rights beyond the `+x` I may bestow them.
+[^incremental-builds]: Incremental builds are coming at some point, I promise.
+[^unsafe]: I know [unsafe is not bad](https://medium.com/@daxx5/unsafe-rust-isnt-the-dark-side-it-s-the-only-reason-rust-works-1ac93fe32d31): like everything else, it's a tool. And because I know my tools, I know when they are suited, or not, to a precise task.

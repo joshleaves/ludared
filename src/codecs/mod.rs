@@ -22,12 +22,13 @@ macro_rules! debug_result {
   }};
 }
 
-pub(crate) mod cdrom;
+pub mod cdrom;
 pub mod errors;
-pub(crate) mod generic;
-pub(crate) mod nintendo;
-pub(crate) mod registry;
-pub(crate) mod scripts;
+pub mod generic;
+pub mod nintendo;
+pub mod registry;
+pub mod scripts;
+pub mod sega;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CodecHandlingConfidence {

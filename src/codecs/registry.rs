@@ -14,6 +14,7 @@ use crate::codecs::nintendo::snes::cart_sa1::SnesSa1Rom;
 use crate::codecs::nintendo::snes::cart_sdd1::SnesSdd1Rom;
 use crate::codecs::nintendo::snes::cart_spc7110::SnesSpc7110Rom;
 use crate::codecs::scripts::lua::LuaCodec;
+use crate::codecs::sega::compression::prs::PrsCompression;
 use crate::scripts::errors::ScriptError;
 use log::*;
 use std::path::PathBuf;
@@ -35,6 +36,7 @@ static BUILTINS: &[&dyn Codec] = &[
   &SnesSa1Rom,
   &SnesSdd1Rom,
   &SnesSpc7110Rom,
+  &PrsCompression,
 ];
 
 pub(crate) struct CodecRegistry {

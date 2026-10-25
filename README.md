@@ -108,6 +108,7 @@ A `Rebuild` codec consumes ALL of its input, so it is the only _decode_ that can
 - [x] `std/nintendo/snes/cart/spc7110`- Cut a SNES SPC7110 ROM into ROM banks
 - [x] `std/cdrom/iso9660` - Extract the filesystem of an ISO 9660 CD-ROM image
 - [x] `std/cdrom/mode2352` - Turn tracks with 2352-byte MODE1 sectors into a single ISO image artifact
+- [x] `std/sega/compression/prs` - Handles [PRS streams](https://segaretro.org/PRS_compression)
 
 ### Patch codecs
 Multiple `Patch` codecs can be ran against a single artefact, as each will take a part. The ludared engine guarantees they are always ran in the manifest definition order.
@@ -134,6 +135,7 @@ All codecs **MUST** support round-tripping: they can `decode` content and `encod
 | `std/nintendo/snes/cart/spc7110` | N/A | N/A |
 | `std/cdrom/iso9660` | ✅ | ✅ |
 | `std/cdrom/mode2352` | ✅ | ✅ |
+| `std/sega/compression/prs` | ❌ | ✅ |
 
 **Note:** `N/A` means the property has not yet been verified, not that the codec lacks it. A codec must pass the corresponding [E2E tests](src/testing/codecs/e2e/mod.rs) before claiming either guarantee.
 
