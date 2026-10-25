@@ -64,6 +64,15 @@ pub enum CodecKind {
   Patch,
 }
 
+impl std::fmt::Display for CodecKind {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      Self::Rebuild => write!(f, "Rebuild"),
+      Self::Patch => write!(f, "Patch"),
+    }
+  }
+}
+
 /// A named byte artifact produced by a codec.
 ///
 /// Names identify artifacts within a decode operation and allow

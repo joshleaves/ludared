@@ -1,57 +1,56 @@
 ---
 name: ludared-lua
-description: Implement, modify, review, debug, or test Lua codecs for Ludared projects. Use for Lua codec behavior, registration, decode/encode contracts, round-trip failures, and script-specific errors; not merely because a project contains Lua files.
+description: Implement, modify, review, debug, or test Lua codecs for Ludared projects. Use for Lua codec behavior, registration, decode/encode contracts, round-trip failures, builtin codec interop, and script-specific errors; not merely because a project contains Lua files.
 ---
 
 # Developing Ludared Lua codecs
 
-Use this skill for **codec development**, not ordinary work on a Ludared project. For the complete Lua module API, globals, signatures, and error messages, consult [`references/lua-api.md`](references/lua-api.md) before implementing or changing a codec. Check the current implementation when the reference and runtime disagree.
+Use this skill for **codec development**, not ordinary work on a Ludared project. Read [references/lua-api.md](references/lua-api.md) for the Lua module contract, globals, builtin codec handles, and examples. When source code and documentation disagree, inspect the current Rust implementation and follow it.
 
-You can also use `ludared codecs create [my-codec-name].lua` to create a skeleton codec in "{paths.scripts}/[my-codec-name].lua". Intermediate directories are created automatically. Paths are relative to paths.scripts. Components `..`, `shared`, and `libraries` are forbidden anywhere in the path.
+Generate a skeleton with `ludared codecs create my_codec.lua` when appropriate. The generated path is relative to `paths.scripts`; check the current CLI for filename restrictions.
 
 ## Mental model and contracts
 
-- A decode applies **one codec to one input** and records **one decode node with an ordered list of zero or more output artifacts**. A codec does not create other decode nodes or edit the manifest. Additional decode steps are declared separately through Ludared.
-- Outputs are returned as an **array of `{ name = ..., data = ... }` records**, not a map keyed by filename. The order is significant and is preserved for `encode`.
-- Output names are relative artifact paths: no leading `/`, `..`, duplicates, or ancestor/descendant conflicts between outputs of the same decode.
-- Lua codecs may read project-specific resources through `LUDARED.WORKSPACE`, including lookup tables, databases, and files from other branches. These reads can be untracked dependencies; document them. During `decode`, prefer stable, pristine reference data rather than workspace overrides whose presence or content can change.
-- Treat the workspace and project files as read-only during Ludared operations (a contract, not an enforced sandbox). Codecs must return generated artifacts rather than writing them to disk, and must not rely on mutations by other codecs. Independent branches have no guaranteed execution order; successive patches on the same node follow their declared order.
-- `kind = "rebuild"`: `encode` reconstructs the complete parent from its ordered outputs and receives an empty `original`. Think of rebuilding a ZIP from its extracted files.
-- `kind = "patch"`: `encode` receives the current parent bytes and returns them with targeted modifications, like applying an IPS-style patch. Successive patches on one node follow their declared order; do not assume an order between independent branches.
-- Unmodified artifacts should round-trip to the original bytes. Do not rely on persistent Lua state or execution timing. Validate the count, names, order, sizes, and consistency of artifacts received by `encode`: overrides may have changed them. Project-specific read-only resources are permitted; avoid volatile external inputs when reproducibility matters. Arguments are an opaque string (or `nil`) recorded by Ludared and passed to both operations.
+- One decode applies **one codec to one input** and records **one decode node with an ordered list of zero or more artifacts**. Codecs do not create other decode nodes or edit the manifest; additional steps are declared separately.
+- Return **ordered arrays** of `{ name = ..., data = ... }` records, never maps keyed by artifact name. This is also the representation exchanged with builtin Rust codecs exposed through `LUDARED.codec(id)`.
+- Output names are relative artifact paths: no leading `/`, `..`, duplicate names, or ancestor/descendant conflicts within one decode.
+- Treat the workspace and project files as **read-only** during Ludared operations. Codecs return generated artifacts rather than writing them to disk. Lua is **not sandboxed**; this is a project contract, not a security boundary.
+- `kind = "rebuild"`: `encode` constructs the full parent from artifacts; `original` is empty. `kind = "patch"`: `encode` receives current parent bytes and applies targeted changes. Do not mix patch and rebuild on the same node. Successive patches on a node follow their declared order; independent branches have no guaranteed execution order.
+- An unchanged decode/encode round-trip should reproduce the original bytes for supported inputs. Validate artifact count, names, order, sizes, and internal consistency; workspace overrides may change them.
+- Codec `args` are opaque strings (or `nil`) supplied by Ludared to relevant callbacks. The codec defines their syntax; do not assume JSON or key/value formatting.
+- Codecs may read project-specific lookup tables or other stable resources using `LUDARED.WORKSPACE` and `LUDARED.SCRIPTS`. These may be untracked dependencies; document them. Prefer pristine reference data to potentially absent workspace overrides during decode.
+- Do not rely on persistent Lua state across detection, decode, and encode. Discovery loads modules eagerly; avoid initialization side effects.
 
-## Confidence is evidence, not certainty of uniqueness
+## Confidence semantics
 
-`can_handle` returns the Lua equivalents of `CodecHandlingConfidence`:
+`can_handle(data)` returns one lowercase string:
 
 - `"no"`: "I cannot decode that data meaningfully, no way."
 - `"possible"`: "I may extract something out of that data, maybe garbage, maybe gold."
 - `"likely"`: "All signs point to yes, but false positives are possible."
 - `"certain"`: "I know that data, I know that format, I'm in charge."
 
-`likely` does not require proof that no other format could match. Use `possible` when evidence that extraction will be meaningful is insufficient. `ludared decode add` refuses `no` unless `--force` is supplied and warns on `possible`. Choose confidence based on evidence, not CLI warnings. Detection must not mutate project state or produce artifacts.
+Detection must not mutate project state or produce artifacts. `ludared decode add` refuses `no` without `--force` and warns on `possible`; choose confidence based on evidence, not warning suppression.
 
-## Project layout and discovery
+## Discovery and layout
 
-- Codecs are Lua files under `paths.scripts` (normally `scripts/`), identified by their path relative to that root, **including `.lua`**. The module's `name` is a display name, not its ID.
-- Every `*.lua` file below the scripts root is discoverable as a codec except files beneath directories the runtime explicitly excludes (currently `shared/` and `libraries/`). Put helpers there. `tests/` is a possible future convention, **not** a confirmed exclusion; do not put discoverable test scripts there without checking the implementation.
-- Discovery eagerly loads codec modules. **One malformed codec can break all project commands**. Keep module initialization free of side effects.
-- Each codec invocation uses a fresh Lua VM. Do not rely on state persisting between `decode`, `encode`, or detection.
-- Ludared embeds Lua **5.5** through **mlua**. Use Lua 5.3+ facilities such as `string.pack`, `string.unpack`, and integer bitwise operators for binary parsing. Verify availability of third-party modules in the actual runtime.
-- `require` does not automatically search the scripts root. Consult the API reference for `dofile(LUDARED.SCRIPTS .. "/shared/...")` or explicit `package.path` setup.
-- Do not assume a bundled JSON or SQLite module; verify available dependencies. Codec arguments are opaque to Ludared, and metadata representation is codec-specific.
+- Lua codec IDs identify script paths relative to the configured scripts root and include `.lua`. A module's `name` is display metadata, not its ID.
+- **Check the current discovery implementation.** The planned shared `ScriptDiscovery` traverses `SCRIPTS` once, excludes `shared/` subtrees, classifies `tests/` subtrees as tests, and dispatches paths to language engines by extension. Do not assume this refactor is already shipped.
+- Keep reusable helpers outside discoverable codec locations according to the current implementation. A malformed eagerly loaded codec can prevent project initialization.
+- Ludared embeds **Lua 5.5** through **mlua**. Standard Lua 5.3+ binary features such as `string.pack`, `string.unpack`, and bitwise operators are available. Do not assume third-party modules are installed.
+- `require` does not automatically search the scripts root. Use explicit paths or configure `package.path` when needed.
 
 ## Implementation workflow
 
-1. **Inspect first.** Check `ludared codecs list`, `ludared codecs info <codec-id>`, nearby project codecs, and the Lua API reference. Prefer existing Ludared operations and cached pristine artifacts over implementing a parallel extractor.
-2. **Define the contract.** Decide `patch` versus `rebuild`; specify input recognition, output names and order, required reconstruction information, argument syntax, and round-trip expectations.
-3. **Implement narrowly.** Return only declared artifacts; validate offsets, lengths, arguments, and structural assumptions with useful errors. Do not introduce unrelated project or manifest changes.
-4. **Preserve reconstruction information.** If rebuilding needs data not captured by the main extracted files (such as layout or ordering), emit it as an ordinary artifact. A metadata sidecar is **one strategy**, not a required format, position, or module structure. It can be overridden like other terminal artifacts.
-5. **Validate on representative inputs**, including malformed cases and boundary conditions. Test both unchanged round-trips and intentional edits. Use local real-world samples when available and permitted, but do not commit or redistribute commercial game data as fixtures.
+1. **Inspect first.** Check `ludared codecs list`, `ludared codecs info <codec-id>`, nearby project codecs, and the Lua API reference. Prefer builtin codecs or existing cached artifacts over duplicate format implementations.
+2. **Define the contract.** Choose `patch` or `rebuild`; define recognition, output names and ordering, reconstruction metadata, argument syntax, and round-trip expectations.
+3. **Implement narrowly.** Validate bounds, lengths, offsets, arguments, and structural assumptions; provide useful errors. Avoid unrelated manifest or project changes.
+4. **Preserve reconstruction information.** If required, emit metadata as an ordinary artifact. A sidecar is optional, not a mandated format or position.
+5. **Test representative inputs.** Cover malformed and boundary cases, untouched round-trips, and intentional edits. Do not commit or redistribute commercial game data as fixtures.
 
-## CLI validation checklist
+## CLI validation
 
-Run commands from the project directory (project lookup and configured paths are CWD-relative):
+Run from the project directory, adapting paths and IDs:
 
 ```sh
 ludared codecs list
@@ -63,9 +62,8 @@ ludared cache cat <output-virtual-path>
 ludared build <input-virtual-path>
 ```
 
-Use the actual virtual paths and codec ID for the project. `decode add` may require the input to be populated in the cache first; run `unpack` before it. Compare an untouched build byte-for-byte with its original source where appropriate. Then override a terminal artifact and verify that the change appears in the rebuilt parent without altering unrelated bytes. If a codec fails to load, check the most recently added Lua module before debugging the entire project.
+`decode add` may require the input to be populated in the cache first. Compare untouched builds byte-for-byte against the original, then override an artifact and confirm the intended edit appears without changing unrelated bytes.
 
-## API details
+## API reference
 
-Read [`references/lua-api.md`](references/lua-api.md) for the required module fields, exact Lua signatures, `LUDARED` globals, module loading examples, and error catalogue. Treat examples there as API demonstrations, not mandatory implementation patterns.
-
+Read [references/lua-api.md](references/lua-api.md) before implementing or modifying a codec. Treat the examples as interface demonstrations, not mandatory implementation patterns.

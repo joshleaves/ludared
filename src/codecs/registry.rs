@@ -57,6 +57,7 @@ impl CodecRegistry {
   }
 
   fn discover_scripts(&mut self, env: ScriptEnvironment) -> Result<(), ScriptError> {
+    // TODO: Script discovery should belong to each Script codec
     if !self.scripts_root.exists() {
       return Ok(());
     }
@@ -66,6 +67,7 @@ impl CodecRegistry {
     for (key, value) in &env.0 {
       ludared.set(key.as_str(), value.as_str())?;
     }
+    crate::codecs::scripts::lua::functions::register_functions(&lua, &ludared)?;
     lua.globals().set("LUDARED", ludared)?;
 
     let mut pending = vec![PathBuf::new()];
@@ -120,6 +122,10 @@ impl CodecRegistry {
       .iter()
       .copied()
       .chain(self.scripts.iter().map(|codec| codec.as_ref()))
+  }
+
+  pub fn get_builtin(id: &str) -> Option<&'static dyn Codec> {
+    BUILTINS.iter().copied().find(|codec| codec.id() == id)
   }
 
   pub fn get(&self, id: &str) -> Option<&dyn Codec> {

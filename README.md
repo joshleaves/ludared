@@ -143,59 +143,16 @@ All codecs **MUST** support round-tripping: they can `decode` content and `encod
 
 ### Lua
 
-Lua is embedded through [mlua](https://github.com/mlua-rs/mlua), with Lua 5.5 support.
-
-Scripts have access to the following project-specific globals:
-
-```lua
-local workspace = LUDARED.WORKSPACE
-local project_root = LUDARED.PROJECT_ROOT
-local scripts = LUDARED.SCRIPTS
-```
-
-Ludared also exposes the following utility functions:
-
-```lua
-local hash = LUDARED.sha256(data) -- SHA-256 digest as a lowercase hexadecimal string
-```
-
 > [!WARNING]
 > Lua scripts are not sandboxed. They have access to the filesystem, environment variables, and other standard Lua facilities. Only run scripts from trusted sources.
 
-A Lua codec must return a table with the following fields:
-
-```lua
-return {
-  name = "My Codec",
-  description = "Description of the codec",
-  version = 1,
-  kind = "patch", -- "patch" or "rebuild"
-
-  can_handle = function(data)
-    return "no" -- "no", "possible", "likely", "certain"
-  end,
-
-  decode_name = function(args)
-    return "output.bin"
-  end,
-
-  decode = function(data, args)
-    return {
-        { name = "output.bin", data = data },
-        { name = "metadata.bin", data = metadata },
-    }
-  end,
-
-  encode = function(original, artifacts, args)
-    return artifacts["input.bin"]
-  end,
-}
-```
+For more information about Lua scripting in Ludared, see the [dedicated documentation](./SCRIPTS-LUA.md).
 
 ## To-do list
 
 ### Codecs
 - [ ] Add versioning and metadata, with an ABI-friendly key/value metadata representation for future dynamic plugins.
+- [ ] Add ruby & python. Maybe add .dll/.so/.dylib support before python. And add [malbolge](https://en.wikipedia.org/wiki/Malbolge) support before I add python.
 
 ### Configuration
 - [ ] Reconsider build/cache path configuration: use `paths.builds` as the single configurable root for all disposable/generated data, with Ludared managing internal directories such as `cache/decodes` itself. Keep separate paths only if a concrete use case requires them (shared cache, separate storage, CI, etc.).

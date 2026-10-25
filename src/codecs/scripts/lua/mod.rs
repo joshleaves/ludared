@@ -9,6 +9,7 @@ use std::path::PathBuf;
 
 pub const SKELETON: &str = include_str!("./skeleton.lua");
 
+mod codec_handle;
 pub mod functions;
 
 const REQUIRED_FUNCTIONS: [&str; 4] = [

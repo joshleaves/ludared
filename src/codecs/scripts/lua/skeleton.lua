@@ -2,6 +2,7 @@ local PROJECT_ROOT = LUDARED.PROJECT_ROOT
 local WORKSPACE = LUDARED.WORKSPACE
 local SCRIPTS = LUDARED.SCRIPTS
 local hash = LUDARED.sha256
+local get_codec = LUDARED.codec
 
 return {
   name = "New codec",
@@ -40,7 +41,7 @@ return {
   ---@param args string? Codec arguments.
   ---@return string
   decode_name = function(args)
-    return "decoded"
+    return "codec"
   end,
 
   --- Extracts artifacts from the input.
