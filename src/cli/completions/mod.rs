@@ -7,6 +7,7 @@ use std::process::Command;
 pub(crate) mod artifacts;
 pub(crate) mod codecs;
 pub(crate) mod overrides;
+pub(crate) mod scripts;
 pub(crate) mod sources;
 
 #[derive(Args)]

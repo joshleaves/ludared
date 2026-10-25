@@ -315,23 +315,22 @@ fn keeps_the_lua_extension_in_the_codec_id() {
 fn discovers_no_codec_under_the_shared_directories() {
   let project = Project::with_source();
 
-  // `shared` and `libraries` hold modules a codec can require rather than
-  // codecs of its own, so nothing below them is picked up. Nested occurrences
-  // are the same directories reached from further down the tree.
+  // `shared` directories are excluded from discovery, while `tests` directories
+  // contain test scripts. These rules apply at any depth in the directory tree.
   project.write_script("shared/text.lua");
   project.write_script("shared/again/text.lua");
-  project.write_script("libraries/text.lua");
-  project.write_script("libraries/again/text.lua");
+  project.write_script("tests/text.lua");
+  project.write_script("tests/again/text.lua");
   project.write_script("sakura/shared/text.lua");
-  project.write_script("sakura/libraries/text.lua");
+  project.write_script("sakura/tests/text.lua");
 
   for id in [
     "scripts/shared/text.lua",
     "scripts/shared/again/text.lua",
-    "scripts/libraries/text.lua",
-    "scripts/libraries/again/text.lua",
+    "scripts/tests/text.lua",
+    "scripts/tests/again/text.lua",
     "scripts/sakura/shared/text.lua",
-    "scripts/sakura/libraries/text.lua",
+    "scripts/sakura/tests/text.lua",
   ] {
     assert_not_discovered(&project, id);
   }

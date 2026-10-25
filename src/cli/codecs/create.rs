@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
-use crate::codecs::registry::SHARED_DIRECTORIES;
 use crate::errors::app_error::AppError;
 use crate::project::Project;
+use crate::scripts::discovery::RESERVED_DIRECTORIES;
 use clap::Args;
 
 #[derive(Args)]
@@ -26,7 +26,7 @@ pub(crate) fn command_codecs_create(args: &CodecsCreateArgs) -> Result<(), AppEr
     if component == std::path::Component::ParentDir {
       return Err(AppError::InvalidCodecScriptPath("'..'".to_string()));
     }
-    if SHARED_DIRECTORIES.contains(&component.as_os_str().to_str().unwrap_or("")) {
+    if RESERVED_DIRECTORIES.contains(&component.as_os_str().to_str().unwrap_or("")) {
       let path = component.as_os_str().to_string_lossy();
       return Err(AppError::InvalidCodecScriptPath(format!("'{}'", path)));
     }

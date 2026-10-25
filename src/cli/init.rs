@@ -78,7 +78,7 @@ impl InitArgs {
     if let Some(scripts) = &self.scripts {
       return scripts.clone();
     }
-    PathBuf::from("workspace")
+    PathBuf::from("scripts")
   }
 
   pub(crate) fn sources_value(&self) -> PathBuf {

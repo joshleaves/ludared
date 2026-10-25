@@ -22,6 +22,9 @@ ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain
   - [x] `detect` - Detect which codecs can be used on a file
   - [x] `create <PATH>` - Create a skeleton script file
 
+- [x] `scripts`
+  - [x] `test [PATH*]` - Run test scripts in a ludared environment
+
 - [x] `decode`
   - [x] `add <PATH> <CODEC> [ARGS] [--name NAME]` - Add a decode step
   - [x] `list <PATH>` - List decode steps on a node
@@ -73,10 +76,12 @@ The commands allowing globs are:
 - [x] `override remove <PATH*>`
 - [x] `override refresh <PATH*>` 
 - [x] `codecs detect <PATH*>`
+- [x] `scripts test [PATH*]`
 
 ### Available completions
 - [x] `codecs info <CODEC: completion_codecs_list>`
 - [x] `codecs detect <PATH: completion_artifacts_list>`
+- [x] `scripts test <PATH: completion_scripts_test_scripts_list>`
 - [x] `sources add <FILE: completion_sources_available>`
 - [x] `sources remove <FILE: completion_sources_list>`
 - [x] `decode add <PATH: completion_artifacts_decodable> <CODEC: completion_codecs_list>`

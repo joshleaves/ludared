@@ -15,14 +15,11 @@ use crate::codecs::nintendo::snes::cart_sdd1::SnesSdd1Rom;
 use crate::codecs::nintendo::snes::cart_spc7110::SnesSpc7110Rom;
 use crate::codecs::scripts::lua::LuaCodec;
 use crate::codecs::sega::compression::prs::PrsCompression;
+use crate::scripts::discovery::ScriptDiscovery;
+use crate::scripts::discovery::ScriptKind;
 use crate::scripts::errors::ScriptError;
 use log::*;
 use std::path::PathBuf;
-
-pub(crate) const SHARED_DIRECTORIES: &[&str] = &[
-  "shared",
-  "libraries",
-];
 
 static BUILTINS: &[&dyn Codec] = &[
   &N3dsCci,
@@ -57,11 +54,10 @@ impl CodecRegistry {
   }
 
   fn discover_scripts(&mut self, env: ScriptEnvironment) -> Result<(), ScriptError> {
-    // TODO: Script discovery should belong to each Script codec
-    if !self.scripts_root.exists() {
-      return Ok(());
-    }
+    let scripts = ScriptDiscovery::new(self.scripts_root.clone())?;
 
+    // TODO: Script setup should belong to each Script codec
+    // Prepare Lua VM
     let lua = mlua::Lua::new();
     let ludared = lua.create_table()?;
     for (key, value) in &env.0 {
@@ -70,48 +66,15 @@ impl CodecRegistry {
     crate::codecs::scripts::lua::functions::register_functions(&lua, &ludared)?;
     lua.globals().set("LUDARED", ludared)?;
 
-    let mut pending = vec![PathBuf::new()];
-
-    while let Some(prefix) = pending.pop() {
-      let directory = self.scripts_root.join(&prefix);
-      let entries = std::fs::read_dir(&directory).map_err(|err| {
-        std::io::Error::new(
-          err.kind(),
-          format!(
-            "Cannot open scripts folder '{}': {err}",
-            directory.display()
-          ),
-        )
-      })?;
-
-      for entry in entries {
-        let entry = entry?;
-        let file_type = entry.file_type()?;
-        let relative = prefix.join(entry.file_name());
-
-        if file_type.is_dir() {
-          if !SHARED_DIRECTORIES.contains(&entry.file_name().to_string_lossy().as_ref()) {
-            pending.push(relative);
-          }
-          continue;
-        }
-
-        if !file_type.is_file() {
-          continue;
-        }
-
-        match relative.extension().and_then(|ext| ext.to_str()) {
-          Some("lua") => {
-            let path = self.scripts_root.join(&relative);
-            let id = format!("scripts/{}", relative.to_string_lossy());
-
-            let codec = LuaCodec::new(&lua, path, id, env.clone())?;
-
-            self.scripts.push(Box::new(codec));
-          }
-          _ => continue,
-        }
+    for script_path in scripts.retrieve_scripts(ScriptKind::Codec) {
+      if script_path.extension() != Some(std::ffi::OsStr::new("lua")) {
+        continue;
       }
+      let path = self.scripts_root.join(script_path);
+      let id = format!("scripts/{}", script_path.to_string_lossy());
+
+      let codec = LuaCodec::new(&lua, path, id, env.clone())?;
+      self.scripts.push(Box::new(codec));
     }
 
     Ok(())

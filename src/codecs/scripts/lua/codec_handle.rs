@@ -15,7 +15,9 @@ impl UserData for LuaCodecHandle {
     fields.add_field_method_get("id", |_, this| Ok(this.codec.id()));
     fields.add_field_method_get("name", |_, this| Ok(this.codec.name()));
     fields.add_field_method_get("description", |_, this| Ok(this.codec.description()));
-    fields.add_field_method_get("kind", |_, this| Ok(this.codec.kind().to_string().to_lowercase()));
+    fields.add_field_method_get("kind", |_, this| {
+      Ok(this.codec.kind().to_string().to_lowercase())
+    });
   }
 
   fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {

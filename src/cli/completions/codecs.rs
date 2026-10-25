@@ -1,5 +1,6 @@
-use crate::cli::codecs::registry;
 use clap_complete::engine::CompletionCandidate;
+
+use crate::cli::codecs::registry;
 
 pub(crate) fn completion_codecs_list(current: &std::ffi::OsStr) -> Vec<CompletionCandidate> {
   // Completion never fails a shell: a project that will not load leaves nothing

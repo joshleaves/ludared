@@ -8,6 +8,9 @@ pub enum ScriptError {
   #[error(transparent)]
   Lua(#[from] mlua::Error),
 
+  #[error("Script not found: {0}")]
+  ScriptNotFound(String),
+
   #[error("Invalid codec kind '{0}': expected 'rebuild' or 'patch'")]
   InvalidCodecKind(String),
 

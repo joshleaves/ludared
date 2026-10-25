@@ -27,6 +27,7 @@ use cli::decode::{DecodeArgs, command_decode};
 use cli::doctor::command_doctor;
 use cli::init::{InitArgs, command_init};
 use cli::overrides::{OverrideArgs, command_override};
+use cli::scripts::{ScriptsArgs, command_scripts};
 use cli::sources::{SourcesArgs, command_sources};
 use cli::unpack::command_unpack;
 use errors::app_error::AppError;
@@ -53,6 +54,9 @@ enum Commands {
 
   /// Manage codecs
   Codecs(CodecsArgs),
+
+  /// Manage scripts
+  Scripts(ScriptsArgs),
 
   /// Decode files
   Decode(DecodeArgs),
@@ -111,6 +115,7 @@ fn run(cli: Cli) -> Result<(), AppError> {
     Commands::Doctor => command_doctor()?,
     Commands::Init(mut args) => command_init(&mut args)?,
     Commands::Override(args) => command_override(&args)?,
+    Commands::Scripts(args) => command_scripts(&args)?,
     Commands::Sources(args) => command_sources(&args)?,
     Commands::Unpack => command_unpack()?,
     Commands::Build(args) => command_build(&args)?,

@@ -154,3 +154,9 @@ local encoded = codec:encode(
 ```
 
 The optional `args` parameter is a codec-specific configuration string. Use consistent arguments when decoding and encoding the same data.
+
+## Testing Lua codecs
+
+Ludared now comes with a `ludared scripts test [PATH*]` command. It will discover test scripts in your configured `scripts` folder, skip all `shared` folders, and collect files under `tests` folders. Any `.lua` file under a test directory is fair game, so a test fixture should go in `tests/shared/fixture.lua` (or even `tests/namespace/feature/that-object/shared/fixture.lua`) to avoid being picked up.
+
+There is no specific test harness. You are free to run your tests using `assert()` and `print()`. I haven't tested [LuaUnit](https://github.com/bluebird75/luaunit) or [busted](https://github.com/lunarmodules/busted), but they may work with some additional setup (feedback welcome).

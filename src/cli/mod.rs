@@ -11,6 +11,7 @@ pub(crate) mod doctor;
 pub(crate) mod init;
 pub(crate) mod listing;
 pub(crate) mod overrides;
+pub(crate) mod scripts;
 pub(crate) mod sources;
 pub(crate) mod tree_formatter;
 pub(crate) mod unpack;

@@ -272,6 +272,11 @@ Registration is the only framework change a new codec needs.
 
 Three layers, each with a different job. Use all three that apply.
 
+`ludared scripts test [PATH*]` runs project Lua test scripts, not these Rust
+tests. It can exercise builtins through `LUDARED.codec(id)`; see
+`ludared-lua` for script layout and execution. Keep the native codec's Rust
+unit and end-to-end coverage below.
+
 ### Unit tests — in the codec's own file
 
 A `#[cfg(test)] mod tests` at the bottom of the codec file. They cover the
