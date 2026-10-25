@@ -62,118 +62,118 @@ pub(crate) trait CodecE2E {
   fn encode_golden_fixtures() -> impl Iterator<Item = EncodeGoldenFixture> {
     std::iter::empty()
   }
+}
 
-  /// Asserts the `bit_exact` property for every fixture of `C`.
-  fn assert_bit_exact() {
-    let codec = Self::CODEC;
-    let mut fixtures = 0usize;
+/// Asserts the `bit_exact` property for every fixture of `C`.
+fn assert_bit_exact<C: CodecE2E>() {
+  let codec = C::CODEC;
+  let mut fixtures = 0usize;
 
-    for fixture in Self::bit_exact_fixtures() {
-      fixtures += 1;
+  for fixture in C::bit_exact_fixtures() {
+    fixtures += 1;
 
-      let artifacts = codec
-        .decode(&fixture.input, fixture.args)
-        .unwrap_or_else(|err| panic!("{}: decode failed: {err}", fixture.name));
+    let artifacts = codec
+      .decode(&fixture.input, fixture.args)
+      .unwrap_or_else(|err| panic!("{}: decode failed: {err}", fixture.name));
 
-      let original = match codec.kind() {
-        CodecKind::Rebuild => Vec::new(),
-        CodecKind::Patch => fixture.input.clone(),
-      };
-      let rebuilt = codec
-        .encode(original, &artifacts, fixture.args)
-        .unwrap_or_else(|err| panic!("{}: encode failed: {err}", fixture.name));
-
-      assert!(
-        rebuilt == fixture.input,
-        "{}: the rebuild is not bit-exact",
-        fixture.name,
-      );
-    }
+    let original = match codec.kind() {
+      CodecKind::Rebuild => Vec::new(),
+      CodecKind::Patch => fixture.input.clone(),
+    };
+    let rebuilt = codec
+      .encode(original, &artifacts, fixture.args)
+      .unwrap_or_else(|err| panic!("{}: encode failed: {err}", fixture.name));
 
     assert!(
-      fixtures > 0,
-      "{}: bit_exact was registered but provides no fixtures",
-      codec.id(),
+      rebuilt == fixture.input,
+      "{}: the rebuild is not bit-exact",
+      fixture.name,
     );
   }
 
-  /// Asserts the `decode_golden` property for every fixture of `C`.
-  fn assert_decode_golden() {
-    let codec = Self::CODEC;
-    let mut fixtures = 0usize;
+  assert!(
+    fixtures > 0,
+    "{}: bit_exact was registered but provides no fixtures",
+    codec.id(),
+  );
+}
 
-    for fixture in Self::decode_golden_fixtures() {
-      fixtures += 1;
+/// Asserts the `decode_golden` property for every fixture of `C`.
+fn assert_decode_golden<C: CodecE2E>() {
+  let codec = C::CODEC;
+  let mut fixtures = 0usize;
 
-      let artifacts = codec
-        .decode(&fixture.input, fixture.args)
-        .unwrap_or_else(|err| panic!("{}: decode failed: {err}", fixture.name));
+  for fixture in C::decode_golden_fixtures() {
+    fixtures += 1;
 
-      let names: Vec<&str> = artifacts.iter().map(|a| a.name.as_str()).collect();
-      let expected_names: Vec<&str> = fixture.expected_artifacts.iter().map(|a| a.name).collect();
+    let artifacts = codec
+      .decode(&fixture.input, fixture.args)
+      .unwrap_or_else(|err| panic!("{}: decode failed: {err}", fixture.name));
 
-      assert!(
-        names == expected_names,
-        "{}: the decode produced {names:?}, expected {expected_names:?}",
-        fixture.name,
-      );
-
-      for (artifact, expected) in artifacts.iter().zip(&fixture.expected_artifacts) {
-        assert!(
-          artifact.data.len() == expected.size,
-          "{}: {} is {} bytes, expected {}",
-          fixture.name,
-          artifact.name,
-          artifact.data.len(),
-          expected.size,
-        );
-
-        let digest = sha256_hex(&artifact.data);
-        assert!(
-          digest == expected.sha256,
-          "{}: {} does not carry the recorded data: sha256 {digest}, expected {}",
-          fixture.name,
-          artifact.name,
-          expected.sha256,
-        );
-      }
-    }
+    let names: Vec<&str> = artifacts.iter().map(|a| a.name.as_str()).collect();
+    let expected_names: Vec<&str> = fixture.expected_artifacts.iter().map(|a| a.name).collect();
 
     assert!(
-      fixtures > 0,
-      "{}: decode_golden was registered but provides no fixtures",
-      codec.id(),
+      names == expected_names,
+      "{}: the decode produced {names:?}, expected {expected_names:?}",
+      fixture.name,
+    );
+
+    for (artifact, expected) in artifacts.iter().zip(&fixture.expected_artifacts) {
+      assert!(
+        artifact.data.len() == expected.size,
+        "{}: {} is {} bytes, expected {}",
+        fixture.name,
+        artifact.name,
+        artifact.data.len(),
+        expected.size,
+      );
+
+      let digest = sha256_hex(&artifact.data);
+      assert!(
+        digest == expected.sha256,
+        "{}: {} does not carry the recorded data: sha256 {digest}, expected {}",
+        fixture.name,
+        artifact.name,
+        expected.sha256,
+      );
+    }
+  }
+
+  assert!(
+    fixtures > 0,
+    "{}: decode_golden was registered but provides no fixtures",
+    codec.id(),
+  );
+}
+
+/// Asserts the `encode_golden` property for every fixture of `C`.
+fn assert_encode_golden<C: CodecE2E>() {
+  let codec = C::CODEC;
+  let mut fixtures = 0usize;
+
+  for fixture in C::encode_golden_fixtures() {
+    fixtures += 1;
+
+    let encoded = codec
+      .encode(Vec::new(), &fixture.artifacts, fixture.args)
+      .unwrap_or_else(|err| panic!("{}: encode failed: {err}", fixture.name));
+
+    let digest = sha256_hex(&encoded);
+    assert!(
+      digest == fixture.expected_sha256,
+      "{}: the encoded image is {} bytes with sha256 {digest}, expected {}",
+      fixture.name,
+      encoded.len(),
+      fixture.expected_sha256,
     );
   }
 
-  /// Asserts the `encode_golden` property for every fixture of `C`.
-  fn assert_encode_golden() {
-    let codec = Self::CODEC;
-    let mut fixtures = 0usize;
-
-    for fixture in Self::encode_golden_fixtures() {
-      fixtures += 1;
-
-      let encoded = codec
-        .encode(Vec::new(), &fixture.artifacts, fixture.args)
-        .unwrap_or_else(|err| panic!("{}: encode failed: {err}", fixture.name));
-
-      let digest = sha256_hex(&encoded);
-      assert!(
-        digest == fixture.expected_sha256,
-        "{}: the encoded image is {} bytes with sha256 {digest}, expected {}",
-        fixture.name,
-        encoded.len(),
-        fixture.expected_sha256,
-      );
-    }
-
-    assert!(
-      fixtures > 0,
-      "{}: encode_golden was registered but provides no fixtures",
-      codec.id(),
-    );
-  }
+  assert!(
+    fixtures > 0,
+    "{}: encode_golden was registered but provides no fixtures",
+    codec.id(),
+  );
 }
 
 /// Registers the ordinary `#[test]` functions for the end-to-end properties a
@@ -188,21 +188,21 @@ macro_rules! codec_e2e_tests {
   (@one $codec:ty, bit_exact) => {
     #[test]
     fn is_bit_exact() {
-      <$codec as CodecE2E>::assert_bit_exact();
+      $crate::testing::codecs::e2e::assert_bit_exact::<$codec>();
     }
   };
 
   (@one $codec:ty, decode_golden) => {
     #[test]
     fn is_decode_golden() {
-      <$codec as CodecE2E>::assert_decode_golden();
+      $crate::testing::codecs::e2e::assert_decode_golden::<$codec>();
     }
   };
 
   (@one $codec:ty, encode_golden) => {
     #[test]
     fn is_encode_golden() {
-      <$codec as CodecE2E>::assert_encode_golden();
+      $crate::testing::codecs::e2e::assert_encode_golden::<$codec>();
     }
   };
 }
