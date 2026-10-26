@@ -23,6 +23,11 @@ pub(crate) fn command_cache_path(project: &Project, args: &CachePathArgs) -> Res
     "Locating '{vpath}' in the decode cache of '{}'",
     project.name()
   );
+  if vpath.is_source() {
+    return Err(AppError::Message(
+      "Cannot call 'codec cache path' comand on sources".to_owned(),
+    ));
+  }
 
   let blob = project
     .cache

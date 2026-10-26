@@ -3,6 +3,9 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub(crate) enum AppError {
+  #[error("{0}")]
+  Message(String),
+
   // Domain-specific errors
   #[error("I/O Error: {0}")]
   Io(#[from] std::io::Error),

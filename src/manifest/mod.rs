@@ -161,6 +161,9 @@ impl Manifest {
   }
 
   pub(crate) fn is_terminal(&self, path: &VirtualPath) -> bool {
+    if self.sources.contains_key(Path::new(path.as_str())) {
+      return !self.has_decodes(path);
+    }
     self
       .resolve_virtual_path(path)
       .is_ok_and(|(node, output)| node.is_terminal_output(output))

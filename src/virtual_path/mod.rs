@@ -55,12 +55,16 @@ impl VirtualPath {
       }
       return Ok(path);
     }
-    let Some(path) = project.cache.get_entry(self) else {
-      unimplemented!("TODO: Missing file in Manifest");
-    };
+
+    let path = project
+      .cache
+      .get_entry(self)
+      .ok_or_else(|| VirtualPathError::NotIndexed(self.to_string()))?;
+
     if !path.exists() {
       return Err(VirtualPathError::MissingFile(path));
     }
+
     Ok(path)
   }
 

@@ -26,4 +26,7 @@ pub(crate) enum VirtualPathError {
 
   #[error("Path is not valid UTF-8: {}", .0.display())]
   NonUtf8Path(PathBuf),
+
+  #[error("Virtual path is not indexed in the decode cache: {0}. Run 'unpack' command")]
+  NotIndexed(String),
 }

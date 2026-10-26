@@ -19,7 +19,7 @@ ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain
 - [x] `codecs`
   - [x] `list [--tree]` - List available codecs, optionally as a tree
   - [x] `info` - Get information about a specific codec
-  - [x] `detect` - Detect which codecs can be used on a file
+  - [x] `detect [PATH*] [--level likely|possible|certain]` - Detect which codecs can be used on a file
   - [x] `create <PATH>` - Create a skeleton script file
 
 - [x] `scripts`

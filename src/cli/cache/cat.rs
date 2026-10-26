@@ -25,6 +25,11 @@ pub(crate) fn command_cache_cat(project: &Project, args: &CacheCatArgs) -> Resul
     "Reading '{vpath}' from the decode cache of '{}'",
     project.name()
   );
+  if vpath.is_source() {
+    return Err(AppError::Message(
+      "Cannot call 'codec cache cat' comand on sources".to_owned(),
+    ));
+  }
 
   let blob = project
     .cache

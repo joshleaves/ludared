@@ -6,7 +6,6 @@ use crate::cli::path_glob::PathGlob;
 use crate::codecs::CodecHandlingConfidence;
 use crate::errors::app_error::AppError;
 use crate::project::Project;
-use crate::project::cache::errors::CacheError;
 use crate::virtual_path::VirtualPath;
 
 #[derive(Clone, Copy, clap::ValueEnum)]
@@ -34,7 +33,7 @@ impl Into<CodecHandlingConfidence> for DetectionLevel {
 pub(crate) struct CodecsDetectArgs {
   /// File
   #[arg(value_name = "PATH*", add = ArgValueCompleter::new(completion_artifacts_list))]
-  virtual_path: String,
+  virtual_path: Option<String>,
 
   /// Minimum codec detection confidence
   #[arg(long)]
@@ -43,7 +42,9 @@ pub(crate) struct CodecsDetectArgs {
 
 pub(crate) fn command_codecs_detect(args: &CodecsDetectArgs) -> Result<(), AppError> {
   let project = Project::load_default()?;
-  let glob = PathGlob::new(&args.virtual_path);
+  let virtual_path = args.virtual_path.as_deref().unwrap_or("**");
+
+  let glob = PathGlob::new(virtual_path);
   let matches: Vec<_> = if glob.is_glob() {
     project
       .manifest
@@ -54,12 +55,12 @@ pub(crate) fn command_codecs_detect(args: &CodecsDetectArgs) -> Result<(), AppEr
       .collect()
   } else {
     vec![VirtualPath::new(
-      &args.virtual_path,
+      virtual_path,
     )?]
   };
 
   if matches.is_empty() {
-    return Err(AppError::NoGlobMatches(args.virtual_path.clone()));
+    return Err(AppError::NoGlobMatches(virtual_path.to_string()));
   }
 
   let level: CodecHandlingConfidence = match (args.level, glob.is_glob()) {
@@ -69,11 +70,8 @@ pub(crate) fn command_codecs_detect(args: &CodecsDetectArgs) -> Result<(), AppEr
   };
 
   for vpath in matches {
-    let cache_path = project
-      .cache
-      .get_entry(&vpath)
-      .ok_or_else(|| CacheError::NotIndexed(vpath.to_string()))?;
-    let data = std::fs::read(cache_path)?;
+    let artifact_path = vpath.resolve(&project)?;
+    let data = std::fs::read(artifact_path)?;
     for (codec, confidence) in project.codecs.detect(&data)? {
       if confidence < level {
         continue;
