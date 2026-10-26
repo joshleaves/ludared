@@ -70,13 +70,14 @@ ludared provides dynamic shell completions, including project-aware completion f
 ### Available globbing
 
 You can use globbing on paths. The allowed patterns are:
+- `**` - Zero or more path components (must be a standalone component)
 - `?` - Single character match
 - `*` - Sequence match
 - `[a-z0-9-]` - Character class match
 - `[a-z0-9-]+` - The same, but repeated
 - `{aba,abc}` - Alternative string match
 
-Globbing only triggers on those patterns, and the matching is done per path component, so no `source.bin/**/*.ttf`.
+Globbing only triggers on those patterns.
 
 The commands allowing globs are:
 
