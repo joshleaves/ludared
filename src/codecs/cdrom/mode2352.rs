@@ -208,6 +208,10 @@ impl Codec for Mode2352 {
   ///
   /// Returns a single `data.bin` artifact.
   /// `start_lba` is accepted but does not affect extraction.
+  #[cfg_attr(
+    feature = "profiling",
+    tracing::instrument(skip_all, fields(codec_id = %self.id(), operation = %"decode"))
+  )]
   fn decode(&self, data: &[u8], args: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
     // Validate arguments, even though start_lba is only used when encoding.
     let _args = Mode2352CodecArgs::from_args(args)?;
@@ -252,6 +256,10 @@ impl Codec for Mode2352 {
   /// Sector MSF addresses are calculated by adding the standard 150-frame offset.
   ///
   /// The original input is ignored. Noncanonical sector metadata is not preserved.
+  #[cfg_attr(
+    feature = "profiling",
+    tracing::instrument(skip_all, fields(codec_id = %self.id(), operation = %"encode"))
+  )]
   fn encode(
     &self,
     _: Vec<u8>,

@@ -14,10 +14,12 @@ repository = "https://github.com/joshleaves/ludared"
 name = "ludared"
 path = "src/main.rs"
 
+[features]
+profiling = ["dep:tracing", "dep:tracing-chrome", "dep:tracing-subscriber"]
+
 [dependencies]
 clap = { version = "4.6.7", features = ["derive"] }
 clap_complete = { version = "4.6.11", features = ["unstable-dynamic"] }
-hadris-iso = "=2.5.0"
 hex = "0.4.3"
 itertools = "0.15.0"
 log = "0.4.34"
@@ -29,8 +31,12 @@ stderrlog = "0.6.0"
 tempfile = "3.27.0"
 thiserror = "2.0.21"
 toml = "1.1.8"
+tracing = { version = "0.1", default-features = false, features = ["std", "attributes"], optional = true }
+tracing-chrome = { version = "0.7", optional = true }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["registry"], optional = true }
 
 [dev-dependencies]
+hadris-iso = "=2.5.0"
 uuid = { version = "1.29.0", features = ["v4"] }
 prs-rs = "2.0.3"
 

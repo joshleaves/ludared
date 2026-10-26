@@ -49,11 +49,19 @@ impl Codec for SnesSpc7110Rom {
     Ok("rom_banks".to_string())
   }
 
+  #[cfg_attr(
+    feature = "profiling",
+    tracing::instrument(skip_all, fields(codec_id = %self.id(), operation = %"decode"))
+  )]
   fn decode(&self, data: &[u8], args: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
     trace!("Decoding SNES SPC7110 ROM");
     super::common::rom_banks::extract_extended_rom_banks(data, args)
   }
 
+  #[cfg_attr(
+    feature = "profiling",
+    tracing::instrument(skip_all, fields(codec_id = %self.id(), operation = %"encode"))
+  )]
   fn encode(
     &self,
     _: Vec<u8>,

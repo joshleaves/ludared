@@ -54,6 +54,10 @@ impl Codec for SnesSa1Rom {
     Ok("rom_banks".to_string())
   }
 
+  #[cfg_attr(
+    feature = "profiling",
+    tracing::instrument(skip_all, fields(codec_id = %self.id(), operation = %"decode"))
+  )]
   fn decode(&self, data: &[u8], args: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
     trace!("Decoding SA-1 ROM");
     let mut results: Vec<DecodedArtifact> = vec![];
@@ -92,6 +96,10 @@ impl Codec for SnesSa1Rom {
     Ok(results)
   }
 
+  #[cfg_attr(
+    feature = "profiling",
+    tracing::instrument(skip_all, fields(codec_id = %self.id(), operation = %"encode"))
+  )]
   fn encode(
     &self,
     _: Vec<u8>,

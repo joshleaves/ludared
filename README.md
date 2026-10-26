@@ -53,6 +53,16 @@ ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain
 
 - [x] `completions` - Generate completions for your shell
 
+## Profiling
+
+Build with `cargo build --release --features profiling` to record codec execution.
+Each executed command writes a `trace-*.json` file in the current directory; open it in
+[Perfetto](https://ui.perfetto.dev). Decode and encode spans include `codec_id` and
+`operation`, including unique Lua script IDs and nested builtin calls from Lua.
+The trace is flushed when the command exits, including on command errors.
+
+Normal builds omit this instrumentation and its dependencies entirely.
+
 ## Shell completions
 
 ludared provides dynamic shell completions, including project-aware completion for sources and other project resources.

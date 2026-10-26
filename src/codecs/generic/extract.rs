@@ -67,6 +67,10 @@ impl Codec for Extract {
     })
   }
 
+  #[cfg_attr(
+    feature = "profiling",
+    tracing::instrument(skip_all, fields(codec_id = %self.id(), operation = %"decode"))
+  )]
   fn decode(&self, data: &[u8], args: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
     let args = ExtractCodecArgs::from_args(args)?;
     let from = args.offset;
@@ -94,6 +98,10 @@ impl Codec for Extract {
   ///
   /// The replacement must match the configured length and fit entirely
   /// within `original`. All other bytes are preserved unchanged.
+  #[cfg_attr(
+    feature = "profiling",
+    tracing::instrument(skip_all, fields(codec_id = %self.id(), operation = %"encode"))
+  )]
   fn encode(
     &self,
     mut original: Vec<u8>,

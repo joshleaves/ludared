@@ -197,6 +197,10 @@ impl Codec for Iso9660 {
   ///
   /// The files lead the artifacts in the order they sit on the disc, after the
   /// metadata describing that order and the rest of the layout.
+  #[cfg_attr(
+    feature = "profiling",
+    tracing::instrument(skip_all, fields(codec_id = %self.id(), operation = %"decode"))
+  )]
   fn decode(&self, data: &[u8], args: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
     trace!("Decoding ISO 9660 image");
 
@@ -227,6 +231,10 @@ impl Codec for Iso9660 {
   }
 
   /// Rebuilds the image the metadata describes, with the files it was given.
+  #[cfg_attr(
+    feature = "profiling",
+    tracing::instrument(skip_all, fields(codec_id = %self.id(), operation = %"encode"))
+  )]
   fn encode(
     &self,
     _: Vec<u8>,

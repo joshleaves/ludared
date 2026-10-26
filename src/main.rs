@@ -95,6 +95,17 @@ fn main() -> ExitCode {
     .init()
     .unwrap();
 
+  #[cfg(feature = "profiling")]
+  let _profiling_guard = {
+    use tracing_subscriber::prelude::*;
+
+    let (layer, guard) = tracing_chrome::ChromeLayerBuilder::new()
+      .include_args(true)
+      .build();
+    tracing::subscriber::set_global_default(tracing_subscriber::registry().with(layer)).unwrap();
+    guard
+  };
+
   match run(cli) {
     Ok(()) => ExitCode::SUCCESS,
     Err(err) => {

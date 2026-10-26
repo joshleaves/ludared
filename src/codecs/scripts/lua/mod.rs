@@ -201,6 +201,10 @@ impl Codec for LuaCodec {
     })
   }
 
+  #[cfg_attr(
+    feature = "profiling",
+    tracing::instrument(skip_all, fields(codec_id = %self.id(), operation = %"decode"))
+  )]
   fn decode(&self, data: &[u8], args: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
     self.with_module(|lua, module| {
       let decode = Self::entry(module, "decode")?;
@@ -211,6 +215,10 @@ impl Codec for LuaCodec {
     })
   }
 
+  #[cfg_attr(
+    feature = "profiling",
+    tracing::instrument(skip_all, fields(codec_id = %self.id(), operation = %"encode"))
+  )]
   fn encode(
     &self,
     original: Vec<u8>,

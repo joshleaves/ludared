@@ -73,6 +73,10 @@ impl Codec for PrsCompression {
     Ok("PRS".to_string())
   }
 
+  #[cfg_attr(
+    feature = "profiling",
+    tracing::instrument(skip_all, fields(codec_id = %self.id(), operation = %"decode"))
+  )]
   fn decode(&self, data: &[u8], _: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
     let decompressed = decompress::prs_decompress(data)
       .map_err(|e| CodecError::Message(format!("PRS Stream error: {e:?}")))?;
@@ -83,6 +87,10 @@ impl Codec for PrsCompression {
     }])
   }
 
+  #[cfg_attr(
+    feature = "profiling",
+    tracing::instrument(skip_all, fields(codec_id = %self.id(), operation = %"encode"))
+  )]
   fn encode(
     &self,
     _: Vec<u8>,
