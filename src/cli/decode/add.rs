@@ -4,7 +4,7 @@ use clap_complete::engine::ArgValueCompleter;
 use std::path::{Path, PathBuf};
 
 use crate::cli::completions::artifacts::completion_artifacts_decodable;
-use crate::cli::completions::codecs::completion_codecs_list;
+use crate::cli::completions::codecs::completion_codecs_list_with_presets;
 use crate::cli::path_glob::PathGlob;
 use crate::codecs::CodecHandlingConfidence;
 use crate::errors::app_error::AppError;
@@ -18,7 +18,7 @@ pub(crate) struct DecodeAddArgs {
   virtual_path: String,
 
   /// Codec name
-  #[arg(add = ArgValueCompleter::new(completion_codecs_list))]
+  #[arg(add = ArgValueCompleter::new(completion_codecs_list_with_presets))]
   codec: String,
 
   /// Codec args
@@ -53,11 +53,24 @@ pub(crate) fn command_decode_add(args: &DecodeAddArgs) -> Result<(), AppError> {
     return Err(AppError::NoGlobMatches(args.virtual_path.clone()));
   }
 
+  let (codec, preset) = match args.codec.split_once('+') {
+    Some((codec, preset)) => (codec, Some(preset)),
+    None => (args.codec.as_str(), None),
+  };
+
   for vpath in matches {
     let codec = project
       .codecs
-      .get(&args.codec)
+      .get(codec)
       .ok_or(AppError::CodecUnavailable(args.codec.clone()))?;
+    let codec_args = match preset {
+      Some(preset) => {
+        let args = codec.preset_args(preset, args.args.as_deref())?;
+        Some(args)
+      }
+      None => args.args.clone(),
+    };
+
     let real_path = vpath.resolve(&project)?;
     let data = std::fs::read(&real_path)?;
 
@@ -86,12 +99,18 @@ pub(crate) fn command_decode_add(args: &DecodeAddArgs) -> Result<(), AppError> {
 
     let decode_name = match &args.name {
       Some(name) => name.clone(),
-      None => codec.decode_name(args.args.as_deref())?,
+      None => codec.decode_name(codec_args.as_deref())?,
     };
-    let artifacts = codec.decode(&data, args.args.as_deref())?;
+    let artifacts = codec.decode(&data, codec_args.as_deref())?;
     let codec_id = codec.id().to_owned();
 
-    project.add_decode(&vpath, codec_id.clone(), &args.args, decode_name, artifacts)?;
+    project.add_decode(
+      &vpath,
+      codec_id.clone(),
+      &codec_args,
+      decode_name,
+      artifacts,
+    )?;
 
     println!("✓ Added decode '{codec_id}' to {vpath}");
   }

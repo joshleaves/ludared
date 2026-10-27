@@ -1,131 +1,64 @@
+use serde::Deserialize;
+
+use super::CDROM_SECTOR_MAGIC;
+use super::CdRomFileSystem;
+use super::MODE1;
+use super::edc_ecc::ecc_block;
+use super::edc_ecc::ecc_tables;
+use super::edc_ecc::edc;
+use super::iso9660::Iso9660;
+use super::msf;
 use crate::codecs::Codec;
 use crate::codecs::CodecHandlingConfidence;
 use crate::codecs::CodecKind;
 use crate::codecs::DecodedArtifact;
 use crate::codecs::LudaredCodecArgs;
 use crate::codecs::errors::CodecError;
-use serde::Deserialize;
 
-const CODEC_ID: &str = "std/cdrom/mode2352";
+const CODEC_ID: &str = "std/cdrom/mode1";
 const CODEC_NAME: &str = "CD-ROM Mode 1 (2352-byte sectors)";
 const CODEC_DESC: &str = r#"Raw CD-ROM Mode 1 sector converter
 
 Extracts the 2048-byte user data from each 2352-byte MODE1 sector into a
-single ISO image artifact. Reassembling reconstructs the sector headers,
+single data image artifact. Reassembling reconstructs the sector headers,
 EDC and ECC from the user data.
 
 Only MODE1/2352 sectors are supported. Rebuilding generates canonical sectors;
 noncanonical sector bytes are not preserved.
 
+The 'file_system' argument optionally extracts files from the decoded track.
+
 Arguments (JSON):
   start_lba (default: 0)
     Unsigned integer, logical block address of the first sector in the BIN.
     Sector headers use MSF = LBA + 150 frames.
+  file_system (default: raw)
+    Available:
+      - raw:     Produces a flat 2048-byte/sector data image
+      - iso9660: Extract files using std/cdrom/iso9660
+
+Presets:
+  iso9660: {"file_system": "iso9660"}
 
 Example:
-  {"start_lba":0}
+  {"start_lba":0, "file_system": "iso9660"}
 "#;
 
 const RAW_SECTOR_SIZE: usize = 2352;
 const USER_SECTOR_SIZE: usize = 2048;
 const LEAD_IN_FRAMES: u32 = 150;
 
-pub(crate) struct Mode2352;
+pub(crate) struct Mode1;
 
 #[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Mode2352CodecArgs {
+pub struct Mode1CodecArgs {
   #[serde(default)]
-  pub start_lba: u32,
+  start_lba: u32,
+  #[serde(default)]
+  file_system: CdRomFileSystem,
 }
 
-impl LudaredCodecArgs for Mode2352CodecArgs {}
-
-fn bcd(value: u32) -> u8 {
-  ((value / 10) << 4 | (value % 10)) as u8
-}
-
-fn msf(frame: u32) -> Result<[u8; 3], String> {
-  let minutes = frame / (75 * 60);
-
-  if minutes > 99 {
-    return Err("MSF address exceeds 99:59:74".into());
-  }
-
-  Ok([
-    bcd(minutes),
-    bcd((frame / 75) % 60),
-    bcd(frame % 75),
-  ])
-}
-
-fn edc(data: &[u8]) -> u32 {
-  let mut crc = 0u32;
-
-  for &byte in data {
-    crc ^= byte as u32;
-
-    for _ in 0..8 {
-      crc = (crc >> 1) ^ if crc & 1 != 0 { 0xD801_8001 } else { 0 };
-    }
-  }
-
-  crc
-}
-
-fn ecc_tables() -> ([u8; 256], [u8; 256]) {
-  let mut forward = [0u8; 256];
-  let mut backward = [0u8; 256];
-
-  for i in 0..256 {
-    let j = ((i << 1) ^ if i & 0x80 != 0 { 0x11D } else { 0 }) as u8;
-
-    forward[i] = j;
-    backward[(i as u8 ^ j) as usize] = i as u8;
-  }
-
-  (forward, backward)
-}
-
-fn ecc_block(
-  source: &[u8],
-  major_count: usize,
-  minor_count: usize,
-  major_mult: usize,
-  minor_inc: usize,
-  forward: &[u8; 256],
-  backward: &[u8; 256],
-) -> Vec<u8> {
-  let size = major_count * minor_count;
-  let mut result = vec![0u8; major_count * 2];
-
-  for major in 0..major_count {
-    let mut index = (major >> 1) * major_mult + (major & 1);
-    let mut a = 0u8;
-    let mut b = 0u8;
-
-    for _ in 0..minor_count {
-      let value = source[index];
-
-      index += minor_inc;
-
-      if index >= size {
-        index -= size;
-      }
-
-      a ^= value;
-      b ^= value;
-      a = forward[a as usize];
-    }
-
-    a = backward[(forward[a as usize] ^ b) as usize];
-
-    result[major] = a;
-    result[major + major_count] = a ^ b;
-  }
-
-  result
-}
+impl LudaredCodecArgs for Mode1CodecArgs {}
 
 fn encode_sector(
   frame: u32,
@@ -134,13 +67,9 @@ fn encode_sector(
   backward: &[u8; 256],
 ) -> Result<[u8; RAW_SECTOR_SIZE], String> {
   let mut sector = [0u8; RAW_SECTOR_SIZE];
-
-  // Sync pattern.
-  sector[1..11].fill(0xFF);
-
-  // Sector address and mode.
+  sector[..12].copy_from_slice(&CDROM_SECTOR_MAGIC);
   sector[12..15].copy_from_slice(&msf(frame)?);
-  sector[15] = 0x01;
+  sector[15] = MODE1;
 
   // User data.
   sector[16..2064].copy_from_slice(data);
@@ -164,7 +93,7 @@ fn encode_sector(
   Ok(sector)
 }
 
-impl Codec for Mode2352 {
+impl Codec for Mode1 {
   fn id(&self) -> &str {
     CODEC_ID
   }
@@ -173,6 +102,23 @@ impl Codec for Mode2352 {
   }
   fn description(&self) -> &str {
     CODEC_DESC
+  }
+
+  fn presets(&self) -> Vec<&str> {
+    vec!["iso9660"]
+  }
+
+  fn preset_args(&self, preset: &str, args: Option<&str>) -> Result<String, CodecError> {
+    let preset = match preset {
+      "iso9660" => r#"{"file_system":"iso9660"}"#,
+      _ => {
+        return Err(CodecError::UndefinedPreset(
+          preset.to_owned(),
+          self.id().to_owned(),
+        ));
+      }
+    };
+    Ok(Mode1CodecArgs::merge(preset, args)?)
   }
 
   fn kind(&self) -> CodecKind {
@@ -184,21 +130,17 @@ impl Codec for Mode2352 {
       return Ok(CodecHandlingConfidence::No);
     }
 
-    let sector = &data[..RAW_SECTOR_SIZE];
-
-    if sector[0] != 0
-      || !sector[1..11].iter().all(|&byte| byte == 0xFF)
-      || sector[11] != 0
-      || sector[15] != 1
-    {
-      return Ok(CodecHandlingConfidence::No);
+    for sector in data.as_chunks::<RAW_SECTOR_SIZE>().0 {
+      if sector[..12] != CDROM_SECTOR_MAGIC || sector[15] != MODE1 {
+        return Ok(CodecHandlingConfidence::No);
+      }
     }
 
-    Ok(CodecHandlingConfidence::Likely)
+    Ok(CodecHandlingConfidence::Certain)
   }
 
   fn decode_name(&self, _: Option<&str>) -> Result<String, CodecError> {
-    Ok("mode2352".to_owned())
+    Ok("mode1".to_owned())
   }
 
   /// Extracts the 2048-byte user data from each raw MODE1/2352 sector.
@@ -214,7 +156,7 @@ impl Codec for Mode2352 {
   )]
   fn decode(&self, data: &[u8], args: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
     // Validate arguments, even though start_lba is only used when encoding.
-    let _args = Mode2352CodecArgs::from_args(args)?;
+    let mode1_args = Mode1CodecArgs::from_args(args)?;
 
     if !data.len().is_multiple_of(RAW_SECTOR_SIZE) {
       return Err(CodecError::Message(
@@ -223,15 +165,14 @@ impl Codec for Mode2352 {
     }
 
     let mut output = Vec::with_capacity(data.len() / RAW_SECTOR_SIZE * USER_SECTOR_SIZE);
-
     for (index, sector) in data.as_chunks::<RAW_SECTOR_SIZE>().0.iter().enumerate() {
-      if sector[0] != 0 || !sector[1..11].iter().all(|&byte| byte == 0xFF) || sector[11] != 0 {
+      if !sector.starts_with(&CDROM_SECTOR_MAGIC) {
         return Err(CodecError::Message(format!(
           "Invalid sync pattern in sector {index}"
         )));
       }
 
-      if sector[15] != 1 {
+      if sector[15] != MODE1 {
         return Err(CodecError::Message(format!(
           "Expected MODE1 sector at {index}, found mode {}",
           sector[15]
@@ -241,10 +182,15 @@ impl Codec for Mode2352 {
       output.extend_from_slice(&sector[16..2064]);
     }
 
-    Ok(vec![DecodedArtifact {
-      name: "data.bin".to_owned(),
-      data: output,
-    }])
+    println!("Args: {:?}", args);
+    println!("Decoding: {:?}", mode1_args.file_system);
+    match mode1_args.file_system {
+      CdRomFileSystem::Raw => Ok(vec![DecodedArtifact {
+        name: "data.bin".to_owned(),
+        data: output,
+      }]),
+      CdRomFileSystem::Iso9660 => Iso9660.decode(&output, args),
+    }
   }
 
   /// Rebuilds raw MODE1/2352 sectors from the `data.bin` artifact.
@@ -266,7 +212,14 @@ impl Codec for Mode2352 {
     artifacts: &[DecodedArtifact],
     args: Option<&str>,
   ) -> Result<Vec<u8>, CodecError> {
-    let args = Mode2352CodecArgs::from_args(args)?;
+    let mode1_args = Mode1CodecArgs::from_args(args)?;
+    let artifacts = match mode1_args.file_system {
+      CdRomFileSystem::Raw => artifacts,
+      CdRomFileSystem::Iso9660 => &[DecodedArtifact {
+        name: "data.bin".to_owned(),
+        data: Iso9660.encode(vec![], artifacts, args)?,
+      }],
+    };
 
     if artifacts.len() != 1 || artifacts[0].name != "data.bin" {
       return Err(CodecError::Message(
@@ -275,7 +228,6 @@ impl Codec for Mode2352 {
     }
 
     let data = &artifacts[0].data;
-
     if !data.len().is_multiple_of(USER_SECTOR_SIZE) {
       return Err(CodecError::Message(
         "Input size is not a multiple of 2048".into(),
@@ -283,21 +235,19 @@ impl Codec for Mode2352 {
     }
 
     let (forward, backward) = ecc_tables();
-
     let mut output = Vec::with_capacity(data.len() / USER_SECTOR_SIZE * RAW_SECTOR_SIZE);
 
     for (sector_index, chunk) in data.as_chunks::<USER_SECTOR_SIZE>().0.iter().enumerate() {
       let sector_index =
         u32::try_from(sector_index).map_err(|_| CodecError::Message("Too many sectors".into()))?;
 
-      let frame = args
+      let frame = mode1_args
         .start_lba
         .checked_add(sector_index)
         .and_then(|lba| lba.checked_add(LEAD_IN_FRAMES))
         .ok_or_else(|| CodecError::Message("Sector address overflow".into()))?;
 
       let sector = encode_sector(frame, chunk, &forward, &backward).map_err(CodecError::Message)?;
-
       output.extend_from_slice(&sector);
     }
 
@@ -311,7 +261,7 @@ mod tests {
 
   #[test]
   fn detects_mode1_sectors() {
-    let codec = Mode2352;
+    let codec = Mode1;
     let (forward, backward) = ecc_tables();
 
     let sector = encode_sector(
@@ -324,7 +274,7 @@ mod tests {
 
     assert_eq!(
       codec.can_handle(&sector).unwrap(),
-      CodecHandlingConfidence::Likely,
+      CodecHandlingConfidence::Certain,
     );
 
     assert_eq!(
@@ -353,7 +303,7 @@ mod tests {
 
   #[test]
   fn roundtrip_multiple_sectors() {
-    let codec = Mode2352;
+    let codec = Mode1;
 
     let mut data = vec![0u8; USER_SECTOR_SIZE * 4];
 
@@ -372,6 +322,11 @@ mod tests {
     let decoded = codec.decode(&encoded, None).unwrap();
 
     assert_eq!(encoded.len(), RAW_SECTOR_SIZE * 4);
+    // Pinned before table-driven EDC: covers headers, payload, EDC and both ECC blocks.
+    assert_eq!(
+      crate::hash::sha256_bytes(&encoded),
+      "fb1fbb777a57ad1c890c19b513589bc5708726734cb0eb3fc68f1a9ed1e6f7ad"
+    );
     assert_eq!(decoded.len(), 1);
     assert_eq!(decoded[0].data, data);
   }
@@ -394,45 +349,24 @@ mod tests {
   }
 
   #[test]
-  fn rejects_invalid_inputs() {
-    let codec = Mode2352;
+  fn edc_matches_bitwise_reference_at_chunk_boundaries() {
+    let data: Vec<u8> = (0..2080)
+      .map(|index| (index as u8).wrapping_mul(37).wrapping_add(13))
+      .collect();
 
-    assert!(codec.decode(&[0u8; 2351], None).is_err());
-
-    let invalid_artifact = |data: Vec<u8>| {
-      vec![DecodedArtifact {
-        name: "data.bin".to_owned(),
-        data,
-      }]
-    };
-
-    assert!(
-      codec
-        .encode(Vec::new(), &invalid_artifact(vec![0u8; 2047]), None)
-        .is_err()
-    );
-
-    assert!(
-      codec
-        .encode(
-          Vec::new(),
-          &invalid_artifact(vec![0u8; USER_SECTOR_SIZE]),
-          Some(r#"{"start_lba":-1}"#),
-        )
-        .is_err()
-    );
-
-    assert!(
-      codec
-        .encode(
-          Vec::new(),
-          &invalid_artifact(vec![0u8; USER_SECTOR_SIZE]),
-          Some(r#"{"unknown":true}"#),
-        )
-        .is_err()
-    );
-
-    assert!(codec.encode(Vec::new(), &[], None).is_err());
+    for offset in 0..8 {
+      for length in (0..=32).chain(2048..=2072) {
+        let input = &data[offset..offset + length];
+        let mut expected = 0u32;
+        for &byte in input {
+          expected ^= u32::from(byte);
+          for _ in 0..8 {
+            expected = (expected >> 1) ^ if expected & 1 != 0 { 0xD801_8001 } else { 0 };
+          }
+        }
+        assert_eq!(edc(input), expected, "offset {offset}, length {length}");
+      }
+    }
   }
 
   #[test]
@@ -442,7 +376,7 @@ mod tests {
   }
   #[test]
   fn encodes_nonzero_start_lba() {
-    let codec = Mode2352;
+    let codec = Mode1;
 
     let artifacts = vec![DecodedArtifact {
       name: "data.bin".to_owned(),

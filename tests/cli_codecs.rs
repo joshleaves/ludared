@@ -604,7 +604,7 @@ scripts
 std
 ├── cdrom
 │   ├── iso9660
-│   └── mode2352
+│   └── mode1
 ├── generic
 │   ├── extract
 │   └── split

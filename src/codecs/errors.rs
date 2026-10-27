@@ -26,6 +26,9 @@ pub enum CodecError {
   #[error("Overlapping artifacts: {0} and {1}")]
   OverlappingArtifacts(String, String),
 
+  #[error("Undefined preset '{0}' for codec '{1}'")]
+  UndefinedPreset(String, String),
+
   #[error("{0}")]
   Message(String),
 

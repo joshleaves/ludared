@@ -109,7 +109,11 @@ The commands allowing globs are:
 
 ## Available codecs
 
-Codecs come in two types: `Rebuild` and `Patch`. Simply put [one is archival, the other is byte replacement](the_two_types_of_codecs.jpeg).
+Codecs come in two types: `Rebuild` and `Patch`. Simply put: [one is archival, the other is byte replacement](the_two_types_of_codecs.jpeg).
+
+Some codecs provide argument presets. These serve as base arguments that can be overridden by user-defined values. Each codec defines its own presets, if any.
+
+For example, when decoding a CD-ROM track, you can use `ludared decode add Track1.bin std/cdrom/mode1+iso9660` to automatically decode the ISO9660 filesystem in the same decode operation.
 
 ### Rebuild codecs
 A `Rebuild` codec consumes ALL of its input, so it is the only _decode_ that can be ran on an artifact.
@@ -123,7 +127,7 @@ A `Rebuild` codec consumes ALL of its input, so it is the only _decode_ that can
 - [x] `std/nintendo/snes/cart/sdd1`- Cut a SNES SDD-1 ROM into ROM banks
 - [x] `std/nintendo/snes/cart/spc7110`- Cut a SNES SPC7110 ROM into ROM banks
 - [x] `std/cdrom/iso9660` - Extract the filesystem of an ISO 9660 CD-ROM image
-- [x] `std/cdrom/mode2352` - Turn tracks with 2352-byte MODE1 sectors into a single ISO image artifact
+- [x] `std/cdrom/mode1` - Turn tracks with 2352-byte MODE1 sectors into a single ISO image artifact
 - [x] `std/sega/compression/prs` - Handles [PRS streams](https://segaretro.org/PRS_compression)
 
 ### Patch codecs
@@ -150,7 +154,7 @@ All codecs **MUST** support round-tripping: they can `decode` content and `encod
 | `std/nintendo/snes/cart/sdd1` | N/A | N/A |
 | `std/nintendo/snes/cart/spc7110` | N/A | N/A |
 | `std/cdrom/iso9660` | ✅ | ✅ |
-| `std/cdrom/mode2352` | ✅ | ✅ |
+| `std/cdrom/mode1` | ✅ | ✅ |
 | `std/sega/compression/prs` | ❌ | ✅ |
 
 **Note:** `N/A` means the property has not yet been verified, not that the codec lacks it. A codec must pass the corresponding [E2E tests](src/testing/codecs/e2e/mod.rs) before claiming either guarantee.

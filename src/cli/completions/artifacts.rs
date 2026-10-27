@@ -38,7 +38,7 @@ pub(crate) fn completion_artifacts_decodable(
       .manifest
       .sources
       .keys()
-      .filter(|source_name| source_name.starts_with(current))
+      .filter(|source_name| source_name.to_string_lossy().starts_with(current))
       .cloned()
       .map(CompletionCandidate::new),
   );

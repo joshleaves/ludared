@@ -11,6 +11,19 @@ pub(crate) trait LudaredCodecArgs: Sized + DeserializeOwned {
   fn from_args(args: Option<&str>) -> Result<Self, serde_json::Error> {
     serde_json::from_str(args.unwrap_or("{}"))
   }
+
+  /// Merges preset arguments with user-provided arguments.
+  /// User-provided values take precedence over preset values.
+  fn merge(preset: &str, user_args: Option<&str>) -> Result<String, serde_json::Error> {
+    let mut merged: serde_json::Map<String, serde_json::Value> = serde_json::from_str(preset)?;
+
+    let user: serde_json::Map<String, serde_json::Value> =
+      serde_json::from_str(user_args.unwrap_or("{}"))?;
+
+    merged.extend(user);
+
+    serde_json::to_string(&merged)
+  }
 }
 
 macro_rules! debug_result {
@@ -104,6 +117,22 @@ pub trait Codec: Send + Sync {
   fn name(&self) -> &str;
   fn description(&self) -> &str;
 
+  /// Returns the named argument presets available for this codec.
+  /// Presets provide CLI shorthand (e.g. `codec+iso9660`).
+  fn presets(&self) -> Vec<&str> {
+    vec![]
+  }
+
+  /// Merges a named preset into the provided arguments.
+  /// Explicit arguments take precedence over preset defaults.
+  /// Returns an error by default if the preset is unsupported.
+  fn preset_args(&self, preset: &str, _: Option<&str>) -> Result<String, CodecError> {
+    Err(CodecError::UndefinedPreset(
+      preset.to_owned(),
+      self.id().to_owned(),
+    ))
+  }
+
   /// Which of the two encoding strategies this codec implements.
   ///
   /// Declared by the codec itself, so the core can tell the two apart from the
@@ -154,4 +183,112 @@ pub trait Codec: Send + Sync {
     artifacts: &[DecodedArtifact],
     args: Option<&str>,
   ) -> Result<Vec<u8>, CodecError>;
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use serde::Deserialize;
+  use serde_json::{Value, json};
+
+  #[derive(Debug, Deserialize, PartialEq)]
+  #[serde(deny_unknown_fields)]
+  struct TestArgs {
+    #[serde(default)]
+    count: u32,
+    #[serde(default)]
+    format: String,
+  }
+
+  impl LudaredCodecArgs for TestArgs {}
+
+  fn merge(preset: &str, user_args: Option<&str>) -> Value {
+    let merged = TestArgs::merge(preset, user_args).unwrap();
+    serde_json::from_str(&merged).unwrap()
+  }
+
+  #[test]
+  fn merge_preset_only() {
+    assert_eq!(
+      merge(r#"{"format":"iso9660"}"#, None),
+      json!({"format": "iso9660"})
+    );
+  }
+
+  #[test]
+  fn merge_with_additional_user_args() {
+    assert_eq!(
+      merge(r#"{"format":"iso9660"}"#, Some(r#"{"count":150}"#)),
+      json!({"format": "iso9660", "count": 150})
+    );
+  }
+
+  #[test]
+  fn merge_user_args_override_preset() {
+    assert_eq!(
+      merge(
+        r#"{"format":"iso9660","count":10}"#,
+        Some(r#"{"format":"raw","count":0}"#)
+      ),
+      json!({"format": "raw", "count": 0})
+    );
+  }
+
+  #[test]
+  fn merge_empty_user_args() {
+    assert_eq!(
+      merge(r#"{"format":"iso9660"}"#, Some("{}")),
+      merge(r#"{"format":"iso9660"}"#, None)
+    );
+  }
+
+  #[test]
+  fn merge_empty_preset() {
+    assert_eq!(merge("{}", Some(r#"{"count":150}"#)), json!({"count": 150}));
+  }
+
+  #[test]
+  fn merge_does_not_apply_serde_defaults() {
+    let merged = TestArgs::merge(r#"{"format":"iso9660"}"#, None).unwrap();
+
+    assert_eq!(
+      serde_json::from_str::<Value>(&merged).unwrap(),
+      json!({"format": "iso9660"})
+    );
+
+    // Defaults are applied only when deserializing into the codec args.
+    let parsed = TestArgs::from_args(Some(&merged)).unwrap();
+
+    assert_eq!(
+      parsed,
+      TestArgs {
+        count: 0,
+        format: "iso9660".to_owned(),
+      }
+    );
+  }
+
+  #[test]
+  fn merge_rejects_invalid_preset_json() {
+    assert!(TestArgs::merge("{invalid", None).is_err());
+  }
+
+  #[test]
+  fn merge_rejects_invalid_user_json() {
+    assert!(TestArgs::merge("{}", Some("{invalid")).is_err());
+  }
+
+  #[test]
+  fn merge_rejects_non_object_json() {
+    assert!(TestArgs::merge("[]", None).is_err());
+    assert!(TestArgs::merge("{}", Some("[]")).is_err());
+  }
+
+  #[test]
+  fn merge_is_shallow() {
+    assert_eq!(
+      merge(r#"{"nested":{"a":1,"b":2}}"#, Some(r#"{"nested":{"a":3}}"#)),
+      json!({"nested": {"a": 3}})
+    );
+  }
 }
