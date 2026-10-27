@@ -1,7 +1,7 @@
 //! End-to-end tests for the ISO 9660 codec.
 //!
 //! The fixture is an image cdrtools mastered from the sources
-//! `mkisofs_golden.sh` writes; `src/testing/fixtures/cdrom/README.md` records
+//! `iso9660_golden.sh` writes; `src/testing/fixtures/cdrom/README.md` records
 //! its provenance and the independent validation the hashes below were pinned
 //! against.
 
@@ -16,7 +16,7 @@ use crate::testing::codecs::e2e::ExpectedArtifact;
 
 const SOURCE: &[u8] = include_bytes!(concat!(
   env!("CARGO_MANIFEST_DIR"),
-  "/src/testing/fixtures/cdrom/mkisofs_golden.iso"
+  "/src/testing/fixtures/cdrom/iso9660_golden.iso"
 ));
 
 /// The fixture's own bytes: an unchanged decode and rebuild reproduces the
@@ -114,7 +114,7 @@ impl CodecE2E for Iso9660E2E {
 
   fn bit_exact_fixtures() -> impl Iterator<Item = BitExactFixture> {
     std::iter::once(BitExactFixture {
-      name: "mkisofs_golden.iso",
+      name: "iso9660_golden.iso",
       input: SOURCE.to_vec(),
       args: None,
     })
@@ -122,7 +122,7 @@ impl CodecE2E for Iso9660E2E {
 
   fn decode_golden_fixtures() -> impl Iterator<Item = DecodeGoldenFixture> {
     std::iter::once(DecodeGoldenFixture {
-      name: "mkisofs_golden.iso",
+      name: "iso9660_golden.iso",
       input: SOURCE.to_vec(),
       args: None,
       expected_artifacts: ARTIFACTS

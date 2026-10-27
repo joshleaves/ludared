@@ -1,5 +1,5 @@
 #!/bin/sh
-# Regenerates mkisofs_golden.iso from deterministic sources.
+# Regenerates iso9660_golden.iso from deterministic sources.
 #
 # mkisofs stamps the time it ran into the image, so a regenerated image is not
 # byte-identical to the committed one: the golden hashes in
@@ -33,4 +33,4 @@ write("DIR_A/DUP.BIN", b"first copy\n")
 write("DIR_B/DUP.BIN", b"second copy\n")
 EOF
 
-mkisofs -quiet -no-pad -iso-level 1 -VGOLDEN -o "$dir/mkisofs_golden.iso" "$work/src"
+mkisofs -quiet -no-pad -iso-level 1 -VGOLDEN -o "$dir/iso9660_golden.iso" "$work/src"
