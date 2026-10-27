@@ -126,7 +126,8 @@ A `Rebuild` codec consumes ALL of its input, so it is the only _decode_ that can
 - [x] `std/nintendo/snes/cart/sa1`- Cut a SNES SA-1 ROM into ROM banks
 - [x] `std/nintendo/snes/cart/sdd1`- Cut a SNES SDD-1 ROM into ROM banks
 - [x] `std/nintendo/snes/cart/spc7110`- Cut a SNES SPC7110 ROM into ROM banks
-- [x] `std/cdrom/iso9660` - Extract the filesystem of an ISO 9660 CD-ROM image
+- [x] `std/cdrom/iso9660` - Extract rand rebuild ISO 9660 CD-ROM images
+- [x] `std/cdrom/udf` - Extract and rebuild UDF filesystems and UDF Bridge images
 - [x] `std/cdrom/mode1` - Turn tracks with 2352-byte MODE1 sectors into a single ISO image artifact
 - [x] `std/sega/compression/prs` - Handles [PRS streams](https://segaretro.org/PRS_compression)
 
@@ -154,6 +155,7 @@ All codecs **MUST** support round-tripping: they can `decode` content and `encod
 | `std/nintendo/snes/cart/sdd1` | N/A | N/A |
 | `std/nintendo/snes/cart/spc7110` | N/A | N/A |
 | `std/cdrom/iso9660` | ✅ | ✅ |
+| `std/cdrom/udf` | ✅ | ✅ |
 | `std/cdrom/mode1` | ✅ | ✅ |
 | `std/sega/compression/prs` | ❌ | ✅ |
 

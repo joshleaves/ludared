@@ -1,7 +1,8 @@
 //! NCSD metadata required to rebuild a CCI image.
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::codecs::errors::CodecError;
-use serde::{Deserialize, Serialize};
 
 pub(crate) const METADATA_NAME: &str = "NCSD.json";
 pub(crate) const CARD_INFO_NAME: &str = "cardinfo.bin";

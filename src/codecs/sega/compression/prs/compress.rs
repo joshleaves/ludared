@@ -374,11 +374,9 @@ fn serialize(data: &[u8], matches: &[Match]) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-  use super::{
-    END_BITS, EXTENDED_LONG_BITS, LITERAL_BITS, LONG_BITS, Match, MatchKind, SHORT_BITS,
-    prs_compress, serialize,
-  };
   use crate::codecs::sega::compression::prs::decompress::prs_decompress;
+
+  use super::*;
 
   fn assert_roundtrip(compressed: &[u8], data: &[u8]) {
     assert_eq!(prs_decompress(compressed).unwrap(), data);

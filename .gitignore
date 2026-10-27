@@ -1,3 +1,11 @@
 /target
 ludared.toml
 *.patch
+
+!/src/testing/fixtures/**/*.iso
+
+# It's all LLM-written stuff that only LLMs should read
+/docs
+
+# Really: don't
+DO_NOT_COMMIT

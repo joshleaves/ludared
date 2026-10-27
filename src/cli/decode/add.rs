@@ -1,7 +1,7 @@
 use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
-
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 
 use crate::cli::completions::artifacts::completion_artifacts_decodable;
 use crate::cli::completions::codecs::completion_codecs_list_with_presets;

@@ -1,7 +1,8 @@
 use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
 use log::*;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 
 use crate::cli::completions::sources::completion_sources_list;
 use crate::errors::app_error::AppError;

@@ -3,7 +3,8 @@
 //! on filesystem traversal order.
 
 use std::fs;
-use std::process::{Command, Output};
+use std::process::Command;
+use std::process::Output;
 
 use tempfile::TempDir;
 

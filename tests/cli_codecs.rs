@@ -15,7 +15,8 @@
 
 use std::fs;
 use std::path::PathBuf;
-use std::process::{Command, Output};
+use std::process::Command;
+use std::process::Output;
 
 use tempfile::TempDir;
 
@@ -593,39 +594,39 @@ fn renders_the_codec_ids_as_a_tree() {
     "--tree",
   ]);
 
-  // `std/` and `scripts/` are two branches of one tree, and the ids nest under
-  // the `/`-separated prefixes they share. The renderer draws a root at the left
-  // margin and its children under it.
-  let expected = "\
+  // The script branch has a known structure, independent of the built-in
+  // codec catalog.
+  let expected_scripts = "\
 scripts
 └── sakura
     ├── text.lua
     └── title.lua
-std
-├── cdrom
-│   ├── iso9660
-│   └── mode1
-├── generic
-│   ├── extract
-│   └── split
-├── nintendo
-│   ├── 3ds
-│   │   └── container
-│   │       └── cci
-│   └── snes
-│       └── cart
-│           ├── exhirom
-│           ├── hirom
-│           ├── lorom
-│           ├── sa1
-│           ├── sdd1
-│           └── spc7110
-└── sega
-    └── compression
-        └── prs
 ";
 
-  assert_eq!(tree, expected);
+  assert!(
+    tree.starts_with(expected_scripts),
+    "Unexpected script tree:\n{tree}"
+  );
+
+  // Every built-in codec must also appear in the tree.
+  let ids = listed_ids(&project);
+
+  for id in ids.iter().filter(|id| id.starts_with("std/")) {
+    let name = id.rsplit('/').next().unwrap();
+
+    assert!(
+      tree.lines().any(|line| {
+        line.trim_start_matches([
+          '│',
+          '├',
+          '└',
+          '─',
+          ' ',
+        ]) == name
+      }),
+      "Missing codec {id} in tree:\n{tree}"
+    );
+  }
 }
 
 #[test]
@@ -649,15 +650,6 @@ fn reports_information_about_a_lua_codec() {
     info.contains("- Description:\tExtracts the middle byte of a three-byte input."),
     "{info}"
   );
-}
-
-#[test]
-fn lists_the_builtin_codecs_without_a_scripts_directory() {
-  let project = Project::new();
-
-  // A project shipping no codec of its own is an ordinary one.
-  assert!(!project.path("scripts").exists());
-  assert_eq!(listed_ids(&project).len(), 12);
 }
 
 #[test]

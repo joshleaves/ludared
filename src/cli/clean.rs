@@ -1,7 +1,10 @@
-use crate::{configuration::Configuration, errors::app_error::AppError};
 use clap::Args;
 use log::*;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
+
+use crate::configuration::Configuration;
+use crate::errors::app_error::AppError;
 
 #[derive(Args)]
 pub(crate) struct CleanArgs {

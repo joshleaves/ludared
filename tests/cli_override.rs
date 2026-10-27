@@ -7,8 +7,10 @@
 //! working directory, which is what the CLI resolves a project from.
 
 use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::path::Path;
+use std::path::PathBuf;
+use std::process::Command;
+use std::process::Output;
 
 use tempfile::TempDir;
 

@@ -1,5 +1,8 @@
+use std::collections::BTreeSet;
+use std::iter::Peekable;
+use std::str::Chars;
+
 use super::*;
-use std::{collections::BTreeSet, iter::Peekable, str::Chars};
 
 enum CharClassToken {
   Literal(char),

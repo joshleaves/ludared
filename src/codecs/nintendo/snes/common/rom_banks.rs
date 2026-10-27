@@ -1,10 +1,12 @@
+use serde::Deserialize;
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
+
 use crate::codecs::DecodedArtifact;
 use crate::codecs::LudaredCodecArgs;
 use crate::codecs::errors::CodecError;
 use crate::codecs::nintendo::snes::common;
 use crate::codecs::nintendo::snes::common::checksum::SnesChecksum;
-use serde::Deserialize;
-use std::collections::{BTreeMap, BTreeSet};
 
 /// The artifact name every SNES decoder gives the copier header, when the image
 /// carries one.

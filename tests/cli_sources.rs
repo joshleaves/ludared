@@ -11,7 +11,8 @@
 
 use std::fs;
 use std::path::PathBuf;
-use std::process::{Command, Output};
+use std::process::Command;
+use std::process::Output;
 
 use sha2::Digest as _;
 use tempfile::TempDir;

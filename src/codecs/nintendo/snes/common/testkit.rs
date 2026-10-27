@@ -310,10 +310,11 @@ pub fn assert_physical_order(artifacts: &[DecodedArtifact], image: &[u8]) {
 
 #[cfg(test)]
 mod tests {
+  use super::super::BANK_SIZE;
+  use super::super::EXHIROM_HEADER_OFFSET;
+  use super::super::HIROM_HEADER_OFFSET;
+  use super::super::LOROM_HEADER_OFFSET;
   use super::*;
-  use crate::codecs::nintendo::snes::common::{
-    BANK_SIZE, EXHIROM_HEADER_OFFSET, HIROM_HEADER_OFFSET, LOROM_HEADER_OFFSET,
-  };
 
   /// The image each mapping is tested with, and the checksum it carries.
   ///

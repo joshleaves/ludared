@@ -1,5 +1,6 @@
 use log::*;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 
 use crate::codecs::CodecKind;
 use crate::codecs::DecodedArtifact;
@@ -809,8 +810,10 @@ mod tests {
   /// An ISO holding two files and a directory, written through the same writer
   /// the codec rebuilds with.
   fn iso_fixture() -> Vec<u8> {
+    use hadris_iso::write::File as IsoFile;
+    use hadris_iso::write::InputFiles;
+    use hadris_iso::write::IsoImageWriter;
     use hadris_iso::write::options::CreationFeatures;
-    use hadris_iso::write::{File as IsoFile, InputFiles, IsoImageWriter};
     use std::sync::Arc;
 
     let mut buffer = std::io::Cursor::new(Vec::new());

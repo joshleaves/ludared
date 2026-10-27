@@ -1,18 +1,26 @@
+use hadris_iso::file::EntryType;
+use hadris_iso::read::IsoImage;
+use hadris_iso::read::PathSeparator;
+use hadris_iso::write::File as IsoFile;
+use hadris_iso::write::InputFiles;
+use hadris_iso::write::IsoImageWriter;
+use hadris_iso::write::options::CreationFeatures;
+use hadris_iso::write::options::IsoFormatOptions;
+use std::io::Cursor;
+use std::process::Command;
+use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
+
+use super::metadata::BLOCK_SIZE;
+use super::metadata::IsoMetadata;
+use super::metadata::METADATA_NAME;
+use super::volume::DESCRIPTOR_SECTOR;
+use super::volume::SYSTEM_AREA_SIZE;
 use crate::codecs::Codec;
 use crate::codecs::CodecHandlingConfidence;
 use crate::codecs::DecodedArtifact;
 use crate::codecs::cdrom::iso9660::Iso9660;
-use hadris_iso::file::EntryType;
-use hadris_iso::read::{IsoImage, PathSeparator};
-use hadris_iso::write::options::{CreationFeatures, IsoFormatOptions};
-use hadris_iso::write::{File as IsoFile, InputFiles, IsoImageWriter};
-use std::io::Cursor;
-use std::process::Command;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
-
-use super::metadata::{BLOCK_SIZE, IsoMetadata, METADATA_NAME};
-use super::volume::{DESCRIPTOR_SECTOR, SYSTEM_AREA_SIZE};
 
 /// The first byte of the image's descriptor set.
 const DESCRIPTOR_START: usize = DESCRIPTOR_SECTOR as usize * BLOCK_SIZE;
@@ -1446,6 +1454,32 @@ fn round_trips_the_native_identifiers_of_a_plain_image() {
     !directories.iter().any(|name| name.contains(';')),
     "a directory identifier takes no version: {directories:?}"
   );
+}
+
+#[test]
+fn round_trips_a_directory_whose_recorded_length_is_not_block_aligned() {
+  let mut source = image(vec![file(
+    "SHORT.BIN",
+    b"x",
+  )]);
+  let root = both_ended(&source, DESCRIPTOR_START + 156 + 2) as usize;
+  let start = root * BLOCK_SIZE;
+  let mut length = 0usize;
+
+  while source[start + length] != 0 {
+    length += source[start + length] as usize;
+  }
+
+  assert!(length > 0 && length < BLOCK_SIZE);
+  set_both_ended(&mut source, DESCRIPTOR_START + 156 + 10, length as u32);
+  set_both_ended(&mut source, start + 10, length as u32);
+
+  rebuild(&source);
+}
+
+fn set_both_ended(image: &mut [u8], offset: usize, value: u32) {
+  image[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+  image[offset + 4..offset + 8].copy_from_slice(&value.to_be_bytes());
 }
 
 #[test]

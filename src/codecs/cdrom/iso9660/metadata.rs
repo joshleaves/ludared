@@ -17,12 +17,12 @@
 //! recorded as [`Opaque`] runs and written back where they were. Nothing is
 //! discarded for being unrecognized.
 
-use crate::codecs::errors::CodecError;
-use serde::de::Error as _;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::Deserialize;
+use serde::Serialize;
 
-/// The size of the logical blocks the codec reads and writes.
-pub(crate) const BLOCK_SIZE: usize = 2048;
+pub(super) use crate::codecs::cdrom::common_disk::BLOCK_SIZE;
+pub(super) use crate::codecs::cdrom::common_disk::Hex;
+use crate::codecs::errors::CodecError;
 
 /// The name the metadata artifact is given.
 pub(crate) const METADATA_NAME: &str = "ISO9660.json";
@@ -443,54 +443,6 @@ pub(crate) const FLAG_ASSOCIATED: u8 = 0x04;
 
 /// How much of a directory record precedes its file identifier.
 pub(crate) const RECORD_HEADER: usize = 33;
-
-/// Bytes the metadata carries as a hexadecimal string.
-///
-/// Held as bytes rather than as the string, so that a value which is not
-/// hexadecimal is refused when the metadata is read rather than when a rebuild
-/// is half way through writing an image.
-#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct Hex(pub(crate) Vec<u8>);
-
-impl Hex {
-  pub(crate) fn is_empty(&self) -> bool {
-    self.0.is_empty()
-  }
-
-  pub(crate) fn as_bytes(&self) -> &[u8] {
-    &self.0
-  }
-
-  pub(crate) fn len(&self) -> usize {
-    self.0.len()
-  }
-}
-
-impl From<Vec<u8>> for Hex {
-  fn from(bytes: Vec<u8>) -> Self {
-    Self(bytes)
-  }
-}
-
-impl From<&[u8]> for Hex {
-  fn from(bytes: &[u8]) -> Self {
-    Self(bytes.to_vec())
-  }
-}
-
-impl Serialize for Hex {
-  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    serializer.serialize_str(&hex::encode(&self.0))
-  }
-}
-
-impl<'de> Deserialize<'de> for Hex {
-  fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-    let text = String::deserialize(deserializer)?;
-
-    hex::decode(&text).map(Self).map_err(D::Error::custom)
-  }
-}
 
 fn one() -> u16 {
   1

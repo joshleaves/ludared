@@ -1,22 +1,26 @@
+use log::*;
+use serde::Deserialize;
+use std::collections::BTreeSet;
+
 use crate::codecs::Codec;
 use crate::codecs::CodecHandlingConfidence;
 use crate::codecs::CodecKind;
 use crate::codecs::DecodedArtifact;
 use crate::codecs::LudaredCodecArgs;
 use crate::codecs::errors::CodecError;
-use log::*;
-use serde::Deserialize;
-use std::collections::BTreeSet;
+use metadata::BLOCK_SIZE;
+use metadata::IsoMetadata;
+use metadata::METADATA_NAME;
+use volume::DESCRIPTOR_SECTOR;
+use volume::DESCRIPTOR_TYPE_PRIMARY;
+use volume::STANDARD_IDENTIFIER;
 
-mod metadata;
+pub(crate) mod metadata;
 mod rebuild;
-mod volume;
+pub(crate) mod volume;
 
 #[cfg(test)]
 mod tests;
-
-use metadata::{BLOCK_SIZE, IsoMetadata, METADATA_NAME};
-use volume::{DESCRIPTOR_SECTOR, DESCRIPTOR_TYPE_PRIMARY, STANDARD_IDENTIFIER};
 
 const CODEC_ID: &str = "std/cdrom/iso9660";
 const CODEC_NAME: &str = "ISO 9660 CD-ROM image";

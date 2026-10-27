@@ -1,8 +1,13 @@
 use super::*;
-use crate::codecs::{Codec, CodecHandlingConfidence, DecodedArtifact};
-use metadata::{
-  CARD_INFO_NAME, METADATA_NAME, NcsdMetadata, PartitionMetadata, TRAILER_NAME, partition_name,
-};
+use crate::codecs::Codec;
+use crate::codecs::CodecHandlingConfidence;
+use crate::codecs::DecodedArtifact;
+use metadata::CARD_INFO_NAME;
+use metadata::METADATA_NAME;
+use metadata::NcsdMetadata;
+use metadata::PartitionMetadata;
+use metadata::TRAILER_NAME;
+use metadata::partition_name;
 
 const UNIT: usize = 0x200;
 

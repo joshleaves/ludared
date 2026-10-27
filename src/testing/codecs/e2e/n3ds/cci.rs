@@ -1,13 +1,16 @@
 //! End-to-end tests for the Nintendo 3DS CCI codec.
 
+use crate::codecs::Codec;
+use crate::codecs::DecodedArtifact;
 use crate::codecs::nintendo::n3ds::container::cci::N3dsCci;
-use crate::codecs::nintendo::n3ds::container::cci::metadata::{
-  METADATA_NAME, NcsdMetadata, partition_name,
-};
-use crate::codecs::{Codec, DecodedArtifact};
-use crate::testing::codecs::e2e::{
-  BitExactFixture, CodecE2E, DecodeGoldenFixture, EncodeGoldenFixture, ExpectedArtifact,
-};
+use crate::codecs::nintendo::n3ds::container::cci::metadata::METADATA_NAME;
+use crate::codecs::nintendo::n3ds::container::cci::metadata::NcsdMetadata;
+use crate::codecs::nintendo::n3ds::container::cci::metadata::partition_name;
+use crate::testing::codecs::e2e::BitExactFixture;
+use crate::testing::codecs::e2e::CodecE2E;
+use crate::testing::codecs::e2e::DecodeGoldenFixture;
+use crate::testing::codecs::e2e::EncodeGoldenFixture;
+use crate::testing::codecs::e2e::ExpectedArtifact;
 
 const SOURCE: &[u8] = include_bytes!(concat!(
   env!("CARGO_MANIFEST_DIR"),

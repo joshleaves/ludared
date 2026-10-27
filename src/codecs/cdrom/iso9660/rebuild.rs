@@ -36,13 +36,23 @@
 //! contents, or growing within the room that follows a file, keeps both where
 //! they were.
 
+use log::*;
+use std::collections::BTreeSet;
+use std::collections::HashMap;
+
 use super::Placement;
-use super::metadata::{BLOCK_SIZE, Directory, Hex, IsoMetadata, Layout, Record};
-use super::volume::{self, DESCRIPTOR_SECTOR, PRIMARY_FIELDS, SYSTEM_AREA_SIZE};
+use super::metadata::BLOCK_SIZE;
+use super::metadata::Directory;
+use super::metadata::Hex;
+use super::metadata::IsoMetadata;
+use super::metadata::Layout;
+use super::metadata::Record;
+use super::volume;
+use super::volume::DESCRIPTOR_SECTOR;
+use super::volume::PRIMARY_FIELDS;
+use super::volume::SYSTEM_AREA_SIZE;
 use crate::codecs::DecodedArtifact;
 use crate::codecs::errors::CodecError;
-use log::*;
-use std::collections::{BTreeSet, HashMap};
 
 /// The width of a Level 1 file name, and of a directory name.
 const LEVEL1_NAME: usize = 8;

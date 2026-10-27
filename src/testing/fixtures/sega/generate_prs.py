@@ -10,9 +10,12 @@ import tempfile
 
 # This standalone helper has no dependency on Ludared or its codec.
 RUST = r'''
-use std::{env, fs, path::Path};
-use prs_rs::{comp::prs_compress_unsafe, decomp::prs_decompress_unsafe,
-             util::prs_calculate_max_compressed_size};
+use std::env;
+use srtd::fs;
+use std::path::Path;
+use prs_rs::comp::prs_compress_unsafe;
+use prs_rs::decomp::prs_decompress_unsafe;
+use prs_rs::util::prs_calculate_max_compressed_size;
 
 fn main() {
     let args: Vec<_> = env::args().skip(1).collect();

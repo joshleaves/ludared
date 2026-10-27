@@ -1,13 +1,13 @@
 use serde::Deserialize;
 
-use super::CDROM_SECTOR_MAGIC;
 use super::CdRomFileSystem;
-use super::MODE1;
+use super::common_mode::CDROM_SECTOR_MAGIC;
+use super::common_mode::MODE1;
+use super::common_mode::msf;
 use super::edc_ecc::ecc_block;
 use super::edc_ecc::ecc_tables;
 use super::edc_ecc::edc;
 use super::iso9660::Iso9660;
-use super::msf;
 use crate::codecs::Codec;
 use crate::codecs::CodecHandlingConfidence;
 use crate::codecs::CodecKind;

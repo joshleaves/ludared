@@ -14,7 +14,9 @@
 //! ordinary `#[test]` functions for the listed properties, and fails any
 //! property that declares fixtures but provides none.
 
-use crate::codecs::{Codec, CodecKind, DecodedArtifact};
+use crate::codecs::Codec;
+use crate::codecs::CodecKind;
+use crate::codecs::DecodedArtifact;
 use crate::hash::sha256_bytes as sha256_hex;
 
 pub(crate) struct ExpectedArtifact {

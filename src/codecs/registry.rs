@@ -3,6 +3,7 @@ use crate::codecs::CodecHandlingConfidence;
 use crate::codecs::ScriptEnvironment;
 use crate::codecs::cdrom::iso9660::Iso9660;
 use crate::codecs::cdrom::mode1::Mode1;
+use crate::codecs::cdrom::udf::Udf;
 use crate::codecs::errors::CodecError;
 use crate::codecs::generic::extract::Extract;
 use crate::codecs::generic::split::Split;
@@ -26,6 +27,7 @@ static BUILTINS: &[&dyn Codec] = &[
   &Extract,
   &Iso9660,
   &Mode1,
+  &Udf,
   &Split,
   &SnesExHiRom,
   &SnesLoRom,

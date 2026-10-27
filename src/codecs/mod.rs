@@ -189,7 +189,8 @@ pub trait Codec: Send + Sync {
 mod tests {
   use super::*;
   use serde::Deserialize;
-  use serde_json::{Value, json};
+  use serde_json::Value;
+  use serde_json::json;
 
   #[derive(Debug, Deserialize, PartialEq)]
   #[serde(deny_unknown_fields)]

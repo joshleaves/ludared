@@ -7,27 +7,32 @@
 //! The declared image size is a capacity, not necessarily the physical length:
 //! trimmed images are accepted, but a rebuild cannot exceed that capacity.
 
+use log::*;
+use serde::Deserialize;
+use std::collections::BTreeMap;
+
 use crate::codecs::Codec;
 use crate::codecs::CodecHandlingConfidence;
 use crate::codecs::CodecKind;
 use crate::codecs::DecodedArtifact;
 use crate::codecs::LudaredCodecArgs;
 use crate::codecs::errors::CodecError;
-use crate::codecs::nintendo::n3ds::common::{field, u32_le, u64_le};
+use crate::codecs::nintendo::n3ds::common::field;
+use crate::codecs::nintendo::n3ds::common::u32_le;
+use crate::codecs::nintendo::n3ds::common::u64_le;
 use crate::codecs::nintendo::n3ds::container::common::media_unit_size;
-use log::*;
-use serde::Deserialize;
-use std::collections::BTreeMap;
+use metadata::CARD_INFO_NAME;
+use metadata::METADATA_NAME;
+use metadata::NcsdMetadata;
+use metadata::PartitionMetadata;
+use metadata::TRAILER_NAME;
+use metadata::partition_index;
+use metadata::partition_name;
 
 pub(crate) mod metadata;
 
 #[cfg(test)]
 mod tests;
-
-use metadata::{
-  CARD_INFO_NAME, METADATA_NAME, NcsdMetadata, PartitionMetadata, TRAILER_NAME, partition_index,
-  partition_name,
-};
 
 const CODEC_ID: &str = "std/nintendo/3ds/container/cci";
 const CODEC_NAME: &str = "Nintendo 3DS CCI (NCSD) cartridge image";

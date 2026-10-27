@@ -1,6 +1,7 @@
 use log::*;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 
 use crate::codecs::ScriptEnvironment;
 use crate::codecs::registry::CodecRegistry;

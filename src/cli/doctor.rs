@@ -1,7 +1,9 @@
 use log::*;
 use std::path::PathBuf;
 
-use crate::{errors::app_error::AppError, project::Project, source::Source};
+use crate::errors::app_error::AppError;
+use crate::project::Project;
+use crate::source::Source;
 
 pub(crate) fn command_doctor() -> Result<(), AppError> {
   let project = Project::load_default()?;

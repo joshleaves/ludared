@@ -8,8 +8,8 @@
 
 use std::fs;
 use std::path::PathBuf;
-use std::process::{Command, Output};
-
+use std::process::Command;
+use std::process::Output;
 use tempfile::TempDir;
 
 const SOURCE: &str = "game.sfc";

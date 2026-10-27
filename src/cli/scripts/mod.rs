@@ -1,6 +1,8 @@
+use clap::Args;
+use clap::Subcommand;
+
 use crate::cli::scripts::test::ScriptsTestArgs;
 use crate::errors::app_error::AppError;
-use clap::{Args, Subcommand};
 
 pub(crate) mod test;
 

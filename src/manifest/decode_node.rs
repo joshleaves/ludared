@@ -1,6 +1,8 @@
-use super::WalkTarget;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use std::collections::HashMap;
+
+use super::WalkTarget;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub(crate) struct CodecNode {

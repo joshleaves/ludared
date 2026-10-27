@@ -3,15 +3,24 @@
 //! Everything here works in logical blocks: the codec never sees the sector
 //! headers, error correction or the raw 2352-byte sectors a disc image may hold
 //! them in. That is the Mode 1/2352 codec's business.
+use log::*;
+use std::collections::BTreeSet;
+use std::collections::VecDeque;
 
 use super::OutOfBoundsEntries;
-use super::metadata::{
-  BLOCK_SIZE, Directory, Hex, Layout, Opaque, PathTable, PathTableEntry, Primary, RECORD_HEADER,
-  Record,
-};
+use super::metadata::BLOCK_SIZE;
+use super::metadata::Directory;
+use super::metadata::Hex;
+use super::metadata::Layout;
+use super::metadata::Opaque;
+use super::metadata::PathTable;
+use super::metadata::PathTableEntry;
+use super::metadata::Primary;
+use super::metadata::RECORD_HEADER;
+use super::metadata::Record;
+use crate::codecs::cdrom::common_disk::ByteRange;
+use crate::codecs::cdrom::common_disk::block_offset;
 use crate::codecs::errors::CodecError;
-use log::*;
-use std::collections::{BTreeSet, VecDeque};
 
 /// The logical block the volume descriptor set starts at.
 pub(crate) const DESCRIPTOR_SECTOR: u32 = 16;
@@ -93,12 +102,31 @@ pub(crate) struct FileEntry {
   /// The block the file's data starts at.
   pub extent: u32,
 
+  /// How many file bytes the image actually holds.
+  pub length: usize,
+
   /// The file's contents, or as much of them as the image holds.
   pub data: Vec<u8>,
 }
 
 /// Reads an image into the layout a rebuild follows.
 pub(crate) fn read(image: &[u8], out_of_bounds: OutOfBoundsEntries) -> Result<Reading, CodecError> {
+  read_with_contents(image, out_of_bounds, true)
+}
+
+/// Reads the filesystem layout without copying file contents out of the image.
+pub(crate) fn read_layout(
+  image: &[u8],
+  out_of_bounds: OutOfBoundsEntries,
+) -> Result<Reading, CodecError> {
+  read_with_contents(image, out_of_bounds, false)
+}
+
+fn read_with_contents(
+  image: &[u8],
+  out_of_bounds: OutOfBoundsEntries,
+  read_file_contents: bool,
+) -> Result<Reading, CodecError> {
   let image_len = image.len();
 
   if image_len == 0 || !image_len.is_multiple_of(BLOCK_SIZE) {
@@ -147,7 +175,13 @@ pub(crate) fn read(image: &[u8], out_of_bounds: OutOfBoundsEntries) -> Result<Re
     "the root directory record in the descriptor",
   )?;
 
-  let (directories, mut files) = walk(image, &root, out_of_bounds, &mut coverage)?;
+  let (directories, mut files) = walk(
+    image,
+    &root,
+    out_of_bounds,
+    read_file_contents,
+    &mut coverage,
+  )?;
 
   let root_directory = directories
     .iter()
@@ -227,8 +261,8 @@ pub(crate) fn read(image: &[u8], out_of_bounds: OutOfBoundsEntries) -> Result<Re
 
 /// The bytes of the logical block `sector` holds.
 pub(crate) fn block(image: &[u8], sector: u32) -> Result<&[u8], CodecError> {
-  let start = (sector as usize)
-    .checked_mul(BLOCK_SIZE)
+  let start = block_offset(u64::from(sector))
+    .and_then(|offset| usize::try_from(offset).ok())
     .ok_or_else(|| CodecError::Message(format!("No logical block {sector} fits in the image")))?;
 
   image.get(start..start + BLOCK_SIZE).ok_or_else(|| {
@@ -794,6 +828,7 @@ fn walk(
   image: &[u8],
   root: &Record,
   out_of_bounds: OutOfBoundsEntries,
+  read_file_contents: bool,
   coverage: &mut Coverage,
 ) -> Result<(Vec<Directory>, Vec<FileEntry>), CodecError> {
   let mut directories = Vec::new();
@@ -817,9 +852,9 @@ fn walk(
 
     let length = record.length as usize;
 
-    if length == 0 || !length.is_multiple_of(BLOCK_SIZE) {
+    if length == 0 {
       return Err(CodecError::Message(format!(
-        "The directory '{}' spans {length} bytes, and an ISO 9660 directory spans whole blocks",
+        "The directory '{}' has no recorded directory data",
         display_path(&path)
       )));
     }
@@ -938,10 +973,14 @@ fn walk(
       // empty would say the disc holds nothing where it holds another track.
       if available > 0 || held.length == 0 {
         let start = held.extent as usize * BLOCK_SIZE;
-        let data = image
-          .get(start..start + available)
-          .map(<[u8]>::to_vec)
-          .unwrap_or_default();
+        let data = if read_file_contents {
+          image
+            .get(start..start + available)
+            .map(<[u8]>::to_vec)
+            .unwrap_or_default()
+        } else {
+          Vec::new()
+        };
 
         if available > 0 {
           coverage.cover(start, available, format!("the file '{name}'"))?;
@@ -950,6 +989,7 @@ fn walk(
         files.push(FileEntry {
           name,
           extent: held.extent,
+          length: available,
           data,
         });
       }
@@ -1192,7 +1232,7 @@ fn put_date(bytes: &mut [u8], offset: usize, date: &Hex) -> Result<(), CodecErro
 /// finding it means knowing exactly which bytes the model accounts for.
 struct Coverage {
   image_len: usize,
-  ranges: Vec<(usize, usize, String)>,
+  ranges: Vec<(ByteRange, String)>,
 }
 
 impl Coverage {
@@ -1210,7 +1250,9 @@ impl Coverage {
       .ok_or_else(|| CodecError::Message(format!("{what} runs past the end of the image")))?;
 
     if len > 0 {
-      self.ranges.push((start, end, what));
+      let range = ByteRange::new(start as u64, (end - start) as u64)
+        .ok_or_else(|| CodecError::Message(format!("{what} byte range overflows")))?;
+      self.ranges.push((range, what));
     }
 
     Ok(())
@@ -1219,18 +1261,20 @@ impl Coverage {
   /// Two structures claiming the same bytes, if any.
   fn overlap(&self) -> Option<(String, String)> {
     let mut ranges = self.ranges.clone();
-    ranges.sort_by_key(|(start, end, _)| (*start, *end));
+    ranges.sort_by_key(|(range, _)| (range.start, range.end));
 
     ranges.windows(2).find_map(|pair| {
       let [
-        (_, end, left),
-        (start, _, right),
+        (left_range, left),
+        (right_range, right),
       ] = pair
       else {
         return None;
       };
 
-      (*start < *end).then(|| (left.clone(), right.clone()))
+      left_range
+        .overlaps(*right_range)
+        .then(|| (left.clone(), right.clone()))
     })
   }
 
@@ -1240,12 +1284,14 @@ impl Coverage {
   /// a rebuild has to be told is where the bytes that are not zero belong.
   fn opaque_runs(&self, image: &[u8]) -> Vec<Opaque> {
     let mut ranges = self.ranges.clone();
-    ranges.sort_by_key(|(start, end, _)| (*start, *end));
+    ranges.sort_by_key(|(range, _)| (range.start, range.end));
 
     let mut runs = Vec::new();
     let mut cursor = 0;
 
-    for (start, end, _) in ranges {
+    for (range, _) in ranges {
+      let start = range.start as usize;
+      let end = range.end as usize;
       scan(image, cursor, start, &mut runs);
       cursor = cursor.max(end);
     }

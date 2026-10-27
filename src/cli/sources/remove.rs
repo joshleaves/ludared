@@ -1,8 +1,10 @@
-use crate::cli::completions::sources::completion_sources_list;
-use crate::{errors::app_error::AppError, project::Project};
 use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
 use std::path::PathBuf;
+
+use crate::cli::completions::sources::completion_sources_list;
+use crate::errors::app_error::AppError;
+use crate::project::Project;
 
 #[derive(Args)]
 pub(crate) struct SourcesRemoveArgs {

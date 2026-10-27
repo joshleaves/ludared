@@ -1,3 +1,10 @@
+use serde::Deserialize;
+use serde::Serialize;
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::path::Path;
+use std::path::PathBuf;
+
 use crate::codecs::Codec;
 use crate::codecs::CodecKind;
 use crate::codecs::DecodedArtifact;
@@ -8,14 +15,11 @@ use crate::manifest::decode_node::CodecNode;
 use crate::project::overrides::errors::OverrideError;
 use crate::source::Source;
 use crate::virtual_path::VirtualPath;
-use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
+use decode_node::DecodeNode;
+use errors::ManifestError;
 
 pub(crate) mod decode_node;
 pub(crate) mod errors;
-use decode_node::DecodeNode;
-use errors::ManifestError;
 
 #[derive(Clone, Copy)]
 pub(crate) enum WalkTarget {

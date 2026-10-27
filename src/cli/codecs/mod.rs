@@ -1,3 +1,8 @@
+use clap::Args;
+use clap::Subcommand;
+use std::path::Path;
+use std::path::PathBuf;
+
 use crate::cli::codecs::create::CodecsCreateArgs;
 use crate::cli::codecs::detect::CodecsDetectArgs;
 use crate::cli::codecs::info::CodecsInfoArgs;
@@ -6,9 +11,6 @@ use crate::codecs::ScriptEnvironment;
 use crate::codecs::registry::CodecRegistry;
 use crate::errors::app_error::AppError;
 use crate::project::Project;
-
-use clap::{Args, Subcommand};
-use std::path::{Path, PathBuf};
 
 pub(crate) mod create;
 pub(crate) mod detect;

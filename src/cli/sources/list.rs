@@ -1,9 +1,12 @@
-use crate::formatting::format_bytes;
-use crate::formatting::format_size;
-use crate::{errors::app_error::AppError, project::Project, source::Source};
 use clap::Args;
 use log::*;
 use std::path::Path;
+
+use crate::errors::app_error::AppError;
+use crate::formatting::format_bytes;
+use crate::formatting::format_size;
+use crate::project::Project;
+use crate::source::Source;
 
 #[derive(Args)]
 pub(crate) struct SourcesListArgs {
