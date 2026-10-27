@@ -53,6 +53,131 @@ The generated payload hash is the decoded user-data hash above; the generated
 the decoded bytes and byte-exact reconstruction against this independently
 generated image.
 
+## `mode_xa_golden.bin`
+
+A 30-sector (70,560-byte) synthetic ISO9660/XA data disc. It contains three
+ordinary files with deterministic byte-pattern contents, an ISO9660 directory
+tree and path tables, and standard 14-byte XA System Use Information in the
+directory records. It has no VCD/SVCD/CD-i directory structure or
+application-specific metadata, and contains no MPEG multiplex. All file and
+Form 2 extension data is generated
+by the fixture script and is dedicated to the public domain under CC0 1.0.
+
+- **Raw BIN SHA-256:** `4d8baeb16c66cfb4df7994afe5047a546351a3877ac7b428352ca9b0fb9b4646`
+- **Cooked ISO SHA-256:** `8659913b31c6fb3c3b47ba6b6a1f28e7a50a462dfc7bd7caed85f147a0198f33`
+- **Independent ISO metadata SHA-256:** `4025e86d7968d4e96f9496b43b46c6a46c6645b14feeeb57168fbcf8aea20618`
+
+### Tools and reproduction
+
+The ISO9660 filesystem comes from cdrtools `mkisofs` 3.02a09 using its generic
+`-xa` option. Its source archive is
+`https://sourceforge.net/projects/cdrtools/files/alpha/cdrtools-3.02a09.tar.bz2/download`
+(SHA-256 `aa28438f458ef3f314b79f2029db27679dae1d5ffe1569b6de57742511915e81`).
+GNU VCDImager 2.0.1 is used only as an independent raw Mode 2 XA sector
+encoder through its `_vcd_make_mode2` API; the fixture is not authored as a
+Video CD. Its source archive is
+`https://ftp.gnu.org/gnu/vcdimager/vcdimager-2.0.1.tar.gz` (SHA-256
+`67515fefb9829d054beae40f3e840309be60cda7d68753cafdd526727758f67a`). The
+encoder routine writes sector sync, BCD MSF header, Mode 2 subheader, EDC and
+ECC. `generate_mode_xa.py` requires both pinned tool versions and generates
+all file contents, XA metadata, sector manifest, and expected ISO metadata.
+
+Build VCDImager 2.0.1 (with its libcdio/libiso9660/libpopt/libxml2 development
+dependencies) and cdrtools 3.02a09. Then run from the repository root:
+
+```sh
+python3 src/testing/fixtures/cdrom/generate_mode_xa.py \
+  --vcdimager-source /tmp/vcdimager-2.0.1 \
+  --output-dir src/testing/fixtures/cdrom
+```
+
+The generator needs `mkisofs` 3.02a09 and `pkg-config libcdio` on `PATH`. It
+creates the cooked ISO with `-iso-level 1 -no-pad -xa`, normalizes volatile
+PVD fields and the non-filesystem producer record, adds the XA file numbers
+and Form 2 file attribute, then encodes
+each 2048-byte sector payload with VCDImager's sector API. The ISO directory
+records and expected `ISO9660.json` are parsed by the independent Python
+generator; `isoinfo -R -l` independently lists the same directory tree.
+
+### Source files and sector layout
+
+The three source files are deterministic:
+
+| Path | Source bytes | Size | Source SHA-256 |
+| --- | --- | ---: | --- |
+| `PLAIN.TXT` | `(i * 11 + 5) % 256` | 3000 | `d27ce922a6279c04fa85c64fae72e67d8339d15eaaa81e4b733f6ce674e38bc2` |
+| `XA/FORM1.BIN` | `(i * 13 + 7) % 256` | 4096 | `6c0294b06b53f1e89f9978a127bf9ee4182239125570f700aa47f39d79a6d278` |
+| `XA/FORM2.BIN` | `(i * 17 + 9) % 256` | 2048 | `880a3e3a3085790074f2c479f4698c7295d85523a5c7f417032a702fcf829fbf` |
+
+The extra 276 bytes in the Form 2 sector use `(i * 19 + 11) % 256`, SHA-256
+`f0230637215fe6ba17939bde2583cbe459ab79249d49319fe26c0e29fbe4d7eb`. ISO
+Data Length remains 2048 bytes for the Form 2 file, while Ludared's XA
+contract appends the complete 2324-byte sector payload to the decoded artifact.
+The fixture intentionally uses separate all-Form-1 and all-Form-2 files:
+the XA directory attribute identifies one form per file, so a mixed-form file
+would contradict the XA metadata.
+
+| LSN | Use | Form | XA subheader (file, channel, submode, coding) |
+| ---: | --- | --- | --- |
+| 0–15 | System area | Form 1 | default data submode `08` |
+| 16 | Primary Volume Descriptor | Form 1 | `00,00,09,00` |
+| 17 | Volume descriptor terminator | Form 1 | final/default `89` |
+| 18 | fixed cdrtools producer record | Form 1 | default `08` |
+| 19–20 | little-endian path table | Form 1 | `89` on final sector |
+| 21–22 | big-endian path table | Form 1 | `89` on final sector |
+| 23 | root directory | Form 1 | `89` |
+| 24 | `XA` directory | Form 1 | `89` |
+| 25–26 | `PLAIN.TXT` | Form 1 | file 0/channel 0, `08` then `89` |
+| 27–28 | `XA/FORM1.BIN` | Form 1 | file 2/channel 3, `08` then `89` |
+| 29 | `XA/FORM2.BIN` | Form 2 | file 3/channel 1, `A9` |
+
+This gives 29 Form 1 sectors and one Form 2 sector. The `PLAIN.TXT` XA
+directory entry uses the cdrtools default Form 1 attributes and file number 0,
+so it has no `.XA` sidecar. `FORM1.BIN` has Form 1 XA attributes and file
+number 2; `FORM2.BIN` has Form 2 XA attributes and file number 3. Both use
+non-default XA channel values, so their `.XA` sidecars are expected.
+
+### Expected decoded artifacts
+
+The `raw` mode returns `data.bin` (the cooked 61,440-byte ISO), a 280-byte
+`xa_data.bin` record for LSN 29 (little-endian sector index plus the 276-byte
+Form 2 extension), and 120 bytes of subheaders (four bytes per sector).
+The `iso9660` mode returns `XA.json`, independently generated `ISO9660.json`,
+the three files, and sidecars `XA/FORM1.BIN.XA` (`03 08 00 03 89 00`) and
+`XA/FORM2.BIN.XA` (`01 A9 00`). There is no sidecar for `PLAIN.TXT`.
+
+`XA.json` is exactly:
+
+```json
+{
+  "file_number": {
+    "XA/FORM1.BIN": 2,
+    "XA/FORM2.BIN": 3
+  }
+}
+```
+
+Expected decoded artifacts:
+
+| Mode | Artifact | Size | SHA-256 |
+| --- | --- | ---: | --- |
+| raw | `data.bin` | 61440 | `8659913b31c6fb3c3b47ba6b6a1f28e7a50a462dfc7bd7caed85f147a0198f33` |
+| raw | `xa_data.bin` | 280 | `cfc047774e814268cf177e172716d3a040e68abb3ee3b1d5ae7fe17c7c7bc932` |
+| raw | `xa_subheaders.bin` | 120 | `b21ccdbba33170681ab5670532b18036cc531a709527fda8e6419f35c3c71117` |
+| iso9660 | `XA.json` | 71 | `fc3938de9ec230228efe615a6793ebbc73623863a54efb4c1e11c57758ef2513` |
+| iso9660 | `ISO9660.json` | 4148 | `4025e86d7968d4e96f9496b43b46c6a46c6645b14feeeb57168fbcf8aea20618` |
+| iso9660 | `PLAIN.TXT` | 3000 | `d27ce922a6279c04fa85c64fae72e67d8339d15eaaa81e4b733f6ce674e38bc2` |
+| iso9660 | `XA/FORM1.BIN` | 4096 | `6c0294b06b53f1e89f9978a127bf9ee4182239125570f700aa47f39d79a6d278` |
+| iso9660 | `XA/FORM2.BIN` | 2324 | `0a60471b6924903e2a8f0e33d9dc156997b56579c2fb4f1f287abd7dc23fd467` |
+| iso9660 | `XA/FORM1.BIN.XA` | 6 | `09ba661a81cb2e05f4cf9f66f7e49980d68e67f352be3d22d2c5630e8996bec4` |
+| iso9660 | `XA/FORM2.BIN.XA` | 3 | `d68ac288c7f961c40703dcf301d84e713fe6e65bd6ccbbadffb27dd7093f2df2` |
+
+Expected file hashes come from the generated source files plus the separately
+specified Form 2 extension bytes. The ISO metadata JSON is built directly from
+the independently mastered ISO's PVD, path tables, directory records, and XA
+System Use Information, not from Ludared. The E2E encode inputs are explicit
+source artifacts in `mode_xa.rs`; they do not decode the BIN fixture first.
+
 ## `iso9660_golden.iso`
 
 A plain ISO 9660 image mastered by cdrtools `mkisofs` (not by anything in this

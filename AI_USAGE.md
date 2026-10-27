@@ -45,8 +45,8 @@ Therefore, this issue is not about "I don't care" but rather about "I believe th
 ## General: Tests
 A lot of tests use harnesses, fixtures, setups,.. It's not something I enjoy doing, at all, nor is it a "necessary" part of ludared. It's very helpful to make sure a mutation won't break the functionalities, or that scenarios will always run properly, but I don't believe it's what makes ludared an interesting software.
 
-## Codec: `std/cdrom/iso9660`
-* Done by: `DeepSeek`
+## Codec: `std/cdrom/iso9660` & `std/cdrom/udf`
+* Done by: `DeepSeek` & `Codex`
 
 The first pass was done using the crate [hadris-rs](https://github.com/hxyulin/hadris). However, it proved to adhere too strictly to the [ISO 9660](https://en.wikipedia.org/wiki/ISO_9660) standards, and it would not preserve data from the [Sakura Taisen saturn CD](http://redump.org/disc/130400) and later reject the [PSP UMD](http://redump.org/disc/3313/).
 
@@ -57,7 +57,20 @@ I decided to throw [DeepSeek](https://en.wikipedia.org/wiki/DeepSeek) at it:
 - the "trick" behind how ludared would preserve non-filesystem artifacts was already in place.
 - the LLM could write a harness to access both CD images, and compare them bit-by-bit to test the codec's rebuild capabilities, and identify what was wrong. Which was a nice boon, since it inspired the [codec E2E tests](./CODEC_CONTRACT.md).
 
-The diff is around 7000 lines, with a lot of tests (and still in review as I write those lines, because that asshole tried to break trait contracts). While it's got obvious style and boundary issues (hence why I'm adding a [ludared-codec-authoring skill](skills/ludared-codec-authoring/SKILL.md) to the repository), the implementation is sound, and a local build allowed for the [first beta release of the Sakura Taisen french patch project](https://github.com/sakurayaku/re.sakurataisen/releases/tag/b20261018).
+The diff was around 7000 lines, with a lot of tests (and a long review, because that asshole tried to break trait contracts). While it had obvious style and boundary issues (hence why I added a [ludared-codec-authoring skill](skills/ludared-codec-authoring/SKILL.md) to the repository), the implementation was sound, and a local build allowed for the [first beta release of the Sakura Taisen french patch project](https://github.com/sakurayaku/re.sakurataisen/releases/tag/b20261018).
+
+Later on, I needed `std/cdrom/udf` for PS2 games, and, it made sense to have another agent do this one. Human design still went into how to handle [UDF Bridge](https://en.wikipedia.org/wiki/Universal_Disk_Format#Compatibility), which then required rewrites on `std/cdrom/iso9660` because in the end, they both required the same type of routines. I had already made most of the metadata-schema design with **ChatGTP**, so I threw **Codex** at it. There is really NOT much to say about it: there was a harness on [real data](http://redump.org/disc/25834/), there was analysis to discover that even if I wanted a "simple codec", there needed to be an implementation of the ISO9660 bridge,... So it worked fast.
+
+## Codec: `std/cdrom/mode*/
+* Done by: `ChatGPT` & `Codex`
+
+Oh yeah, [CD-ROM mode](https://en.wikipedia.org/wiki/CD-ROM#Sector_structure) are a real pain. Basically, on a CD-ROM Mode 1, each sector contains 2352 bytes, and only 2048 bytes are meant for the user, the rest being reserved for sector metadata, [EDC](https://en.wikipedia.org/wiki/Error_detection_and_correction) and [ECC](https://en.wikipedia.org/wiki/Error_correction_code), which we need to recalculate on rebuild AND we need to know "where" we are on the CD to get them properly.
+
+Actually, I now know a LOT about that shit. Seriously, while LLMs wrote the code, I still feel like I spent too much time in these. So, at first, `std/cdrom/mode2352` turned a raw track 2352-bytes sectors into a stream of 2048-bytes chunks. Then I had to [handle XA CD-ROMs](http://redump.org/disc/25552/), so back to the drawing board: the codec turned into `std/cdrom/mode1`, an `std/cdrom/mode2` codec was added (for which no test was performed since I don't have any data), and then went the real test: `std/cdrom/mode_xa`, used by PSX CDs, which is a whole other can of worms: a sector can be either `Form 1`, 2048 bytes +EDC+ECC, or it could be `Form 2`and contain 2324 bytes, BUT the `std/cdrom/iso9660` codec implementation would refuse it because it was expecting a track where every sector is 2048 bytes.
+
+Okay, that was a wild tangent, you were warned. So, actually, sorry, but I don't know what to say about LLM ownership there: two LLMs wrote it (the second one was adversorial review + E2E test), but I'm the one who decided the checks to run on the original data, I'm the one who made the assumptions about how the PS1 used its XA sectors[^xa-sectors], I'm the one who designed the method to produce the ISO9660 artefacts with their full XA data, I'm the one who decided how to store the metadata (did you know XA sectors embed a "file_number" field? Well of course we had to check them over data to make sure they were constants...),...
+
+So, not much about this one.
 
 ## Codec: `std/nintendo/*`
 * Done by: `DeepSeek`
@@ -87,6 +100,15 @@ I wrote a harness to see what was happening, then asked [ChatGPT](https://en.wik
 - Making an agent work on the codec allowed me to take the time to extend the Lua codec to give it access to the builtins from Lua scripts, making PRS decode/encode routines usable in Lua with the performance of Rust.
 - Giving the task (and the harness!) to [Codex](https://en.wikipedia.org/wiki/OpenAI_Codex) allowed it to quickly loop over the implementation to find ways improve its performance, getting us from 90ms to 2ms on some cases (when the original Lua was...six seconds).
 
+## Codec: `std/sony/playstation/graphics/str_xa`
+* Done by: `ChatGPT`
+
+So, after finishing [mode_xa](./AI_USAGE.md#codec-stdcdrommode), I found out my [translation project](http://redump.org/disc/25552/) had EXACTLY one `.STR` file. I thought it would be easy to play with the [reference player](https://github.com/m35/jpsxdec/), until an error taught me something funny: my data representation was good for decode/encode processes, but ALL TOOLS (even [ffmpeg](https://github.com/FFmpeg/FFmpeg/blob/master/libavformat/psxstr.c)) played [STR](https://github.com/m35/jpsxdec/blob/readme/jpsxdec/PlayStation1_STR_format.txt) files extracted from raw 2352-bytes sectors, not from the extracted data I had produced.
+
+This led to some self-doubt, soul-searching, discussions about how a "proper STR" could be obtained from my data, until I analyzed the STR file I had produced: it was all chunks of either Form 1 Video (2048 bytes) or Form 2 Audio (2324 bytes), and there were enough [magic bytes](https://en.wikipedia.org/wiki/File_format#Magic_number) to recognize the type of each chunk. So technically, it would be possible to read the file and separate it into `video.str` and `audio.xa` streams, then reconstruct it. Then I could deal later on with turning `video.str` into frames, edit them to add subtitles, and repack. Sure.
+
+Since I had been at `mode_xa` non-stop for few days, I decided I deserved the win: I gave instructions to the agent, and a codec was produced. I tested it on the game data, and finally: [jPSXdec](https://github.com/m35/jpsxdec/) recognized the format, and I was able to watch [the game's opening](https://www.youtube.com/watch?v=yDqsZYey-cY), without sound of course. But heh, I got it[^xa-sectors]!
+
 # LLM Restrictions
 
 As said earlier, LLMs are not given free reign over this codebase. There are even strict rules of what no LLM is allowed to do:
@@ -100,3 +122,4 @@ As said earlier, LLMs are not given free reign over this codebase. There are eve
 [^he-it]: My native language is french, and we don't have a "neutral" gender like the english "it". Therefore, I mostly think of things in "he or she", very rarely in "it". I try my best to always use "it" in this document, but were I to use an "he" to describe an LLM, please don't conflate it as me advocating for the "humanity" of LLMs. Nope, LLMs aren't human, just like my shell scripts are not conscious, and they have no rights beyond the `+x` I may bestow them.
 [^incremental-builds]: Incremental builds are coming at some point, I promise.
 [^unsafe]: I know [unsafe is not bad](https://medium.com/@daxx5/unsafe-rust-isnt-the-dark-side-it-s-the-only-reason-rust-works-1ac93fe32d31): like everything else, it's a tool. And because I know my tools, I know when they are suited, or not, to a precise task.
+[^xa-sectors]: I only tested against one game, so time will tell whether I was right or wrong hahaha.

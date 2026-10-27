@@ -41,7 +41,7 @@ Presets:
   iso9660: {"file_system": "iso9660"}
 
 Example:
-  {"start_lba":0, "file_system": "iso9660"}
+  {"start_lba": 0, "file_system": "iso9660"}
 "#;
 
 const RAW_SECTOR_SIZE: usize = 2352;
@@ -182,8 +182,6 @@ impl Codec for Mode1 {
       output.extend_from_slice(&sector[16..2064]);
     }
 
-    println!("Args: {:?}", args);
-    println!("Decoding: {:?}", mode1_args.file_system);
     match mode1_args.file_system {
       CdRomFileSystem::Raw => Ok(vec![DecodedArtifact {
         name: "data.bin".to_owned(),

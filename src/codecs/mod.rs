@@ -42,6 +42,7 @@ pub mod nintendo;
 pub mod registry;
 pub mod scripts;
 pub mod sega;
+pub mod sony;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CodecHandlingConfidence {

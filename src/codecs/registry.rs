@@ -2,7 +2,9 @@ use crate::codecs::Codec;
 use crate::codecs::CodecHandlingConfidence;
 use crate::codecs::ScriptEnvironment;
 use crate::codecs::cdrom::iso9660::Iso9660;
+use crate::codecs::cdrom::mode_xa::ModeXa;
 use crate::codecs::cdrom::mode1::Mode1;
+use crate::codecs::cdrom::mode2::Mode2;
 use crate::codecs::cdrom::udf::Udf;
 use crate::codecs::errors::CodecError;
 use crate::codecs::generic::extract::Extract;
@@ -16,6 +18,7 @@ use crate::codecs::nintendo::snes::cart_sdd1::SnesSdd1Rom;
 use crate::codecs::nintendo::snes::cart_spc7110::SnesSpc7110Rom;
 use crate::codecs::scripts::lua::LuaCodec;
 use crate::codecs::sega::compression::prs::PrsCompression;
+use crate::codecs::sony::playstation::graphics::str_xa::StrXa;
 use crate::scripts::discovery::ScriptDiscovery;
 use crate::scripts::discovery::ScriptKind;
 use crate::scripts::errors::ScriptError;
@@ -27,6 +30,8 @@ static BUILTINS: &[&dyn Codec] = &[
   &Extract,
   &Iso9660,
   &Mode1,
+  &Mode2,
+  &ModeXa,
   &Udf,
   &Split,
   &SnesExHiRom,
@@ -36,6 +41,7 @@ static BUILTINS: &[&dyn Codec] = &[
   &SnesSdd1Rom,
   &SnesSpc7110Rom,
   &PrsCompression,
+  &StrXa,
 ];
 
 pub(crate) struct CodecRegistry {
