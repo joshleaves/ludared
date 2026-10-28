@@ -64,7 +64,7 @@ pub(super) fn decode_xa_raw(
 /// subheaders, EDC and ECC. Sector addresses are derived from `start_lba`.
 pub(super) fn encode_xa_raw(
   artifacts: &[DecodedArtifact],
-  mode_xa_args: Mode2XaCodecArgs,
+  mode2_xa_args: Mode2XaCodecArgs,
 ) -> Result<Vec<u8>, CodecError> {
   if artifacts.len() != 3
     || artifacts[0].name != "data.bin"
@@ -129,7 +129,7 @@ pub(super) fn encode_xa_raw(
     let sector_index =
       u32::try_from(index).map_err(|_| CodecError::Message("Too many sectors".into()))?;
 
-    let frame = mode_xa_args
+    let frame = mode2_xa_args
       .start_lba
       .checked_add(sector_index)
       .and_then(|lba| lba.checked_add(LEAD_IN_FRAMES))

@@ -19,7 +19,7 @@ use crate::codecs::errors::CodecError;
 mod iso9660;
 mod raw;
 
-const CODEC_ID: &str = "std/cdrom/mode/mode_xa";
+const CODEC_ID: &str = "std/cdrom/mode/mode2_xa";
 const CODEC_NAME: &str = "CD-ROM Mode 2 XA (2352-byte sectors)";
 const CODEC_DESC: &str = r#"Raw CD-ROM Mode 2 XA sector converter
 
@@ -163,7 +163,7 @@ impl Codec for Mode2Xa {
   }
 
   fn decode_name(&self, _: Option<&str>) -> Result<String, CodecError> {
-    Ok("mode_xa".to_owned())
+    Ok("mode2_xa".to_owned())
   }
 
   /// Extracts a fixed-width 2048-byte stream and separate Form 2 payloads.
@@ -177,7 +177,7 @@ impl Codec for Mode2Xa {
     tracing::instrument(skip_all, fields(codec_id = %self.id(), operation = %"decode"))
   )]
   fn decode(&self, data: &[u8], args: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
-    let mode_xa_args = Mode2XaCodecArgs::from_args(args)?;
+    let mode2_xa_args = Mode2XaCodecArgs::from_args(args)?;
 
     if !data.len().is_multiple_of(RAW_SECTOR_SIZE) {
       return Err(CodecError::Message(
@@ -232,7 +232,7 @@ impl Codec for Mode2Xa {
       }
     }
 
-    match mode_xa_args.filesystem {
+    match mode2_xa_args.filesystem {
       CdRomFileSystem::Raw => raw::decode_xa_raw(user_data, xa_data, xa_subheaders),
       CdRomFileSystem::Iso9660 => iso9660::decode_xa_iso9660(user_data, xa_data, xa_subheaders),
     }
@@ -249,11 +249,11 @@ impl Codec for Mode2Xa {
     artifacts: &[DecodedArtifact],
     args: Option<&str>,
   ) -> Result<Vec<u8>, CodecError> {
-    let mode_xa_args = Mode2XaCodecArgs::from_args(args)?;
+    let mode2_xa_args = Mode2XaCodecArgs::from_args(args)?;
 
-    match mode_xa_args.filesystem {
-      CdRomFileSystem::Raw => raw::encode_xa_raw(artifacts, mode_xa_args),
-      CdRomFileSystem::Iso9660 => iso9660::encode_xa_iso9660(artifacts, mode_xa_args),
+    match mode2_xa_args.filesystem {
+      CdRomFileSystem::Raw => raw::encode_xa_raw(artifacts, mode2_xa_args),
+      CdRomFileSystem::Iso9660 => iso9660::encode_xa_iso9660(artifacts, mode2_xa_args),
     }
   }
 }

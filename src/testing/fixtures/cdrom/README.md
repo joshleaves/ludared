@@ -53,7 +53,7 @@ The generated payload hash is the decoded user-data hash above; the generated
 the decoded bytes and byte-exact reconstruction against this independently
 generated image.
 
-## `mode_xa_golden.bin`
+## `mode2_xa_golden.bin`
 
 A 30-sector (70,560-byte) synthetic ISO9660/XA data disc. It contains three
 ordinary files with deterministic byte-pattern contents, an ISO9660 directory
@@ -79,14 +79,14 @@ Video CD. Its source archive is
 `https://ftp.gnu.org/gnu/vcdimager/vcdimager-2.0.1.tar.gz` (SHA-256
 `67515fefb9829d054beae40f3e840309be60cda7d68753cafdd526727758f67a`). The
 encoder routine writes sector sync, BCD MSF header, Mode 2 subheader, EDC and
-ECC. `generate_mode_xa.py` requires both pinned tool versions and generates
+ECC. `generate_mode2_xa.py` requires both pinned tool versions and generates
 all file contents, XA metadata, sector manifest, and expected ISO metadata.
 
 Build VCDImager 2.0.1 (with its libcdio/libiso9660/libpopt/libxml2 development
 dependencies) and cdrtools 3.02a09. Then run from the repository root:
 
 ```sh
-python3 src/testing/fixtures/cdrom/generate_mode_xa.py \
+python3 src/testing/fixtures/cdrom/generate_mode2_xa.py \
   --vcdimager-source /tmp/vcdimager-2.0.1 \
   --output-dir src/testing/fixtures/cdrom
 ```
@@ -176,7 +176,7 @@ Expected file hashes come from the generated source files plus the separately
 specified Form 2 extension bytes. The ISO metadata JSON is built directly from
 the independently mastered ISO's PVD, path tables, directory records, and XA
 System Use Information, not from Ludared. The E2E encode inputs are explicit
-source artifacts in `mode_xa.rs`; they do not decode the BIN fixture first.
+source artifacts in `mode2_xa.rs`; they do not decode the BIN fixture first.
 
 ## `iso9660_golden.iso`
 

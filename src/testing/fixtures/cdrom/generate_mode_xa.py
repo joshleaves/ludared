@@ -291,7 +291,7 @@ def main():
         source = work / "src"
         source.mkdir()
         source_files = write_source_files(source)
-        cooked_path = work / "mode_xa_cooked.iso"
+        cooked_path = work / "mode2_xa_cooked.iso"
         env = dict(os.environ, TZ="UTC")
         subprocess.run([
             "mkisofs", "-quiet", "-no-pad", "-iso-level", "1", "-V", "MODEXA",
@@ -316,10 +316,10 @@ def main():
             "cc", f"-I{source_tree / 'include'}", *pkg_config_cflags,
             str(helper), str(libvcd), *pkg_config_libs, "-o", str(encoder),
         ], check=True)
-        raw_path = output_dir / "mode_xa_golden.bin"
+        raw_path = output_dir / "mode2_xa_golden.bin"
         subprocess.run([str(encoder), str(manifest_path), str(raw_path)], check=True)
-        (output_dir / "mode_xa_cooked.iso").write_bytes(cooked)
-        (output_dir / "mode_xa_iso9660.json").write_bytes(metadata)
+        (output_dir / "mode2_xa_cooked.iso").write_bytes(cooked)
+        (output_dir / "mode2_xa_iso9660.json").write_bytes(metadata)
         print(f"raw sectors: {len(headers)}; Form 1: {len(headers) - len(form2)}; Form 2: {len(form2)}")
         print("files:")
         for path, record in sorted(extents.items(), key=lambda item: item[1]["extent"]):

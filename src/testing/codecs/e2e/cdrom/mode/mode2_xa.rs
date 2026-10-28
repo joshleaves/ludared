@@ -15,15 +15,15 @@ use crate::testing::codecs::e2e::ExpectedArtifact;
 
 const SOURCE: &[u8] = include_bytes!(concat!(
   env!("CARGO_MANIFEST_DIR"),
-  "/src/testing/fixtures/cdrom/mode_xa_golden.bin"
+  "/src/testing/fixtures/cdrom/mode2_xa_golden.bin"
 ));
 const COOKED_SOURCE: &[u8] = include_bytes!(concat!(
   env!("CARGO_MANIFEST_DIR"),
-  "/src/testing/fixtures/cdrom/mode_xa_cooked.iso"
+  "/src/testing/fixtures/cdrom/mode2_xa_cooked.iso"
 ));
 const ISO9660_METADATA: &[u8] = include_bytes!(concat!(
   env!("CARGO_MANIFEST_DIR"),
-  "/src/testing/fixtures/cdrom/mode_xa_iso9660.json"
+  "/src/testing/fixtures/cdrom/mode2_xa_iso9660.json"
 ));
 
 const RAW_ARGS: &str = r#"{"filesystem":"raw"}"#;
@@ -214,7 +214,7 @@ impl CodecE2E for Mode2XaE2E {
       ISO9660_ARGS,
     ]
     .map(|args| BitExactFixture {
-      name: "mode_xa_golden.bin",
+      name: "mode2_xa_golden.bin",
       input: SOURCE.to_vec(),
       args: Some(args),
     })
@@ -224,13 +224,13 @@ impl CodecE2E for Mode2XaE2E {
   fn decode_golden_fixtures() -> impl Iterator<Item = DecodeGoldenFixture> {
     [
       DecodeGoldenFixture {
-        name: "mode_xa_golden.bin (raw)",
+        name: "mode2_xa_golden.bin (raw)",
         input: SOURCE.to_vec(),
         args: Some(RAW_ARGS),
         expected_artifacts: expected_artifacts(&RAW_ARTIFACTS),
       },
       DecodeGoldenFixture {
-        name: "mode_xa_golden.bin (iso9660)",
+        name: "mode2_xa_golden.bin (iso9660)",
         input: SOURCE.to_vec(),
         args: Some(ISO9660_ARGS),
         expected_artifacts: expected_artifacts(&ISO9660_ARTIFACTS),

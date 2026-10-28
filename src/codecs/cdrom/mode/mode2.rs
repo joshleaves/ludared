@@ -15,7 +15,7 @@ const CODEC_ID: &str = "std/cdrom/mode/mode2";
 const CODEC_NAME: &str = "UNTESTED: CD-ROM Mode 2 non-XA (2352-byte sectors)";
 const CODEC_DESC: &str = r#"UNTESTED: Raw CD-ROM Mode 2 (non-XA) sector converter
 
-WARNING: This codec was implemented along std/cdrom_mode_xa and is supposed to
+WARNING: This codec was implemented along std/cdrom_mode2_xa and is supposed to
 work, according to the format specs, but has NEVER been tested properly. You can
 use it at your own risk, and are welcome to provide feedback.
 
@@ -136,7 +136,7 @@ impl Codec for Mode2 {
       }
       if looks_like_xa(sector) {
         return Err(CodecError::Message(format!(
-          "Sector {index} looks like CD-ROM XA; use codec 'std/cdrom/mode/mode_xa' instead"
+          "Sector {index} looks like CD-ROM XA; use codec 'std/cdrom/mode/mode2_xa' instead"
         )));
       }
       output.extend_from_slice(&sector[16..2352]);

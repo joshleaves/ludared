@@ -129,7 +129,7 @@ A `Rebuild` codec consumes ALL of its input, so it is the only _decode_ that can
 - [x] `std/cdrom/filesystem/iso9660` - Extract and rebuild ISO 9660 CD-ROM images
 - [x] `std/cdrom/filesystem/udf` - Extract and rebuild UDF filesystems and UDF Bridge images
 - [x] `std/cdrom/mode/mode1` - Turn tracks with 2352-byte MODE1 sectors into a single ISO image artifact
-- [x] `std/cdrom/mode/mode_xa` - Turn a CD-ROM MODE2 XA track into something usable to build a filesystem.
+- [x] `std/cdrom/mode/mode2_xa` - Turn a CD-ROM MODE2 XA track into something usable to build a filesystem.
 - [x] `std/sega/compression/prs` - Handles [PRS streams](https://segaretro.org/PRS_compression)
 - [x] `std/sony/playstation/graphics/str_xa` - PlayStation STR/XA demultiplexer
 
@@ -159,7 +159,7 @@ All codecs **MUST** support round-tripping: they can `decode` content and `encod
 | `std/cdrom/filesystem/iso9660` | ✅ | ✅ |
 | `std/cdrom/filesystem/udf` | ✅ | ✅ |
 | `std/cdrom/mode/mode1` | ✅ | ✅ |
-| `std/cdrom/mode/mode_xa` | ✅ | ✅ |
+| `std/cdrom/mode/mode2_xa` | ✅ | ✅ |
 | `std/sega/compression/prs` | ❌ | ✅ |
 
 **Note:** `N/A` means the property has not yet been verified, not that the codec lacks it. A codec must pass the corresponding [E2E tests](src/testing/codecs/e2e/mod.rs) before claiming either guarantee.
