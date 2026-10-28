@@ -4,8 +4,8 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 
-use crate::codecs::cdrom::common_disk::BLOCK_SIZE;
-use crate::codecs::cdrom::common_disk::Hex;
+use crate::codecs::cdrom::common::BLOCK_SIZE;
+use crate::codecs::cdrom::common::Hex;
 use crate::codecs::errors::CodecError;
 
 pub(super) const METADATA_NAME: &str = "UDF.json";

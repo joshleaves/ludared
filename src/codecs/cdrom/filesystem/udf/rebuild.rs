@@ -10,8 +10,8 @@ use super::volume::check_tag;
 use super::volume::u16_at;
 use super::volume::udf_crc16;
 use crate::codecs::DecodedArtifact;
-use crate::codecs::cdrom::common_disk::BLOCK_SIZE;
-use crate::codecs::cdrom::common_disk::Hex;
+use crate::codecs::cdrom::common::BLOCK_SIZE;
+use crate::codecs::cdrom::common::Hex;
 use crate::codecs::errors::CodecError;
 
 pub(super) fn validate_rebuilt_udf_files(
@@ -106,7 +106,7 @@ pub(super) fn opaque_runs(
 }
 
 pub(super) fn remove_opaque_range(
-  opaque: &mut Vec<crate::codecs::cdrom::iso9660::metadata::Opaque>,
+  opaque: &mut Vec<crate::codecs::cdrom::filesystem::iso9660::metadata::Opaque>,
   extent: &DataExtent,
 ) -> Result<(), CodecError> {
   let removed_start = extent.offset;
@@ -129,19 +129,23 @@ pub(super) fn remove_opaque_range(
       let keep = usize::try_from(removed_start - run_start).map_err(|_| {
         CodecError::Message("ISO opaque range does not fit this machine".to_owned())
       })?;
-      remaining.push(crate::codecs::cdrom::iso9660::metadata::Opaque {
-        offset: run_start,
-        data: Hex(run.data.as_bytes()[..keep].to_vec()),
-      });
+      remaining.push(
+        crate::codecs::cdrom::filesystem::iso9660::metadata::Opaque {
+          offset: run_start,
+          data: Hex(run.data.as_bytes()[..keep].to_vec()),
+        },
+      );
     }
     if removed_end < run_end {
       let skip = usize::try_from(removed_end - run_start).map_err(|_| {
         CodecError::Message("ISO opaque range does not fit this machine".to_owned())
       })?;
-      remaining.push(crate::codecs::cdrom::iso9660::metadata::Opaque {
-        offset: removed_end,
-        data: Hex(run.data.as_bytes()[skip..].to_vec()),
-      });
+      remaining.push(
+        crate::codecs::cdrom::filesystem::iso9660::metadata::Opaque {
+          offset: removed_end,
+          data: Hex(run.data.as_bytes()[skip..].to_vec()),
+        },
+      );
     }
   }
   *opaque = remaining;

@@ -1,13 +1,14 @@
 use serde::Deserialize;
 
-use super::CdRomFileSystem;
-use super::common_mode::CDROM_SECTOR_MAGIC;
-use super::common_mode::MODE1;
-use super::common_mode::msf;
+use super::super::filesystem::CdRomFileSystem;
+use super::super::filesystem::iso9660::Iso9660;
+use super::common::CDROM_SECTOR_MAGIC;
+use super::common::MODE1;
+use super::common::msf;
 use super::edc_ecc::ecc_block;
 use super::edc_ecc::ecc_tables;
 use super::edc_ecc::edc;
-use super::iso9660::Iso9660;
+
 use crate::codecs::Codec;
 use crate::codecs::CodecHandlingConfidence;
 use crate::codecs::CodecKind;
@@ -15,7 +16,7 @@ use crate::codecs::DecodedArtifact;
 use crate::codecs::LudaredCodecArgs;
 use crate::codecs::errors::CodecError;
 
-const CODEC_ID: &str = "std/cdrom/mode1";
+const CODEC_ID: &str = "std/cdrom/mode/mode1";
 const CODEC_NAME: &str = "CD-ROM Mode 1 (2352-byte sectors)";
 const CODEC_DESC: &str = r#"Raw CD-ROM Mode 1 sector converter
 
@@ -26,22 +27,22 @@ EDC and ECC from the user data.
 Only MODE1/2352 sectors are supported. Rebuilding generates canonical sectors;
 noncanonical sector bytes are not preserved.
 
-The 'file_system' argument optionally extracts files from the decoded track.
+The 'filesystem' argument optionally extracts files from the decoded track.
 
 Arguments (JSON):
   start_lba (default: 0)
     Unsigned integer, logical block address of the first sector in the BIN.
     Sector headers use MSF = LBA + 150 frames.
-  file_system (default: raw)
+  filesystem (default: raw)
     Available:
       - raw:     Produces a flat 2048-byte/sector data image
-      - iso9660: Extract files using std/cdrom/iso9660
+      - iso9660: Extract files using std/cdrom/filesystem/iso9660
 
 Presets:
-  iso9660: {"file_system": "iso9660"}
+  iso9660: {"filesystem": "iso9660"}
 
 Example:
-  {"start_lba": 0, "file_system": "iso9660"}
+  {"start_lba": 0, "filesystem": "iso9660"}
 "#;
 
 const RAW_SECTOR_SIZE: usize = 2352;
@@ -55,7 +56,7 @@ pub struct Mode1CodecArgs {
   #[serde(default)]
   start_lba: u32,
   #[serde(default)]
-  file_system: CdRomFileSystem,
+  filesystem: CdRomFileSystem,
 }
 
 impl LudaredCodecArgs for Mode1CodecArgs {}
@@ -110,7 +111,7 @@ impl Codec for Mode1 {
 
   fn preset_args(&self, preset: &str, args: Option<&str>) -> Result<String, CodecError> {
     let preset = match preset {
-      "iso9660" => r#"{"file_system":"iso9660"}"#,
+      "iso9660" => r#"{"filesystem":"iso9660"}"#,
       _ => {
         return Err(CodecError::UndefinedPreset(
           preset.to_owned(),
@@ -182,7 +183,7 @@ impl Codec for Mode1 {
       output.extend_from_slice(&sector[16..2064]);
     }
 
-    match mode1_args.file_system {
+    match mode1_args.filesystem {
       CdRomFileSystem::Raw => Ok(vec![DecodedArtifact {
         name: "data.bin".to_owned(),
         data: output,
@@ -211,7 +212,7 @@ impl Codec for Mode1 {
     args: Option<&str>,
   ) -> Result<Vec<u8>, CodecError> {
     let mode1_args = Mode1CodecArgs::from_args(args)?;
-    let artifacts = match mode1_args.file_system {
+    let artifacts = match mode1_args.filesystem {
       CdRomFileSystem::Raw => artifacts,
       CdRomFileSystem::Iso9660 => &[DecodedArtifact {
         name: "data.bin".to_owned(),

@@ -6,7 +6,7 @@
 
 use crate::codecs::Codec;
 use crate::codecs::DecodedArtifact;
-use crate::codecs::cdrom::mode_xa::ModeXa;
+use crate::codecs::cdrom::mode::mode2_xa::Mode2Xa;
 use crate::testing::codecs::e2e::BitExactFixture;
 use crate::testing::codecs::e2e::CodecE2E;
 use crate::testing::codecs::e2e::DecodeGoldenFixture;
@@ -26,8 +26,8 @@ const ISO9660_METADATA: &[u8] = include_bytes!(concat!(
   "/src/testing/fixtures/cdrom/mode_xa_iso9660.json"
 ));
 
-const RAW_ARGS: &str = r#"{"file_system":"raw"}"#;
-const ISO9660_ARGS: &str = r#"{"file_system":"iso9660"}"#;
+const RAW_ARGS: &str = r#"{"filesystem":"raw"}"#;
+const ISO9660_ARGS: &str = r#"{"filesystem":"iso9660"}"#;
 const REBUILT_SHA256: &str = "4d8baeb16c66cfb4df7994afe5047a546351a3877ac7b428352ca9b0fb9b4646";
 
 const RAW_ARTIFACTS: [(&str, usize, &str); 3] = [
@@ -203,10 +203,10 @@ fn expected_artifacts(values: &[(&'static str, usize, &'static str)]) -> Vec<Exp
     .collect()
 }
 
-pub(crate) struct ModeXaE2E;
+pub(crate) struct Mode2XaE2E;
 
-impl CodecE2E for ModeXaE2E {
-  const CODEC: &'static dyn Codec = &ModeXa;
+impl CodecE2E for Mode2XaE2E {
+  const CODEC: &'static dyn Codec = &Mode2Xa;
 
   fn bit_exact_fixtures() -> impl Iterator<Item = BitExactFixture> {
     [
@@ -258,4 +258,4 @@ impl CodecE2E for ModeXaE2E {
   }
 }
 
-codec_e2e_tests!(ModeXaE2E, bit_exact, decode_golden, encode_golden);
+codec_e2e_tests!(Mode2XaE2E, bit_exact, decode_golden, encode_golden);

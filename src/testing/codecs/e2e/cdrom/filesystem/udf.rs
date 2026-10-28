@@ -2,7 +2,7 @@
 
 use crate::codecs::Codec;
 use crate::codecs::DecodedArtifact;
-use crate::codecs::cdrom::udf::Udf;
+use crate::codecs::cdrom::filesystem::udf::Udf;
 use crate::testing::codecs::e2e::BitExactFixture;
 use crate::testing::codecs::e2e::CodecE2E;
 use crate::testing::codecs::e2e::DecodeGoldenFixture;

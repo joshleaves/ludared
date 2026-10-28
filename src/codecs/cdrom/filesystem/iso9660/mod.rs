@@ -22,7 +22,7 @@ pub(crate) mod volume;
 #[cfg(test)]
 mod tests;
 
-const CODEC_ID: &str = "std/cdrom/iso9660";
+const CODEC_ID: &str = "std/cdrom/filesystem/iso9660";
 const CODEC_NAME: &str = "ISO 9660 CD-ROM image";
 const CODEC_DESC: &str = r#"ISO 9660 CD-ROM image codec
 

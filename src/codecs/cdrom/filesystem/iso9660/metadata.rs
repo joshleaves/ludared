@@ -20,8 +20,8 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-pub(super) use crate::codecs::cdrom::common_disk::BLOCK_SIZE;
-pub(super) use crate::codecs::cdrom::common_disk::Hex;
+pub(super) use crate::codecs::cdrom::common::BLOCK_SIZE;
+pub(super) use crate::codecs::cdrom::common::Hex;
 use crate::codecs::errors::CodecError;
 
 /// The name the metadata artifact is given.

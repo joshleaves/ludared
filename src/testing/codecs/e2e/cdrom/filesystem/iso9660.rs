@@ -7,7 +7,7 @@
 
 use crate::codecs::Codec;
 use crate::codecs::DecodedArtifact;
-use crate::codecs::cdrom::iso9660::Iso9660;
+use crate::codecs::cdrom::filesystem::iso9660::Iso9660;
 use crate::testing::codecs::e2e::BitExactFixture;
 use crate::testing::codecs::e2e::CodecE2E;
 use crate::testing::codecs::e2e::DecodeGoldenFixture;

@@ -1,6 +1,6 @@
 use super::*;
-use crate::codecs::cdrom::iso9660::Iso9660;
-use crate::codecs::cdrom::iso9660::metadata::IsoMetadata;
+use crate::codecs::cdrom::filesystem::iso9660::Iso9660;
+use crate::codecs::cdrom::filesystem::iso9660::metadata::IsoMetadata;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -241,7 +241,7 @@ pub(super) fn decode_xa_iso9660(
 
 pub(super) fn encode_xa_iso9660(
   artifacts: &[DecodedArtifact],
-  args: ModeXaCodecArgs,
+  args: Mode2XaCodecArgs,
 ) -> Result<Vec<u8>, CodecError> {
   let (xa_artifact, rest) = artifacts
     .split_first()

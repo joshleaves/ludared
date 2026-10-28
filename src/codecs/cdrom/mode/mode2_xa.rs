@@ -1,12 +1,11 @@
+use serde::Deserialize;
 use std::collections::HashMap;
 
-use serde::Deserialize;
-
-use super::CdRomFileSystem;
-use super::common_mode::CDROM_SECTOR_MAGIC;
-use super::common_mode::MODE2;
-use super::common_mode::looks_like_xa;
-use super::common_mode::msf;
+use super::super::filesystem::CdRomFileSystem;
+use super::common::CDROM_SECTOR_MAGIC;
+use super::common::MODE2;
+use super::common::looks_like_xa;
+use super::common::msf;
 use super::edc_ecc::ecc_block;
 use super::edc_ecc::ecc_tables;
 use super::edc_ecc::edc;
@@ -20,7 +19,7 @@ use crate::codecs::errors::CodecError;
 mod iso9660;
 mod raw;
 
-const CODEC_ID: &str = "std/cdrom/mode_xa";
+const CODEC_ID: &str = "std/cdrom/mode/mode_xa";
 const CODEC_NAME: &str = "CD-ROM Mode 2 XA (2352-byte sectors)";
 const CODEC_DESC: &str = r#"Raw CD-ROM Mode 2 XA sector converter
 
@@ -37,16 +36,16 @@ are not supported for lossless reconstruction.
 Arguments (JSON):
   start_lba (default: 0)
     Logical block address of the first sector. MSF = LBA + 150 frames.
-  file_system (default: raw)
+  filesystem (default: raw)
     Available:
       - raw:     Produces a flat 2048-byte/sector data image
-      - iso9660: Extract files using std/cdrom/iso9660
+      - iso9660: Extract files using std/cdrom/filesystem/iso9660
 
 Presets:
-  iso9660: {"file_system": "iso9660"}
+  iso9660: {"filesystem": "iso9660"}
 
 Example:
-  {"start_lba": 0, "file_system": "iso9660"}}
+  {"start_lba": 0, "filesystem": "iso9660"}}
 "#;
 
 const RAW_SECTOR_SIZE: usize = 2352;
@@ -55,18 +54,18 @@ const FORM2_USER_SIZE: usize = 2324;
 const SUBHEADER_SIZE: usize = 4;
 const LEAD_IN_FRAMES: u32 = 150;
 
-pub(crate) struct ModeXa;
+pub(crate) struct Mode2Xa;
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ModeXaCodecArgs {
+pub struct Mode2XaCodecArgs {
   #[serde(default)]
   pub start_lba: u32,
   #[serde(default)]
-  file_system: CdRomFileSystem,
+  filesystem: CdRomFileSystem,
 }
 
-impl LudaredCodecArgs for ModeXaCodecArgs {}
+impl LudaredCodecArgs for Mode2XaCodecArgs {}
 
 fn is_form2(subheader: &[u8]) -> bool {
   subheader[2] & 0x20 != 0
@@ -115,7 +114,7 @@ fn encode_sector(
   Ok(sector)
 }
 
-impl Codec for ModeXa {
+impl Codec for Mode2Xa {
   fn id(&self) -> &str {
     CODEC_ID
   }
@@ -134,7 +133,7 @@ impl Codec for ModeXa {
 
   fn preset_args(&self, preset: &str, args: Option<&str>) -> Result<String, CodecError> {
     let preset = match preset {
-      "iso9660" => r#"{"file_system":"iso9660"}"#,
+      "iso9660" => r#"{"filesystem":"iso9660"}"#,
       _ => {
         return Err(CodecError::UndefinedPreset(
           preset.to_owned(),
@@ -142,7 +141,7 @@ impl Codec for ModeXa {
         ));
       }
     };
-    Ok(ModeXaCodecArgs::merge(preset, args)?)
+    Ok(Mode2XaCodecArgs::merge(preset, args)?)
   }
 
   fn kind(&self) -> CodecKind {
@@ -178,7 +177,7 @@ impl Codec for ModeXa {
     tracing::instrument(skip_all, fields(codec_id = %self.id(), operation = %"decode"))
   )]
   fn decode(&self, data: &[u8], args: Option<&str>) -> Result<Vec<DecodedArtifact>, CodecError> {
-    let mode_xa_args = ModeXaCodecArgs::from_args(args)?;
+    let mode_xa_args = Mode2XaCodecArgs::from_args(args)?;
 
     if !data.len().is_multiple_of(RAW_SECTOR_SIZE) {
       return Err(CodecError::Message(
@@ -233,7 +232,7 @@ impl Codec for ModeXa {
       }
     }
 
-    match mode_xa_args.file_system {
+    match mode_xa_args.filesystem {
       CdRomFileSystem::Raw => raw::decode_xa_raw(user_data, xa_data, xa_subheaders),
       CdRomFileSystem::Iso9660 => iso9660::decode_xa_iso9660(user_data, xa_data, xa_subheaders),
     }
@@ -250,9 +249,9 @@ impl Codec for ModeXa {
     artifacts: &[DecodedArtifact],
     args: Option<&str>,
   ) -> Result<Vec<u8>, CodecError> {
-    let mode_xa_args = ModeXaCodecArgs::from_args(args)?;
+    let mode_xa_args = Mode2XaCodecArgs::from_args(args)?;
 
-    match mode_xa_args.file_system {
+    match mode_xa_args.filesystem {
       CdRomFileSystem::Raw => raw::encode_xa_raw(artifacts, mode_xa_args),
       CdRomFileSystem::Iso9660 => iso9660::encode_xa_iso9660(artifacts, mode_xa_args),
     }

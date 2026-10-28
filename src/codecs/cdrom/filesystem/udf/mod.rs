@@ -9,13 +9,13 @@ use crate::codecs::CodecHandlingConfidence;
 use crate::codecs::CodecKind;
 use crate::codecs::DecodedArtifact;
 use crate::codecs::LudaredCodecArgs;
-use crate::codecs::cdrom::common_disk::BLOCK_SIZE;
-use crate::codecs::cdrom::common_disk::Hex;
-use crate::codecs::cdrom::common_disk::block_offset;
-use crate::codecs::cdrom::iso9660::Iso9660;
-use crate::codecs::cdrom::iso9660::Placement;
-use crate::codecs::cdrom::iso9660::metadata::IsoMetadata;
-use crate::codecs::cdrom::iso9660::volume as iso_volume;
+use crate::codecs::cdrom::common::BLOCK_SIZE;
+use crate::codecs::cdrom::common::Hex;
+use crate::codecs::cdrom::common::block_offset;
+use crate::codecs::cdrom::filesystem::iso9660::Iso9660;
+use crate::codecs::cdrom::filesystem::iso9660::Placement;
+use crate::codecs::cdrom::filesystem::iso9660::metadata::IsoMetadata;
+use crate::codecs::cdrom::filesystem::iso9660::volume as iso_volume;
 use crate::codecs::errors::CodecError;
 use metadata::BridgeMetadata;
 use metadata::DataExtent;
@@ -42,7 +42,7 @@ mod volume;
 #[cfg(test)]
 mod tests;
 
-const CODEC_ID: &str = "std/cdrom/udf";
+const CODEC_ID: &str = "std/cdrom/filesystem/udf";
 const CODEC_NAME: &str = "UDF filesystem image";
 const CODEC_DESC: &str = r#"UDF filesystem image codec
 
@@ -125,7 +125,7 @@ impl Codec for Udf {
     let iso_reading = if Iso9660.can_handle(data)? == CodecHandlingConfidence::Certain {
       Some(iso_volume::read_layout(
         data,
-        crate::codecs::cdrom::iso9660::OutOfBoundsEntries::Preserve,
+        crate::codecs::cdrom::filesystem::iso9660::OutOfBoundsEntries::Preserve,
       )?)
     } else {
       None
@@ -482,7 +482,7 @@ impl Codec for Udf {
       let mut rebuilt = Iso9660.encode(Vec::new(), &iso_artifacts, iso_args)?;
       let rebuilt_iso = iso_volume::read(
         &rebuilt,
-        crate::codecs::cdrom::iso9660::OutOfBoundsEntries::Preserve,
+        crate::codecs::cdrom::filesystem::iso9660::OutOfBoundsEntries::Preserve,
       )?;
       for iso_file in &bridge.iso_files {
         let expected_extent = iso_file.extent / BLOCK_SIZE as u64;
@@ -517,7 +517,7 @@ impl Codec for Udf {
       let rebuilt_udf = read_udf(&rebuilt)?;
       let rebuilt_iso = iso_volume::read(
         &rebuilt,
-        crate::codecs::cdrom::iso9660::OutOfBoundsEntries::Preserve,
+        crate::codecs::cdrom::filesystem::iso9660::OutOfBoundsEntries::Preserve,
       )?;
       validate_bridge_allocations(&rebuilt, &rebuilt_udf, &rebuilt_iso)?;
       validate_rebuilt_udf_files(&metadata.files, &supplied, &rebuilt_udf)?;

@@ -113,7 +113,7 @@ Codecs come in two types: `Rebuild` and `Patch`. Simply put: [one is archival, t
 
 Some codecs provide argument presets. These serve as base arguments that can be overridden by user-defined values. Each codec defines its own presets, if any.
 
-For example, when decoding a CD-ROM track, you can use `ludared decode add Track1.bin std/cdrom/mode1+iso9660` to automatically decode the ISO9660 filesystem in the same decode operation.
+For example, when decoding a CD-ROM track, you can use `ludared decode add Track1.bin std/cdrom/mode/mode1+iso9660` to automatically decode the ISO9660 filesystem in the same decode operation.
 
 ### Rebuild codecs
 A `Rebuild` codec consumes ALL of its input, so it is the only _decode_ that can be ran on an artifact.
@@ -126,10 +126,10 @@ A `Rebuild` codec consumes ALL of its input, so it is the only _decode_ that can
 - [x] `std/nintendo/snes/cart/sa1`- Cut a SNES SA-1 ROM into ROM banks
 - [x] `std/nintendo/snes/cart/sdd1`- Cut a SNES SDD-1 ROM into ROM banks
 - [x] `std/nintendo/snes/cart/spc7110`- Cut a SNES SPC7110 ROM into ROM banks
-- [x] `std/cdrom/iso9660` - Extract and rebuild ISO 9660 CD-ROM images
-- [x] `std/cdrom/udf` - Extract and rebuild UDF filesystems and UDF Bridge images
-- [x] `std/cdrom/mode1` - Turn tracks with 2352-byte MODE1 sectors into a single ISO image artifact
-- [x] `std/cdrom/mode_xa` - Turn a CD-ROM MODE2 XA track into something usable to build a filesystem.
+- [x] `std/cdrom/filesystem/iso9660` - Extract and rebuild ISO 9660 CD-ROM images
+- [x] `std/cdrom/filesystem/udf` - Extract and rebuild UDF filesystems and UDF Bridge images
+- [x] `std/cdrom/mode/mode1` - Turn tracks with 2352-byte MODE1 sectors into a single ISO image artifact
+- [x] `std/cdrom/mode/mode_xa` - Turn a CD-ROM MODE2 XA track into something usable to build a filesystem.
 - [x] `std/sega/compression/prs` - Handles [PRS streams](https://segaretro.org/PRS_compression)
 - [x] `std/sony/playstation/graphics/str_xa` - PlayStation STR/XA demultiplexer
 
@@ -156,10 +156,10 @@ All codecs **MUST** support round-tripping: they can `decode` content and `encod
 | `std/nintendo/snes/cart/sa1` | N/A | N/A |
 | `std/nintendo/snes/cart/sdd1` | N/A | N/A |
 | `std/nintendo/snes/cart/spc7110` | N/A | N/A |
-| `std/cdrom/iso9660` | ✅ | ✅ |
-| `std/cdrom/udf` | ✅ | ✅ |
-| `std/cdrom/mode1` | ✅ | ✅ |
-| `std/cdrom/mode_xa` | ✅ | ✅ |
+| `std/cdrom/filesystem/iso9660` | ✅ | ✅ |
+| `std/cdrom/filesystem/udf` | ✅ | ✅ |
+| `std/cdrom/mode/mode1` | ✅ | ✅ |
+| `std/cdrom/mode/mode_xa` | ✅ | ✅ |
 | `std/sega/compression/prs` | ❌ | ✅ |
 
 **Note:** `N/A` means the property has not yet been verified, not that the codec lacks it. A codec must pass the corresponding [E2E tests](src/testing/codecs/e2e/mod.rs) before claiming either guarantee.

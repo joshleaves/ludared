@@ -205,7 +205,7 @@ fn bridge_growth_is_independently_readable_through_udf_and_iso9660() {
     .unwrap();
   let iso_file = iso_volume::read(
     &rebuilt,
-    crate::codecs::cdrom::iso9660::OutOfBoundsEntries::Preserve,
+    crate::codecs::cdrom::filesystem::iso9660::OutOfBoundsEntries::Preserve,
   )
   .unwrap()
   .files
@@ -224,12 +224,12 @@ fn bridge_layout_read_skips_iso_file_content_copies() {
   ));
   let full = iso_volume::read(
     source,
-    crate::codecs::cdrom::iso9660::OutOfBoundsEntries::Preserve,
+    crate::codecs::cdrom::filesystem::iso9660::OutOfBoundsEntries::Preserve,
   )
   .unwrap();
   let layout = iso_volume::read_layout(
     source,
-    crate::codecs::cdrom::iso9660::OutOfBoundsEntries::Preserve,
+    crate::codecs::cdrom::filesystem::iso9660::OutOfBoundsEntries::Preserve,
   )
   .unwrap();
 

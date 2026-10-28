@@ -3,10 +3,10 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 
 use super::metadata::DataExtent;
-use crate::codecs::cdrom::common_disk::BLOCK_SIZE;
-use crate::codecs::cdrom::common_disk::ByteRange;
-use crate::codecs::cdrom::common_disk::block_offset;
-use crate::codecs::cdrom::iso9660::volume as iso_volume;
+use crate::codecs::cdrom::common::BLOCK_SIZE;
+use crate::codecs::cdrom::common::ByteRange;
+use crate::codecs::cdrom::common::block_offset;
+use crate::codecs::cdrom::filesystem::iso9660::volume as iso_volume;
 use crate::codecs::errors::CodecError;
 
 const MAX_VDS_DESCRIPTORS: usize = 256;

@@ -18,8 +18,8 @@ use super::metadata::PathTableEntry;
 use super::metadata::Primary;
 use super::metadata::RECORD_HEADER;
 use super::metadata::Record;
-use crate::codecs::cdrom::common_disk::ByteRange;
-use crate::codecs::cdrom::common_disk::block_offset;
+use crate::codecs::cdrom::common::ByteRange;
+use crate::codecs::cdrom::common::block_offset;
 use crate::codecs::errors::CodecError;
 
 /// The logical block the volume descriptor set starts at.
@@ -322,7 +322,7 @@ fn descriptor_set_holds_more(image: &[u8]) -> Result<bool, CodecError> {
 /// `volume_space_size` is the size to write for the descriptor's Volume Space
 /// Size: how many logical blocks the volume spans. It is not always how many
 /// blocks the image holds — a disc may declare blocks past the end of its data
-/// track — so the caller decides it, in [`crate::codecs::cdrom::iso9660::rebuild`]
+/// track — so the caller decides it, in [`crate::codecs::cdrom::filesystem::iso9660::rebuild`]
 /// for a rebuild and from the image itself when checking one.
 pub(crate) fn serialize_primary(
   layout: &Layout,

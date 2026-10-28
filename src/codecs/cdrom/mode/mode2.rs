@@ -1,9 +1,9 @@
 use serde::Deserialize;
 
-use super::common_mode::CDROM_SECTOR_MAGIC;
-use super::common_mode::MODE2;
-use super::common_mode::looks_like_xa;
-use super::common_mode::msf;
+use super::common::CDROM_SECTOR_MAGIC;
+use super::common::MODE2;
+use super::common::looks_like_xa;
+use super::common::msf;
 use crate::codecs::Codec;
 use crate::codecs::CodecHandlingConfidence;
 use crate::codecs::CodecKind;
@@ -11,7 +11,7 @@ use crate::codecs::DecodedArtifact;
 use crate::codecs::LudaredCodecArgs;
 use crate::codecs::errors::CodecError;
 
-const CODEC_ID: &str = "std/cdrom/mode2";
+const CODEC_ID: &str = "std/cdrom/mode/mode2";
 const CODEC_NAME: &str = "UNTESTED: CD-ROM Mode 2 non-XA (2352-byte sectors)";
 const CODEC_DESC: &str = r#"UNTESTED: Raw CD-ROM Mode 2 (non-XA) sector converter
 
@@ -136,7 +136,7 @@ impl Codec for Mode2 {
       }
       if looks_like_xa(sector) {
         return Err(CodecError::Message(format!(
-          "Sector {index} looks like CD-ROM XA; use codec 'std/cdrom/mode_xa' instead"
+          "Sector {index} looks like CD-ROM XA; use codec 'std/cdrom/mode/mode_xa' instead"
         )));
       }
       output.extend_from_slice(&sector[16..2352]);

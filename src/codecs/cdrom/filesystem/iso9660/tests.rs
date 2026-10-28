@@ -20,7 +20,7 @@ use super::volume::SYSTEM_AREA_SIZE;
 use crate::codecs::Codec;
 use crate::codecs::CodecHandlingConfidence;
 use crate::codecs::DecodedArtifact;
-use crate::codecs::cdrom::iso9660::Iso9660;
+use crate::codecs::cdrom::filesystem::iso9660::Iso9660;
 
 /// The first byte of the image's descriptor set.
 const DESCRIPTOR_START: usize = DESCRIPTOR_SECTOR as usize * BLOCK_SIZE;

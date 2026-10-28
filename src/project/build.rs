@@ -232,7 +232,7 @@ impl Project {
 mod tests {
   use std::collections::BTreeMap;
 
-  use crate::codecs::cdrom::iso9660::Iso9660;
+  use crate::codecs::cdrom::filesystem::iso9660::Iso9660;
   use crate::codecs::errors::CodecError;
   use crate::codecs::nintendo::snes::cart_lorom::SnesLoRom;
   use crate::codecs::nintendo::snes::common::LOROM_HEADER_OFFSET;
@@ -244,7 +244,7 @@ mod tests {
   use super::*;
 
   const EXTRACT: &str = "std/generic/extract";
-  const ISO9660: &str = "std/cdrom/iso9660";
+  const ISO9660: &str = "std/cdrom/filesystem/iso9660";
   const LOROM: &str = "std/nintendo/snes/cart/lorom";
 
   const SOURCE: &[u8] = b"HELLOWORLD";

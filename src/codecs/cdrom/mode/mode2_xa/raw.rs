@@ -64,7 +64,7 @@ pub(super) fn decode_xa_raw(
 /// subheaders, EDC and ECC. Sector addresses are derived from `start_lba`.
 pub(super) fn encode_xa_raw(
   artifacts: &[DecodedArtifact],
-  mode_xa_args: ModeXaCodecArgs,
+  mode_xa_args: Mode2XaCodecArgs,
 ) -> Result<Vec<u8>, CodecError> {
   if artifacts.len() != 3
     || artifacts[0].name != "data.bin"
@@ -178,7 +178,7 @@ mod tests {
 
   #[test]
   fn roundtrip_mixed_forms() {
-    let codec = ModeXa;
+    let codec = Mode2Xa;
 
     // Form 1, Form 2, Form 1.
     let subheaders = vec![
@@ -245,7 +245,7 @@ mod tests {
 
   #[test]
   fn rejects_invalid_form2_sector_index() {
-    let codec = ModeXa;
+    let codec = Mode2Xa;
 
     let mut xa_data = Vec::new();
 
@@ -273,7 +273,7 @@ mod tests {
 
   #[test]
   fn rejects_missing_form2_entry() {
-    let codec = ModeXa;
+    let codec = Mode2Xa;
 
     let artifacts = vec![
       DecodedArtifact {
@@ -295,7 +295,7 @@ mod tests {
 
   #[test]
   fn rejects_mismatched_artifact_lengths() {
-    let codec = ModeXa;
+    let codec = Mode2Xa;
 
     let artifacts = vec![
       DecodedArtifact {

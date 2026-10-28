@@ -5,7 +5,7 @@
 
 use crate::codecs::Codec;
 use crate::codecs::DecodedArtifact;
-use crate::codecs::cdrom::mode1::Mode1;
+use crate::codecs::cdrom::mode::mode1::Mode1;
 use crate::testing::codecs::e2e::BitExactFixture;
 use crate::testing::codecs::e2e::CodecE2E;
 use crate::testing::codecs::e2e::DecodeGoldenFixture;
