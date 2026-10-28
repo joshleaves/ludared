@@ -138,7 +138,19 @@ fn build(volume_identifier: &str, files: Vec<IsoFile>) -> Vec<u8> {
   )
   .unwrap();
 
-  buffer.into_inner()
+  let mut image = buffer.into_inner();
+
+  // Hadris timestamps the root record twice. If the clock ticks between
+  // writes, the descriptor and directory copies can disagree.
+  let descriptor_root = DESCRIPTOR_START + 156;
+  let root_sector = both_ended(&image, descriptor_root + 2) as usize;
+  let directory_root = root_sector * BLOCK_SIZE;
+
+  // ISO 9660 directory record timestamp: 7 bytes at offset 18.
+  let timestamp = image[descriptor_root + 18..descriptor_root + 25].to_vec();
+  image[directory_root + 18..directory_root + 25].copy_from_slice(&timestamp);
+
+  image
 }
 
 /// An ISO built the way Hadris builds one, which is how the fixtures these
