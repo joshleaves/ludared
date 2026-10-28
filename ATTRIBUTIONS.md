@@ -54,6 +54,10 @@ as required for the ported portions:
 > OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 > SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+# Codec: `std/nintendo/font/bcfnt`
+
+The codec is a Rust port of the BCFNT format handling and texture algorithms in [ObsidianX/3dstools `bcfnt.py`](https://github.com/ObsidianX/3dstools/blob/master/bcfnt.py). The repository does not state a license, so the port is attributed here without asserting a license for the upstream work.
+
 # Codec: `std/sega/compression/prs`
 
 As their GH description claims, indeed, the fastest PRS implementation in rust belongs to [Sewer56's prs-rs](https://github.com/Sewer56/prs-rs).

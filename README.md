@@ -125,6 +125,7 @@ A `Rebuild` codec consumes ALL of its input, so it is the only _decode_ that can
 - [x] `std/nintendo/3ds/container/cxi` - Extract a Nintendo 3DS CXI executable NCCH container
 - [x] `std/nintendo/3ds/internal/exefs` - Extract a Nintendo 3DS ExeFS executable filesystem
 - [x] `std/nintendo/3ds/internal/romfs` - Extract a Nintendo 3DS RomFS read-only filesystem
+- [x] `std/nintendo/font/bcfnt` - Decode and rebuild a Nintendo 3DS BCFNT bitmap font with editable glyph sheets; ETC1/ETC1A4 sheets are lossily recompressed
 - [x] `std/nintendo/snes/cart/exhirom`- Cut a SNES ExHiROM into ROM banks
 - [x] `std/nintendo/snes/cart/hirom`- Cut a SNES HiROM into ROM banks
 - [x] `std/nintendo/snes/cart/lorom`- Cut a SNES LoROM into ROM banks
@@ -160,6 +161,7 @@ All codecs **MUST** support round-tripping: they can `decode` content and `encod
 | `std/nintendo/3ds/container/cxi` | ✅ | ✅ |
 | `std/nintendo/3ds/internal/exefs` | ✅ | ✅ |
 | `std/nintendo/3ds/internal/romfs` | ✅ | ✅ |
+| `std/nintendo/font/bcfnt` | ✅[^etc1] | ✅ |
 | `std/nintendo/snes/cart/exhirom` | N/A | N/A |
 | `std/nintendo/snes/cart/hirom` | N/A | N/A |
 | `std/nintendo/snes/cart/lorom` | N/A | N/A |
@@ -173,6 +175,8 @@ All codecs **MUST** support round-tripping: they can `decode` content and `encod
 | `std/sega/compression/prs` | ❌ | ✅ |
 
 **Note:** `N/A` means the property has not yet been verified, not that the codec lacks it. A codec must pass the corresponding [E2E tests](src/testing/codecs/e2e/mod.rs) before claiming either guarantee.
+
+[^etc1]: The codec `std/nintendo/font/bcfnt` is bit-exact for its uncompressed formats, but ETC1/ETC1A4 sheets are lossy and are only guaranteed to decode to a valid, similar image.
 
 ## Scripts codec
 

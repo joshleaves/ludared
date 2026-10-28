@@ -2,6 +2,19 @@
 
 use crate::codecs::errors::CodecError;
 
+/// The `N` bytes at `offset`, or an error naming the offset.
+pub(crate) fn field<const N: usize>(data: &[u8], offset: usize) -> Result<[u8; N], CodecError> {
+  data
+    .get(offset..)
+    .and_then(|rest| rest.first_chunk::<N>())
+    .copied()
+    .ok_or_else(|| {
+      CodecError::Message(format!(
+        "3DS structure is truncated: the {N}-byte field at {offset:#x} does not fit"
+      ))
+    })
+}
+
 /// Decodes a metadata hex string that must hold exactly `len` bytes.
 pub(crate) fn hex_field(text: &str, what: &str, len: usize) -> Result<Vec<u8>, CodecError> {
   let bytes = hex::decode(text).map_err(|err| {

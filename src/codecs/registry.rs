@@ -9,6 +9,7 @@ use crate::codecs::cdrom::mode::mode2_xa::Mode2Xa;
 use crate::codecs::errors::CodecError;
 use crate::codecs::generic::extract::Extract;
 use crate::codecs::generic::split::Split;
+use crate::codecs::nintendo::font::bcfnt::N3dsBcfnt;
 use crate::codecs::nintendo::n3ds::container::cci::N3dsCci;
 use crate::codecs::nintendo::n3ds::container::cfa::N3dsCfa;
 use crate::codecs::nintendo::n3ds::container::cia::N3dsCia;
@@ -31,6 +32,7 @@ use log::*;
 use std::path::PathBuf;
 
 static BUILTINS: &[&dyn Codec] = &[
+  &N3dsBcfnt,
   &N3dsCci,
   &N3dsCia,
   &N3dsCfa,
