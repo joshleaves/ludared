@@ -16,18 +16,16 @@ use crate::codecs::CodecHandlingConfidence;
 use crate::codecs::CodecKind;
 use crate::codecs::DecodedArtifact;
 use crate::codecs::LudaredCodecArgs;
+use crate::codecs::common::bytes::{
+  read_field as field, read_u32_le as u32_le, read_u64_le as u64_le,
+};
 use crate::codecs::errors::CodecError;
-use crate::codecs::nintendo::n3ds::common::field;
-use crate::codecs::nintendo::n3ds::common::u32_le;
-use crate::codecs::nintendo::n3ds::common::u64_le;
-use crate::codecs::nintendo::n3ds::container::common::media_unit_size;
-use metadata::CARD_INFO_NAME;
-use metadata::METADATA_NAME;
-use metadata::NcsdMetadata;
-use metadata::PartitionMetadata;
-use metadata::TRAILER_NAME;
-use metadata::partition_index;
-use metadata::partition_name;
+use crate::codecs::nintendo::n3ds::common::hex_field;
+use crate::codecs::nintendo::n3ds::container::media_unit::media_unit_size;
+use metadata::{
+  CARD_INFO_NAME, METADATA_NAME, NcsdMetadata, PartitionMetadata, TRAILER_NAME, partition_index,
+  partition_name,
+};
 
 pub(crate) mod metadata;
 
@@ -132,10 +130,14 @@ impl Codec for N3dsCci {
     };
 
     let known_size = KNOWN_IMAGE_SIZES.contains(&header.image_size);
-    let ncch = layout
-      .partitions
-      .iter()
-      .all(|partition| carries_ncch_magic(data, partition));
+    let ncch = layout.partitions.iter().all(|partition| {
+      partition
+        .offset
+        .checked_add(NCCH_MAGIC_OFFSET)
+        .and_then(|offset| usize::try_from(offset).ok())
+        .and_then(|offset| data.get(offset..))
+        .is_some_and(|partition| partition.starts_with(NCCH_MAGIC))
+    });
 
     Ok(match (known_size, ncch) {
       (true, true) => CodecHandlingConfidence::Certain,
@@ -680,9 +682,17 @@ impl N3dsCci {
     metadata: &NcsdMetadata,
     table: &[(u32, u32); PARTITION_COUNT],
   ) -> Result<[u8; HEADER_SIZE], CodecError> {
-    let signature = hex_field(&metadata.signature, "signature", 0x100)?;
-    let exheader_hash = hex_field(&metadata.exheader_hash, "exheader hash", EXHEADER_HASH_SIZE)?;
-    let header_reserved = hex_field(&metadata.header_reserved, "header reserved", RESERVED_SIZE)?;
+    let signature = hex_field(&metadata.signature, "NCSD signature", 0x100)?;
+    let exheader_hash = hex_field(
+      &metadata.exheader_hash,
+      "NCSD extended header hash",
+      EXHEADER_HASH_SIZE,
+    )?;
+    let header_reserved = hex_field(
+      &metadata.header_reserved,
+      "NCSD reserved header bytes",
+      RESERVED_SIZE,
+    )?;
 
     let mut header = [0u8; HEADER_SIZE];
     header[..0x100].copy_from_slice(&signature);
@@ -715,34 +725,8 @@ impl N3dsCci {
   }
 }
 
-fn carries_ncch_magic(data: &[u8], partition: &PresentPartition) -> bool {
-  partition
-    .offset
-    .checked_add(NCCH_MAGIC_OFFSET)
-    .and_then(|offset| usize::try_from(offset).ok())
-    .and_then(|offset| data.get(offset..))
-    .is_some_and(|partition| partition.starts_with(NCCH_MAGIC))
-}
-
 fn partition_overflow(field: &str, index: usize) -> CodecError {
   CodecError::Message(format!(
     "NCSD partition {index} {field} overflows a 64-bit size"
   ))
-}
-
-fn hex_field(text: &str, name: &str, len: usize) -> Result<Vec<u8>, CodecError> {
-  let bytes = hex::decode(text).map_err(|err| {
-    CodecError::Message(format!(
-      "NCSD metadata {name} is not valid hexadecimal: {err}"
-    ))
-  })?;
-
-  if bytes.len() != len {
-    return Err(CodecError::Message(format!(
-      "NCSD metadata {name} is {} bytes, expected {len}",
-      bytes.len()
-    )));
-  }
-
-  Ok(bytes)
 }

@@ -36,6 +36,7 @@ macro_rules! debug_result {
 }
 
 pub mod cdrom;
+pub(crate) mod common;
 pub mod errors;
 pub mod generic;
 pub mod nintendo;

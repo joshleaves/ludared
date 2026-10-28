@@ -2,8 +2,8 @@ use crate::codecs::registry::CodecRegistry;
 use mlua::Lua;
 use mlua::LuaString;
 use mlua::Table;
-use sha2::Digest;
-use sha2::Sha256;
+
+use crate::codecs::common::hash::sha256 as codec_sha256;
 
 use super::codec_handle::LuaCodecHandle;
 
@@ -15,7 +15,7 @@ fn get_codec(_: &Lua, id: String) -> Result<LuaCodecHandle, mlua::Error> {
 }
 
 fn sha256(lua: &Lua, input: LuaString) -> Result<LuaString, mlua::Error> {
-  let hash = hex::encode(Sha256::digest(input.as_bytes()));
+  let hash = hex::encode(codec_sha256(input.as_bytes().as_ref()));
 
   lua.create_string(&hash)
 }

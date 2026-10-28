@@ -1,4 +1,4 @@
-//! Helpers shared by the Nintendo 3DS container formats.
+//! Media-unit sizing shared by Nintendo 3DS containers and NCCH regions.
 //!
 //! The 3DS measures container sizes in *media units*. One media unit is 0x200
 //! bytes, or a power-of-two multiple of that where a container's flags say so.

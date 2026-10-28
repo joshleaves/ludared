@@ -120,6 +120,11 @@ A `Rebuild` codec consumes ALL of its input, so it is the only _decode_ that can
 
 - [x] `std/generic/split` - Turn a single blob into mulitple blobs
 - [x] `std/nintendo/3ds/container/cci` - Split a Nintendo 3DS CCI (NCSD) cartridge image into its NCCH partitions
+- [x] `std/nintendo/3ds/container/cia` - Split a Nintendo 3DS CIA installable package into certificates, ticket, TMD and contents
+- [x] `std/nintendo/3ds/container/cfa` - Extract a Nintendo 3DS CFA non-executable NCCH container
+- [x] `std/nintendo/3ds/container/cxi` - Extract a Nintendo 3DS CXI executable NCCH container
+- [x] `std/nintendo/3ds/internal/exefs` - Extract a Nintendo 3DS ExeFS executable filesystem
+- [x] `std/nintendo/3ds/internal/romfs` - Extract a Nintendo 3DS RomFS read-only filesystem
 - [x] `std/nintendo/snes/cart/exhirom`- Cut a SNES ExHiROM into ROM banks
 - [x] `std/nintendo/snes/cart/hirom`- Cut a SNES HiROM into ROM banks
 - [x] `std/nintendo/snes/cart/lorom`- Cut a SNES LoROM into ROM banks
@@ -150,6 +155,11 @@ All codecs **MUST** support round-tripping: they can `decode` content and `encod
 | `std/generic/split` | ✅ | ✅ |
 | `std/generic/extract` | ✅ | ✅ |
 | `std/nintendo/3ds/container/cci` | ✅ | ✅ |
+| `std/nintendo/3ds/container/cia` | ✅ | ✅ |
+| `std/nintendo/3ds/container/cfa` | ✅ | ✅ |
+| `std/nintendo/3ds/container/cxi` | ✅ | ✅ |
+| `std/nintendo/3ds/internal/exefs` | ✅ | ✅ |
+| `std/nintendo/3ds/internal/romfs` | ✅ | ✅ |
 | `std/nintendo/snes/cart/exhirom` | N/A | N/A |
 | `std/nintendo/snes/cart/hirom` | N/A | N/A |
 | `std/nintendo/snes/cart/lorom` | N/A | N/A |

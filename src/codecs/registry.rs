@@ -10,6 +10,11 @@ use crate::codecs::errors::CodecError;
 use crate::codecs::generic::extract::Extract;
 use crate::codecs::generic::split::Split;
 use crate::codecs::nintendo::n3ds::container::cci::N3dsCci;
+use crate::codecs::nintendo::n3ds::container::cfa::N3dsCfa;
+use crate::codecs::nintendo::n3ds::container::cia::N3dsCia;
+use crate::codecs::nintendo::n3ds::container::cxi::N3dsCxi;
+use crate::codecs::nintendo::n3ds::internal::exefs::N3dsExeFs;
+use crate::codecs::nintendo::n3ds::internal::romfs::N3dsRomFs;
 use crate::codecs::nintendo::snes::cart_exhirom::SnesExHiRom;
 use crate::codecs::nintendo::snes::cart_hirom::SnesHiRom;
 use crate::codecs::nintendo::snes::cart_lorom::SnesLoRom;
@@ -27,6 +32,11 @@ use std::path::PathBuf;
 
 static BUILTINS: &[&dyn Codec] = &[
   &N3dsCci,
+  &N3dsCia,
+  &N3dsCfa,
+  &N3dsCxi,
+  &N3dsExeFs,
+  &N3dsRomFs,
   &Extract,
   &Iso9660,
   &Mode1,

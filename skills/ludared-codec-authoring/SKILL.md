@@ -293,9 +293,20 @@ fn refuses_an_extraction_whose_end_overflows() {
 }
 ```
 
-Shared test helpers live beside the codecs they serve, not in the codec file:
-`src/codecs/nintendo/snes/common/testkit.rs` builds SNES images and asserts
-round trips and header finalisation for every cartridge codec.
+## Shared implementation and utilities
+
+Place implementation shared by codecs at their nearest common ancestor, and
+prefer the module name `common` over `helpers`. Use a descriptive domain module
+(e.g. `ncch` or `crypto`) when it explains the shared responsibility better
+than a generic `common` directory. Do not add `common` directories at every
+level by default, and avoid `common_<name>.rs` filenames.
+
+Keep private utilities inside their codec under descriptive names. Promote a
+utility only when multiple codecs genuinely share its implementation; do not
+use a shared helper module as a general utility bucket. For example,
+`src/codecs/nintendo/snes/common/testkit.rs` is shared by SNES cartridge codecs,
+while the NCCH engine belongs beside the CXI and CFA consumers in their nearest
+shared `internal` domain module.
 
 ### End-to-end tests — `src/testing/codecs/e2e/`
 
