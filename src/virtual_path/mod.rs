@@ -3,14 +3,14 @@ use std::path::PathBuf;
 use crate::project::Project;
 
 use errors::VirtualPathError;
-pub(crate) mod errors;
+pub mod errors;
 
 /// A logical path identifying a source or a derived artifact within a project.
 ///
 /// Virtual paths are relative, use `/` as their separator regardless of the
 /// host platform, and always start with a source file.
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct VirtualPath {
+pub struct VirtualPath {
   path: String,
 }
 
@@ -98,7 +98,7 @@ impl VirtualPath {
   /// still match this path", including the half-typed component at its end.
   ///
   /// ```
-  /// # use crate::virtual_path::VirtualPath;
+  /// # use ludared::virtual_path::VirtualPath;
   /// let vpath = VirtualPath::new("DBZ.sfc/rom_00.bin").unwrap();
   /// assert!(vpath.has_text_prefix("DBZ"));
   /// assert!(vpath.has_text_prefix("DBZ.sfc/rom"));
@@ -138,7 +138,7 @@ impl VirtualPath {
   /// is what filtering a listing by a path means.
   ///
   /// ```
-  /// # use crate::virtual_path::VirtualPath;
+  /// # use ludared::virtual_path::VirtualPath;
   /// let vpath = VirtualPath::new("DBZ.sfc/rom_00.bin").unwrap();
   /// let root = VirtualPath::new("DBZ.sfc").unwrap();
   /// let partial = VirtualPath::new("DBZ.sfc/rom_00").unwrap();

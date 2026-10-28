@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub(crate) enum VirtualPathError {
+pub enum VirtualPathError {
   #[error("Empty path")]
   EmptyPath,
 

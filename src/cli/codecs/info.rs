@@ -1,8 +1,8 @@
 use crate::cli::codecs::registry;
 use crate::cli::completions::codecs::completion_codecs_list;
-use crate::errors::app_error::AppError;
 use clap::Args;
 use clap_complete::ArgValueCompleter;
+use ludared::errors::app_error::AppError;
 
 #[derive(Args)]
 pub(crate) struct CodecsInfoArgs {

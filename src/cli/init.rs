@@ -1,9 +1,9 @@
-use crate::configuration::Configuration;
-use crate::configuration::PathsConfiguration;
-use crate::configuration::ProjectConfiguration;
-use crate::errors::app_error::AppError;
-use crate::manifest::Manifest;
 use clap::Args;
+use ludared::configuration::Configuration;
+use ludared::configuration::PathsConfiguration;
+use ludared::configuration::ProjectConfiguration;
+use ludared::errors::app_error::AppError;
+use ludared::manifest::Manifest;
 use std::fs::OpenOptions;
 use std::io;
 use std::io::Write;

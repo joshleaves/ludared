@@ -1,6 +1,6 @@
-use crate::errors::app_error::AppError;
 use clap::Args;
 use clap::Subcommand;
+use ludared::errors::app_error::AppError;
 
 pub(crate) mod add;
 pub(crate) mod list;

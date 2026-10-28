@@ -11,7 +11,7 @@ use crate::virtual_path::VirtualPath;
 
 use super::Project;
 
-pub(crate) mod errors;
+pub mod errors;
 
 use errors::OverrideError;
 
@@ -52,7 +52,7 @@ impl Project {
   /// - the workspace directories or the copy cannot be written;
   /// - the manifest cannot be written, by which point the workspace file has
   ///   already been written.
-  pub(crate) fn add_override(&mut self, path: &VirtualPath, force: bool) -> Result<(), AppError> {
+  pub fn add_override(&mut self, path: &VirtualPath, force: bool) -> Result<(), AppError> {
     let (node, output) = self.resolve_virtual_path(path)?;
 
     if !node.is_terminal_output(output) {
@@ -96,7 +96,7 @@ impl Project {
   /// - that artifact is not overridden;
   /// - `path` is not indexed in the decode cache, or its blob cannot be read;
   /// - the workspace directories or the file cannot be written.
-  pub(crate) fn refresh_override(&mut self, path: &VirtualPath) -> Result<(), AppError> {
+  pub fn refresh_override(&mut self, path: &VirtualPath) -> Result<(), AppError> {
     let (node, output) = self.resolve_virtual_path(path)?;
 
     if !node.has_override_for(output) {
@@ -129,7 +129,7 @@ impl Project {
   /// - `path` does not name a decoded artifact;
   /// - that artifact is not overridden;
   /// - the manifest cannot be written.
-  pub(crate) fn remove_override(&mut self, path: &VirtualPath) -> Result<(), AppError> {
+  pub fn remove_override(&mut self, path: &VirtualPath) -> Result<(), AppError> {
     let (node, output) = self.resolve_virtual_path(path)?;
 
     if !node.has_override_for(output) {
@@ -150,7 +150,7 @@ impl Project {
   /// The workspace mirrors the virtual file system exactly: an artifact always
   /// lives at `WORKSPACE_ROOT/{VPATH}`, and there is no other destination to
   /// configure.
-  pub(crate) fn workspace_path(&self, path: &VirtualPath) -> PathBuf {
+  pub fn workspace_path(&self, path: &VirtualPath) -> PathBuf {
     self
       .root
       .join(&self.configuration.paths.workspace)

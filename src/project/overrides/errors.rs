@@ -5,7 +5,7 @@ use thiserror::Error;
 /// Each variant names the situation rather than the command that hit it, and
 /// carries the advice the operator needs to get unstuck.
 #[derive(Error, Debug)]
-pub(crate) enum OverrideError {
+pub enum OverrideError {
   #[error("Artifact not found: '{0}'")]
   ArtifactNotFound(String),
 

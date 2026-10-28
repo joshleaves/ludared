@@ -22,7 +22,7 @@ impl Project {
   /// cannot be written to the decode cache or the cache index cannot be saved, or
   /// if the manifest cannot be written. On any of those the manifest is left as
   /// it was on disk.
-  pub(crate) fn add_decode(
+  pub fn add_decode(
     &mut self,
     path: &VirtualPath,
     codec_id: String,
@@ -68,7 +68,7 @@ impl Project {
   /// is invalid, or the manifest cannot be written. Cache index, workspace, and
   /// blob cleanup errors are logged but do not fail a removal whose manifest has
   /// already been persisted.
-  pub(crate) fn remove_decode(
+  pub fn remove_decode(
     &mut self,
     path: &VirtualPath,
     name: Option<&str>,

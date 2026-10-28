@@ -15,12 +15,12 @@ use super::Project;
 
 /// Tally of the work performed by [`Project::unpack`].
 #[derive(Debug, Default)]
-pub(crate) struct UnpackReport {
+pub struct UnpackReport {
   /// Number of decode nodes replayed.
-  pub(crate) decodes: usize,
+  pub decodes: usize,
 
   /// Number of artifacts written back into the cache.
-  pub(crate) artifacts: usize,
+  pub artifacts: usize,
 }
 
 impl Project {
@@ -52,7 +52,7 @@ impl Project {
   /// - a codec fails to decode its input;
   /// - a codec no longer produces the outputs recorded for its decode node;
   /// - the cache or its index cannot be written.
-  pub(crate) fn unpack(&mut self) -> Result<UnpackReport, AppError> {
+  pub fn unpack(&mut self) -> Result<UnpackReport, AppError> {
     debug!("Unpacking decode cache of project '{}'", self.name());
     let mut report = UnpackReport::default();
 

@@ -6,18 +6,6 @@ use log::*;
 use std::process::ExitCode;
 
 mod cli;
-mod codecs;
-mod configuration;
-mod errors;
-mod formatting;
-mod hash;
-mod manifest;
-mod project;
-mod scripts;
-mod source;
-#[cfg(test)]
-mod testing;
-mod virtual_path;
 use cli::artifacts::ArtifactsArgs;
 use cli::artifacts::command_artifacts;
 use cli::build::BuildArgs;
@@ -42,7 +30,8 @@ use cli::scripts::command_scripts;
 use cli::sources::SourcesArgs;
 use cli::sources::command_sources;
 use cli::unpack::command_unpack;
-use errors::app_error::AppError;
+
+use ludared::errors::app_error::AppError;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]

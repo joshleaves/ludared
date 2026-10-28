@@ -1,4 +1,4 @@
-pub(crate) fn format_size(size: u64) -> String {
+pub fn format_size(size: u64) -> String {
   const UNITS: [&str; 5] = [
     "B",
     "KiB",
@@ -22,7 +22,7 @@ pub(crate) fn format_size(size: u64) -> String {
   }
 }
 
-pub(crate) fn format_bytes(bytes: u64) -> String {
+pub fn format_bytes(bytes: u64) -> String {
   let digits = bytes.to_string();
   let mut out = String::with_capacity(digits.len() + digits.len() / 3);
 

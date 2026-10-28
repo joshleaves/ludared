@@ -3,10 +3,10 @@ use clap_complete::engine::ArgValueCompleter;
 
 use crate::cli::completions::artifacts::completion_artifacts_list;
 use crate::cli::path_glob::PathGlob;
-use crate::codecs::CodecHandlingConfidence;
-use crate::errors::app_error::AppError;
-use crate::project::Project;
-use crate::virtual_path::VirtualPath;
+use ludared::codecs::CodecHandlingConfidence;
+use ludared::errors::app_error::AppError;
+use ludared::project::Project;
+use ludared::virtual_path::VirtualPath;
 
 #[derive(Clone, Copy, clap::ValueEnum)]
 enum DetectionLevel {

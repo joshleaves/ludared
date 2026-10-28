@@ -4,15 +4,15 @@ use std::collections::HashMap;
 use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
 
-use crate::AppError;
 use crate::cli::completions::scripts::completion_scripts_test_scripts_list;
 use crate::cli::path_glob::PathGlob;
-use crate::codecs::ScriptEnvironment;
-use crate::project::Project;
-use crate::scripts::discovery::ScriptDiscovery;
-use crate::scripts::discovery::ScriptKind;
-use crate::scripts::errors::ScriptError;
-use crate::scripts::test_runner::run_test;
+use ludared::codecs::ScriptEnvironment;
+use ludared::errors::app_error::AppError;
+use ludared::project::Project;
+use ludared::scripts::discovery::ScriptDiscovery;
+use ludared::scripts::discovery::ScriptKind;
+use ludared::scripts::errors::ScriptError;
+use ludared::scripts::test_runner::run_test;
 
 #[derive(Args)]
 pub(crate) struct ScriptsTestArgs {

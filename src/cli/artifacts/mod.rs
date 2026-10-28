@@ -2,8 +2,8 @@ use clap::Args;
 use clap::Subcommand;
 
 use crate::cli::artifacts::list::ArtifactsListArgs;
-use crate::errors::app_error::AppError;
-use crate::project::Project;
+use ludared::errors::app_error::AppError;
+use ludared::project::Project;
 
 pub(crate) mod list;
 

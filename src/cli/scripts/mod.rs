@@ -2,7 +2,7 @@ use clap::Args;
 use clap::Subcommand;
 
 use crate::cli::scripts::test::ScriptsTestArgs;
-use crate::errors::app_error::AppError;
+use ludared::errors::app_error::AppError;
 
 pub(crate) mod test;
 

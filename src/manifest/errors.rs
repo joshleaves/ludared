@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub(crate) enum ManifestError {
+pub enum ManifestError {
   #[error("Could not resolve virtual path: {0}")]
   CouldNotResolve(String),
 

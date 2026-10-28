@@ -1,5 +1,5 @@
-use crate::project::Project;
 use clap_complete::engine::CompletionCandidate;
+use ludared::project::Project;
 use std::ffi::OsStr;
 
 pub(crate) fn completion_artifacts_list(current: &OsStr) -> Vec<CompletionCandidate> {

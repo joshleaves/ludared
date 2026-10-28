@@ -1,7 +1,7 @@
 use crate::cli::codecs::registry;
 use crate::cli::tree_formatter;
-use crate::errors::app_error::AppError;
 use clap::Args;
+use ludared::errors::app_error::AppError;
 
 #[derive(Args)]
 pub(crate) struct CodecsListArgs {

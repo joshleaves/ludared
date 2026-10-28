@@ -5,9 +5,9 @@ use serde::de::DeserializeOwned;
 use std::collections::HashMap;
 
 #[derive(Clone, Default)]
-pub(crate) struct ScriptEnvironment(pub(crate) HashMap<String, String>);
+pub struct ScriptEnvironment(pub HashMap<String, String>);
 
-pub(crate) trait LudaredCodecArgs: Sized + DeserializeOwned {
+pub trait LudaredCodecArgs: Sized + DeserializeOwned {
   fn from_args(args: Option<&str>) -> Result<Self, serde_json::Error> {
     serde_json::from_str(args.unwrap_or("{}"))
   }
@@ -36,7 +36,7 @@ macro_rules! debug_result {
 }
 
 pub mod cdrom;
-pub(crate) mod common;
+pub mod common;
 pub mod errors;
 pub mod generic;
 pub mod nintendo;

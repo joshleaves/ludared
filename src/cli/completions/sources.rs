@@ -1,5 +1,5 @@
-use crate::project::Project;
 use clap_complete::engine::CompletionCandidate;
+use ludared::project::Project;
 use std::path::PathBuf;
 
 pub(crate) fn completion_sources_available(current: &std::ffi::OsStr) -> Vec<CompletionCandidate> {

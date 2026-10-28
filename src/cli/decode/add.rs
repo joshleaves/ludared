@@ -6,10 +6,10 @@ use std::path::PathBuf;
 use crate::cli::completions::artifacts::completion_artifacts_decodable;
 use crate::cli::completions::codecs::completion_codecs_list_with_presets;
 use crate::cli::path_glob::PathGlob;
-use crate::codecs::CodecHandlingConfidence;
-use crate::errors::app_error::AppError;
-use crate::project::Project;
-use crate::virtual_path::VirtualPath;
+use ludared::codecs::CodecHandlingConfidence;
+use ludared::errors::app_error::AppError;
+use ludared::project::Project;
+use ludared::virtual_path::VirtualPath;
 
 #[derive(Args)]
 pub(crate) struct DecodeAddArgs {

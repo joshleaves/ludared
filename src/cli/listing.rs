@@ -1,5 +1,5 @@
 use crate::cli::tree_formatter::render;
-use crate::virtual_path::VirtualPath;
+use ludared::virtual_path::VirtualPath;
 
 /// Prints `entries`, optionally scoped to `root`, as a flat listing or as a tree.
 ///

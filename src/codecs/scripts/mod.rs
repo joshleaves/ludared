@@ -1,1 +1,1 @@
-pub(crate) mod lua;
+pub mod lua;

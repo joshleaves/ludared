@@ -5,9 +5,9 @@ use clap_complete::engine::ArgValueCompleter;
 
 use crate::cli::completions::overrides::completion_override_list;
 use crate::cli::listing;
-use crate::errors::app_error::AppError;
-use crate::project::Project;
-use crate::virtual_path::VirtualPath;
+use ludared::errors::app_error::AppError;
+use ludared::project::Project;
+use ludared::virtual_path::VirtualPath;
 
 #[derive(Args)]
 pub(crate) struct OverrideListArgs {

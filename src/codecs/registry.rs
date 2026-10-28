@@ -54,7 +54,7 @@ static BUILTINS: &[&dyn Codec] = &[
   &StrXa,
 ];
 
-pub(crate) struct CodecRegistry {
+pub struct CodecRegistry {
   scripts_root: PathBuf,
   scripts: Vec<Box<dyn Codec>>,
 }

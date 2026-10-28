@@ -5,10 +5,10 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use crate::cli::completions::sources::completion_sources_list;
-use crate::errors::app_error::AppError;
-use crate::project::Project;
-use crate::virtual_path::VirtualPath;
-use crate::virtual_path::errors::VirtualPathError;
+use ludared::errors::app_error::AppError;
+use ludared::project::Project;
+use ludared::virtual_path::VirtualPath;
+use ludared::virtual_path::errors::VirtualPathError;
 
 #[derive(Args)]
 pub(crate) struct BuildArgs {

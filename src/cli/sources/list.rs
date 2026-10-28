@@ -2,11 +2,11 @@ use clap::Args;
 use log::*;
 use std::path::Path;
 
-use crate::errors::app_error::AppError;
-use crate::formatting::format_bytes;
-use crate::formatting::format_size;
-use crate::project::Project;
-use crate::source::Source;
+use ludared::errors::app_error::AppError;
+use ludared::formatting::format_bytes;
+use ludared::formatting::format_size;
+use ludared::project::Project;
+use ludared::source::Source;
 
 #[derive(Args)]
 pub(crate) struct SourcesListArgs {

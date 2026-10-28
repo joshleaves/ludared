@@ -1,7 +1,7 @@
 use log::*;
 
-use crate::errors::app_error::AppError;
-use crate::project::Project;
+use ludared::errors::app_error::AppError;
+use ludared::project::Project;
 
 pub(crate) fn command_unpack() -> Result<(), AppError> {
   let mut project = Project::load_default()?;

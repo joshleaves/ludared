@@ -18,18 +18,18 @@ use crate::virtual_path::VirtualPath;
 use decode_node::DecodeNode;
 use errors::ManifestError;
 
-pub(crate) mod decode_node;
-pub(crate) mod errors;
+pub mod decode_node;
+pub mod errors;
 
 #[derive(Clone, Copy)]
-pub(crate) enum WalkTarget {
+pub enum WalkTarget {
   Paths,
   Decodes,
   Overrides,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
-pub(crate) struct Manifest {
+pub struct Manifest {
   #[serde(default)]
   pub sources: HashMap<PathBuf, Source>,
   #[serde(default)]
@@ -37,28 +37,28 @@ pub(crate) struct Manifest {
 }
 
 impl Manifest {
-  pub(crate) fn load(path: &Path) -> Result<Self, AppError> {
+  pub fn load(path: &Path) -> Result<Self, AppError> {
     let content = std::fs::read_to_string(path).map_err(AppError::ManifestFileIo)?;
     // you may want a Json variant later
     let manifest: Self = serde_json::from_str(&content).map_err(AppError::ManifestFileJson)?;
     Ok(manifest)
   }
 
-  pub(crate) fn save(&self, path: &Path) -> Result<(), AppError> {
+  pub fn save(&self, path: &Path) -> Result<(), AppError> {
     let json = serde_json::to_string_pretty(self).map_err(AppError::ManifestFileJson)?;
     std::fs::write(path, json).map_err(AppError::ManifestFileIo)?;
     Ok(())
   }
 
-  pub(crate) fn artifacts(&self) -> Vec<VirtualPath> {
+  pub fn artifacts(&self) -> Vec<VirtualPath> {
     self.list_paths(WalkTarget::Paths)
   }
 
-  pub(crate) fn decodes(&self) -> Vec<VirtualPath> {
+  pub fn decodes(&self) -> Vec<VirtualPath> {
     self.list_paths(WalkTarget::Decodes)
   }
 
-  pub(crate) fn overrides(&self) -> Vec<VirtualPath> {
+  pub fn overrides(&self) -> Vec<VirtualPath> {
     self.list_paths(WalkTarget::Overrides)
   }
 
@@ -109,7 +109,7 @@ impl Manifest {
   /// Resolution can fail when the path does not begin with a known source, or
   /// when a later path component does not correspond to an artifact produced by
   /// any decode node along the resolved branch.
-  pub(crate) fn decodes_at_mut(
+  pub fn decodes_at_mut(
     &mut self,
     path: &VirtualPath,
   ) -> Result<&mut Vec<DecodeNode>, ManifestError> {
@@ -134,7 +134,7 @@ impl Manifest {
     Err(ManifestError::CouldNotResolve(path.to_string()))
   }
 
-  pub(crate) fn decodes_at(&self, path: &VirtualPath) -> Result<&[DecodeNode], ManifestError> {
+  pub fn decodes_at(&self, path: &VirtualPath) -> Result<&[DecodeNode], ManifestError> {
     let (source, remaining) = self
       .split_source(path)
       .ok_or_else(|| ManifestError::CouldNotResolve(path.to_string()))?;
@@ -151,20 +151,20 @@ impl Manifest {
   /// override.
   ///
   /// A path that resolves to nothing is simply not an override.
-  pub(crate) fn is_overridden(&self, path: &VirtualPath) -> bool {
+  pub fn is_overridden(&self, path: &VirtualPath) -> bool {
     self
       .resolve_virtual_path(path)
       .is_ok_and(|(node, output)| node.has_override_for(output))
   }
 
   #[allow(dead_code)]
-  pub(crate) fn has_decodes(&self, path: &VirtualPath) -> bool {
+  pub fn has_decodes(&self, path: &VirtualPath) -> bool {
     self
       .decodes_at(path)
       .is_ok_and(|decodes| !decodes.is_empty())
   }
 
-  pub(crate) fn is_terminal(&self, path: &VirtualPath) -> bool {
+  pub fn is_terminal(&self, path: &VirtualPath) -> bool {
     if self.sources.contains_key(Path::new(path.as_str())) {
       return !self.has_decodes(path);
     }
@@ -184,7 +184,7 @@ impl Manifest {
   ///
   /// Returns [`ManifestError::CouldNotResolve`] when the virtual path does not
   /// name a decoded output.
-  pub(crate) fn resolve_virtual_path(
+  pub fn resolve_virtual_path(
     &self,
     path: &VirtualPath,
   ) -> Result<(&DecodeNode, &str), ManifestError> {
@@ -216,7 +216,7 @@ impl Manifest {
   ///
   /// Returns [`ManifestError::CouldNotResolve`] when the virtual path does not
   /// name a decoded output.
-  pub(crate) fn resolve_virtual_path_mut(
+  pub fn resolve_virtual_path_mut(
     &mut self,
     path: &VirtualPath,
   ) -> Result<(&mut DecodeNode, String), ManifestError> {
@@ -287,7 +287,7 @@ impl Manifest {
   ///
   /// Returns an [`AppError`] if the decode configuration is invalid
   /// or conflicts with the existing manifest.
-  pub(crate) fn add_decode(
+  pub fn add_decode(
     &mut self,
     codecs: &CodecRegistry,
     path: &VirtualPath,
@@ -440,7 +440,7 @@ impl Manifest {
   ///
   /// `name` is required when multiple decodes share `path`.
   /// Returns the removed node so callers can clean up its cache and overrides.
-  pub(crate) fn remove_decode(
+  pub fn remove_decode(
     &mut self,
     path: &VirtualPath,
     name: Option<&str>,

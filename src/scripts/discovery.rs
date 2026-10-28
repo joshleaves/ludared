@@ -3,11 +3,11 @@ use std::io;
 use std::path::Path;
 use std::path::PathBuf;
 
-pub(crate) const RESERVED_DIRECTORIES: &[&str] = &["shared", "tests"];
+pub const RESERVED_DIRECTORIES: &[&str] = &["shared", "tests"];
 pub(crate) const SCRIPT_EXTENSIONS: &[&str] = &["lua"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum ScriptKind {
+pub enum ScriptKind {
   Codec,
   Test,
 }
@@ -19,13 +19,13 @@ struct DiscoveredScript {
 }
 
 #[derive(Debug)]
-pub(crate) struct ScriptDiscovery {
+pub struct ScriptDiscovery {
   root: PathBuf,
   scripts: Vec<DiscoveredScript>,
 }
 
 impl ScriptDiscovery {
-  pub(crate) fn new(root: PathBuf) -> io::Result<Self> {
+  pub fn new(root: PathBuf) -> io::Result<Self> {
     let mut discovery = Self {
       root,
       scripts: Vec::new(),
@@ -78,7 +78,7 @@ impl ScriptDiscovery {
     Ok(())
   }
 
-  pub(crate) fn retrieve_scripts(&self, kind: ScriptKind) -> Vec<&Path> {
+  pub fn retrieve_scripts(&self, kind: ScriptKind) -> Vec<&Path> {
     self
       .scripts
       .iter()

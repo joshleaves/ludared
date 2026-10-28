@@ -10,23 +10,23 @@ use crate::errors::app_error::AppError;
 use crate::manifest::Manifest;
 use crate::project::cache::Cache;
 
-pub(crate) mod build;
-pub(crate) mod cache;
-pub(crate) mod decode;
-pub(crate) mod overrides;
-pub(crate) mod sources;
-pub(crate) mod unpack;
+pub mod build;
+pub mod cache;
+pub mod decode;
+pub mod overrides;
+pub mod sources;
+pub mod unpack;
 
-pub(crate) struct Project {
-  pub(crate) root: PathBuf,
-  pub(crate) configuration: Configuration,
-  pub(crate) manifest: Manifest,
-  pub(crate) codecs: CodecRegistry,
-  pub(crate) cache: Cache,
+pub struct Project {
+  pub root: PathBuf,
+  pub configuration: Configuration,
+  pub manifest: Manifest,
+  pub codecs: CodecRegistry,
+  pub cache: Cache,
 }
 
 impl Project {
-  pub(crate) fn load(root: &Path) -> Result<Self, AppError> {
+  pub fn load(root: &Path) -> Result<Self, AppError> {
     trace!("Loading up project configuration");
     let configuration_path = root.join("ludared.toml");
     let configuration = Configuration::load(&configuration_path)?;
@@ -80,7 +80,7 @@ impl Project {
     })
   }
 
-  pub(crate) fn load_default() -> Result<Self, AppError> {
+  pub fn load_default() -> Result<Self, AppError> {
     Self::load(Path::new("."))
   }
 

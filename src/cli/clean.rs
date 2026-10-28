@@ -3,8 +3,8 @@ use log::*;
 use std::path::Path;
 use std::path::PathBuf;
 
-use crate::configuration::Configuration;
-use crate::errors::app_error::AppError;
+use ludared::configuration::Configuration;
+use ludared::errors::app_error::AppError;
 
 #[derive(Args)]
 pub(crate) struct CleanArgs {

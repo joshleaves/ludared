@@ -60,7 +60,7 @@ impl Project {
   ///   the decode cache, or its blob cannot be read;
   /// - an output declared an override has no readable workspace file;
   /// - a codec refuses the artifacts or the parent buffer it is handed.
-  pub(crate) fn build(&self, source: &VirtualPath) -> Result<Vec<u8>, AppError> {
+  pub fn build(&self, source: &VirtualPath) -> Result<Vec<u8>, AppError> {
     debug!("Building '{}'", source);
 
     let name = source.to_string();

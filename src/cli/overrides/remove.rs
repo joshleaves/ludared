@@ -5,10 +5,10 @@ use clap_complete::engine::ArgValueCompleter;
 
 use crate::cli::completions::overrides::completion_override_active;
 use crate::cli::path_glob::PathGlob;
-use crate::errors::app_error::AppError;
-use crate::project::Project;
-use crate::project::overrides::errors::OverrideError;
-use crate::virtual_path::VirtualPath;
+use ludared::errors::app_error::AppError;
+use ludared::project::Project;
+use ludared::project::overrides::errors::OverrideError;
+use ludared::virtual_path::VirtualPath;
 
 #[derive(Args)]
 pub(crate) struct OverrideRemoveArgs {

@@ -1,6 +1,6 @@
-use crate::project::Project;
-use crate::virtual_path::VirtualPath;
 use clap_complete::engine::CompletionCandidate;
+use ludared::project::Project;
+use ludared::virtual_path::VirtualPath;
 use std::ffi::OsStr;
 
 pub(crate) fn completion_override_list(current: &OsStr) -> Vec<CompletionCandidate> {

@@ -7,10 +7,10 @@ use crate::cli::codecs::create::CodecsCreateArgs;
 use crate::cli::codecs::detect::CodecsDetectArgs;
 use crate::cli::codecs::info::CodecsInfoArgs;
 use crate::cli::codecs::list::CodecsListArgs;
-use crate::codecs::ScriptEnvironment;
-use crate::codecs::registry::CodecRegistry;
-use crate::errors::app_error::AppError;
-use crate::project::Project;
+use ludared::codecs::ScriptEnvironment;
+use ludared::codecs::registry::CodecRegistry;
+use ludared::errors::app_error::AppError;
+use ludared::project::Project;
 
 pub(crate) mod create;
 pub(crate) mod detect;

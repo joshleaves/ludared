@@ -10,17 +10,17 @@ use crate::errors::app_error::AppError;
 use crate::hash::sha256_bytes;
 use crate::virtual_path::VirtualPath;
 
-pub(crate) mod errors;
+pub mod errors;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
-pub(crate) struct CacheIndex {
+pub struct CacheIndex {
   entries: BTreeMap<String, String>,
 }
 
 #[derive(Debug)]
-pub(crate) struct Cache {
-  pub(crate) root: PathBuf,
-  pub(crate) index: CacheIndex,
+pub struct Cache {
+  pub root: PathBuf,
+  pub index: CacheIndex,
 }
 
 impl Cache {

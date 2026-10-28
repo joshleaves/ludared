@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::codecs::ScriptEnvironment;
 use crate::scripts::errors::ScriptError;
 
-pub(crate) fn run_test(path: &Path, env: &ScriptEnvironment) -> Result<(), ScriptError> {
+pub fn run_test(path: &Path, env: &ScriptEnvironment) -> Result<(), ScriptError> {
   match path.extension().and_then(|ext| ext.to_str()) {
     Some("lua") => run_test_lua(path, env),
     ext => unreachable!("Unexpected test script extension: {ext:?}"),

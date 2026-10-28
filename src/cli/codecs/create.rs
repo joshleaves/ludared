@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
-use crate::errors::app_error::AppError;
-use crate::project::Project;
-use crate::scripts::discovery::RESERVED_DIRECTORIES;
 use clap::Args;
+use ludared::errors::app_error::AppError;
+use ludared::project::Project;
+use ludared::scripts::discovery::RESERVED_DIRECTORIES;
 
 #[derive(Args)]
 pub(crate) struct CodecsCreateArgs {
@@ -38,7 +38,7 @@ pub(crate) fn command_codecs_create(args: &CodecsCreateArgs) -> Result<(), AppEr
   }
 
   let contents = match codec_path.extension().and_then(|ext| ext.to_str()) {
-    Some("lua") => crate::codecs::scripts::lua::SKELETON,
+    Some("lua") => ludared::codecs::scripts::lua::SKELETON,
     Some(ext) => return Err(AppError::UnknownCodecExtension(ext.to_string())),
     None => return Err(AppError::MissingCodecExtension),
   };

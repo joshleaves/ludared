@@ -29,7 +29,7 @@ impl Project {
   /// - the source is already present in the manifest;
   /// - the source metadata cannot be read;
   /// - the manifest cannot be written.
-  pub(crate) fn add_source(&mut self, source_name: &Path) -> Result<(), AppError> {
+  pub fn add_source(&mut self, source_name: &Path) -> Result<(), AppError> {
     let source_path = self.source_path(source_name);
     if !source_path.is_file() {
       return Err(AppError::NoSuchFile(source_name.to_path_buf()));
@@ -58,7 +58,7 @@ impl Project {
   /// Returns an [`AppError`] if:
   /// - the source is not present in the manifest;
   /// - the manifest cannot be written.
-  pub(crate) fn remove_source(&mut self, source_name: &Path) -> Result<(), AppError> {
+  pub fn remove_source(&mut self, source_name: &Path) -> Result<(), AppError> {
     let source = VirtualPath::new(&source_name.to_string_lossy())?;
 
     if !self.manifest.sources.contains_key(source_name) {

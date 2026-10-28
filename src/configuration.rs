@@ -5,7 +5,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Serialize)]
-pub(crate) struct Configuration {
+pub struct Configuration {
   pub project: ProjectConfiguration,
 
   #[serde(default)]
@@ -13,13 +13,13 @@ pub(crate) struct Configuration {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub(crate) struct ProjectConfiguration {
+pub struct ProjectConfiguration {
   pub name: String,
   pub manifest: PathBuf,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub(crate) struct PathsConfiguration {
+pub struct PathsConfiguration {
   #[serde(default = "default_sources_path")]
   pub sources: PathBuf,
 

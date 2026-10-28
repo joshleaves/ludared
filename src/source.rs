@@ -9,7 +9,7 @@ use std::io::Read;
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Serialize)]
-pub(crate) struct Source {
+pub struct Source {
   pub sha256: String,
   #[serde(default)]
   pub size: Option<u64>,
@@ -18,7 +18,7 @@ pub(crate) struct Source {
 }
 
 impl Source {
-  pub(crate) fn new_from_file(source_path: &PathBuf) -> Result<Self, AppError> {
+  pub fn new_from_file(source_path: &PathBuf) -> Result<Self, AppError> {
     let sha256 = Source::compute_sha256(source_path)?;
     let metadata =
       std::fs::metadata(source_path).map_err(|e| AppError::SourceFileIo(source_path.clone(), e))?;
@@ -34,7 +34,7 @@ impl Source {
 
   /// Computes a file's SHA-256 without loading it entirely into memory.
   /// Used when only the checksum is needed, such as during `doctor`.
-  pub(crate) fn compute_sha256(source_path: &PathBuf) -> Result<String, AppError> {
+  pub fn compute_sha256(source_path: &PathBuf) -> Result<String, AppError> {
     let file =
       File::open(source_path).map_err(|e| AppError::SourceFileIo(source_path.clone(), e))?;
 
@@ -57,7 +57,7 @@ impl Source {
 
   /// Verifies the SHA-256 of bytes already loaded into memory.
   /// Used by `build` and `unpack`, which need the bytes for decoding anyway.
-  pub(crate) fn sha256_matches(&self, bytes: &[u8]) -> Result<(), String> {
+  pub fn sha256_matches(&self, bytes: &[u8]) -> Result<(), String> {
     let actual = hex::encode(Sha256::digest(bytes));
 
     if actual == self.sha256 {

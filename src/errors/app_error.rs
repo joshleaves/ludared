@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub(crate) enum AppError {
+pub enum AppError {
   #[error("{0}")]
   Message(String),
 

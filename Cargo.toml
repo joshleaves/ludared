@@ -10,6 +10,10 @@ license = "MIT"
 homepage = "https://github.com/joshleaves/ludared"
 repository = "https://github.com/joshleaves/ludared"
 
+[lib]
+name = "ludared"
+path = "src/lib.rs"
+
 [[bin]]
 name = "ludared"
 path = "src/main.rs"

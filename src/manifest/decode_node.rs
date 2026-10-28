@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use super::WalkTarget;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
-pub(crate) struct CodecNode {
+pub struct CodecNode {
   pub id: String,
   pub version: u32,
 
@@ -22,7 +22,7 @@ pub(crate) struct CodecNode {
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
-pub(crate) struct DecodeNode {
+pub struct DecodeNode {
   pub name: String,
   pub codec: CodecNode,
   pub outputs: Vec<String>,
@@ -47,7 +47,7 @@ impl DecodeNode {
   ///
   /// Nothing is parsed or reinterpreted here: the stored string is handed back
   /// exactly as it was recorded, and its absence is handed back as an absence.
-  pub(crate) fn codec_args(&self) -> Option<&str> {
+  pub fn codec_args(&self) -> Option<&str> {
     self.codec.args.as_deref()
   }
 
@@ -55,7 +55,7 @@ impl DecodeNode {
   ///
   /// An override is declared by the decode node that produced the artifact, so
   /// the question only ever concerns an output of this node.
-  pub(crate) fn has_override_for(&self, output: &str) -> bool {
+  pub fn has_override_for(&self, output: &str) -> bool {
     self.overrides.iter().any(|name| name == output)
   }
 
@@ -64,7 +64,7 @@ impl DecodeNode {
   /// An empty decode bucket still counts as terminal: `decode add` creates one
   /// for the artifact it is pointed at, and none of those decodes produce
   /// anything.
-  pub(crate) fn is_terminal_output(&self, output: &str) -> bool {
+  pub fn is_terminal_output(&self, output: &str) -> bool {
     self
       .decodes
       .get(output)
@@ -75,7 +75,7 @@ impl DecodeNode {
   ///
   /// An empty bucket is not a child decode: it is only the place one would be
   /// recorded if there were one.
-  pub(crate) fn has_child_decodes(&self) -> bool {
+  pub fn has_child_decodes(&self) -> bool {
     self.decodes.values().any(|decodes| !decodes.is_empty())
   }
 
@@ -166,10 +166,7 @@ impl DecodeNode {
 
   /// Resolves the decode node that produced an artifact for a path relative to
   /// this decode node, for callers holding a unique borrow of that node.
-  pub(crate) fn resolve_output_mut(
-    &mut self,
-    remaining: &[&str],
-  ) -> Option<(&mut DecodeNode, String)> {
+  pub fn resolve_output_mut(&mut self, remaining: &[&str]) -> Option<(&mut DecodeNode, String)> {
     let output = self.producing_output(remaining)?.to_owned();
 
     if components_of(&output).as_slice() == remaining {

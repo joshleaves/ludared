@@ -3,8 +3,8 @@ use clap_complete::engine::ArgValueCompleter;
 use std::path::PathBuf;
 
 use crate::cli::completions::sources::completion_sources_list;
-use crate::errors::app_error::AppError;
-use crate::project::Project;
+use ludared::errors::app_error::AppError;
+use ludared::project::Project;
 
 #[derive(Args)]
 pub(crate) struct SourcesRemoveArgs {

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::virtual_path::VirtualPath;
+use ludared::virtual_path::VirtualPath;
 
 /// A virtual path component, with everything the hierarchy nests below it.
 ///

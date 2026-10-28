@@ -1,8 +1,8 @@
 use clap_complete::engine::CompletionCandidate;
 
-use crate::project::Project;
-use crate::scripts::discovery::ScriptDiscovery;
-use crate::scripts::discovery::ScriptKind;
+use ludared::project::Project;
+use ludared::scripts::discovery::ScriptDiscovery;
+use ludared::scripts::discovery::ScriptKind;
 
 pub(crate) fn completion_scripts_test_scripts_list(
   current: &std::ffi::OsStr,
