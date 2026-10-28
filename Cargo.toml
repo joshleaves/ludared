@@ -13,6 +13,7 @@ repository = "https://github.com/joshleaves/ludared"
 [lib]
 name = "ludared"
 path = "src/lib.rs"
+doctest = false
 
 [[bin]]
 name = "ludared"
