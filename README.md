@@ -126,6 +126,10 @@ A `Rebuild` codec consumes ALL of its input, so it is the only _decode_ that can
 - [x] `std/nintendo/3ds/internal/exefs` - Extract a Nintendo 3DS ExeFS executable filesystem
 - [x] `std/nintendo/3ds/internal/romfs` - Extract a Nintendo 3DS RomFS read-only filesystem
 - [x] `std/nintendo/font/bcfnt` - Decode and rebuild a Nintendo 3DS BCFNT bitmap font with editable glyph sheets; ETC1/ETC1A4 sheets are lossily recompressed
+- [x] `std/nintendo/compression/lz10` - Decompress Nintendo LZ10 (LZSS) streams, optionally into a DARC or SARC archive
+- [x] `std/nintendo/compression/lz11` - Decompress Nintendo LZ11 (LZSS) streams, optionally into a DARC or SARC archive
+- [x] `std/nintendo/container/darc` - Extract and rebuild Nintendo DARC archives
+- [x] `std/nintendo/container/sarc` - Extract and rebuild Nintendo SARC archives
 - [x] `std/nintendo/snes/cart/exhirom`- Cut a SNES ExHiROM into ROM banks
 - [x] `std/nintendo/snes/cart/hirom`- Cut a SNES HiROM into ROM banks
 - [x] `std/nintendo/snes/cart/lorom`- Cut a SNES LoROM into ROM banks
@@ -162,6 +166,10 @@ All codecs **MUST** support round-tripping: they can `decode` content and `encod
 | `std/nintendo/3ds/internal/exefs` | ✅ | ✅ |
 | `std/nintendo/3ds/internal/romfs` | ✅ | ✅ |
 | `std/nintendo/font/bcfnt` | ✅[^etc1] | ✅ |
+| `std/nintendo/compression/lz10` | ❌ | ✅ |
+| `std/nintendo/compression/lz11` | ❌ | ✅ |
+| `std/nintendo/container/darc` | ✅ | ✅ |
+| `std/nintendo/container/sarc` | ✅ | ✅ |
 | `std/nintendo/snes/cart/exhirom` | N/A | N/A |
 | `std/nintendo/snes/cart/hirom` | N/A | N/A |
 | `std/nintendo/snes/cart/lorom` | N/A | N/A |

@@ -88,6 +88,10 @@ I decided to throw [DeepSeek](https://en.wikipedia.org/wiki/DeepSeek) at it:
 - the TRUE value of that code resides in the labor of their [original](https://github.com/devkitPro/3dstools) [authors](https://github.com/ObsidianX/3dstools), not in me translating those algorithms to rust, for which I will NEVER ever pretend any ownership nor authorship (nor even "knowledge" lol). Plus I believe that's the kind of "tedious" work that's good to give to an LLM, since it won't be asked to make architectural decisions beyond the limited scope of a codec.
 - lol okay I won't even hide it, I just hate reading python.
 
+Notes:
+- This was extended to use [magical's nlzss](https://github.com/magical/nlzss) implementation for the LZ10 and LZ11 codecs.
+- Likewise for DARC/SARC, where [3DSkit](https://github.com/Tyulis/3DSkit) and [darctool](https://github.com/dnasdw/darctool) were used as reference implementations, with sourcing from [3dbrew](https://www.3dbrew.org/wiki/Main_Page) and [GBATEK](https://problemkaputt.de/gbatek.htm).
+
 ## Codec: `std/sega/compression/prs`
 * Done by: `DeepSeek` for the Lua code, with `ChatGPT 6` rewrite in Rust
 

@@ -1,3 +1,6 @@
+use log::debug;
+use std::path::PathBuf;
+
 use crate::codecs::Codec;
 use crate::codecs::CodecHandlingConfidence;
 use crate::codecs::ScriptEnvironment;
@@ -7,8 +10,16 @@ use crate::codecs::cdrom::mode::mode1::Mode1;
 use crate::codecs::cdrom::mode::mode2::Mode2;
 use crate::codecs::cdrom::mode::mode2_xa::Mode2Xa;
 use crate::codecs::errors::CodecError;
-use crate::codecs::generic::extract::Extract;
-use crate::codecs::generic::split::Split;
+use crate::scripts::discovery::ScriptDiscovery;
+use crate::scripts::discovery::ScriptKind;
+use crate::scripts::errors::ScriptError;
+
+use crate::codecs::generic::extract::Extract as GenericExtract;
+use crate::codecs::generic::split::Split as GenericSplit;
+use crate::codecs::nintendo::compression::lz10::Lz10 as NintendoLz10;
+use crate::codecs::nintendo::compression::lz11::Lz11 as NintendoLz11;
+use crate::codecs::nintendo::container::darc::Darc as NintendoDarc;
+use crate::codecs::nintendo::container::sarc::Sarc as NintendoSarc;
 use crate::codecs::nintendo::font::bcfnt::N3dsBcfnt;
 use crate::codecs::nintendo::n3ds::container::cci::N3dsCci;
 use crate::codecs::nintendo::n3ds::container::cfa::N3dsCfa;
@@ -25,13 +36,10 @@ use crate::codecs::nintendo::snes::cart_spc7110::SnesSpc7110Rom;
 use crate::codecs::scripts::lua::LuaCodec;
 use crate::codecs::sega::compression::prs::PrsCompression;
 use crate::codecs::sony::playstation::graphics::str_xa::StrXa;
-use crate::scripts::discovery::ScriptDiscovery;
-use crate::scripts::discovery::ScriptKind;
-use crate::scripts::errors::ScriptError;
-use log::debug;
-use std::path::PathBuf;
 
 static BUILTINS: &[&dyn Codec] = &[
+  &GenericExtract,
+  &GenericSplit,
   &N3dsBcfnt,
   &N3dsCci,
   &N3dsCia,
@@ -39,13 +47,15 @@ static BUILTINS: &[&dyn Codec] = &[
   &N3dsCxi,
   &N3dsExeFs,
   &N3dsRomFs,
-  &Extract,
+  &NintendoLz10,
+  &NintendoLz11,
+  &NintendoDarc,
+  &NintendoSarc,
   &Iso9660,
   &Mode1,
   &Mode2,
   &Mode2Xa,
   &Udf,
-  &Split,
   &SnesExHiRom,
   &SnesLoRom,
   &SnesHiRom,

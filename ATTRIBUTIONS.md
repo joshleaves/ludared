@@ -58,6 +58,53 @@ as required for the ported portions:
 
 The codec is a Rust port of the BCFNT format handling and texture algorithms in [ObsidianX/3dstools `bcfnt.py`](https://github.com/ObsidianX/3dstools/blob/master/bcfnt.py). The repository does not state a license, so the port is attributed here without asserting a license for the upstream work.
 
+# Codecs: `std/nintendo/compression/lz10`, `std/nintendo/compression/lz11`
+
+The LZ10/LZ11 token layouts and the decompression rules are a port of
+[magical's nlzss](https://github.com/magical/nlzss) (`lzss.py`, `compress.py`).
+The compressor in ludared is an independent hash-chain matcher that produces a
+valid but not necessarily identical stream.
+
+nlzss is distributed under the MIT license, whose notice is reproduced here as
+required for the ported portions:
+
+> Copyright © magical
+>
+> Permission is hereby granted, free of charge, to any person obtaining a copy
+> of this software and associated documentation files (the "Software"), to deal
+> in the Software without restriction, including without limitation the rights
+> to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+> copies of the Software, and to permit persons to whom the Software is
+> furnished to do so, subject to the following conditions:
+>
+> The above copyright notice and this permission notice shall be included in
+> all copies or substantial portions of the Software.
+>
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+> IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+> FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+> AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+> LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+> OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+> THE SOFTWARE.
+
+# Codecs: `std/nintendo/container/darc`, `std/nintendo/container/sarc`
+
+The format layouts come from [3dbrew](https://www.3dbrew.org/wiki/Main_Page)
+and [GBATEK](https://problemkaputt.de/gbatek.htm), which document both archive
+headers, their entry tables and the SARC filename hash.
+
+[3DSkit](https://github.com/Tyulis/3DSkit) was used as a behavioural
+cross-check for the SARC/DARC layouts only. It is GPL-3.0 licensed, so no code
+from it was copied into ludared.
+
+The independent interoperability fixtures in `src/testing/fixtures/nintendo/`
+were produced with [dnasdw/darctool](https://github.com/dnasdw/darctool) (whose
+DARC writer emits real folder parent indices), 3DSkit's SARC packer and
+nlzss's compressor. Those tools only generate fixtures; they are not build or
+test dependencies, and no code from them was copied into ludared. See that
+directory's README for the revisions and the validation performed with them.
+
 # Codec: `std/sega/compression/prs`
 
 As their GH description claims, indeed, the fastest PRS implementation in rust belongs to [Sewer56's prs-rs](https://github.com/Sewer56/prs-rs).

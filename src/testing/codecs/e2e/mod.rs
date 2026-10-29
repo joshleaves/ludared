@@ -211,4 +211,5 @@ macro_rules! codec_e2e_tests {
 
 mod cdrom;
 mod n3ds;
+mod nintendo;
 mod sega;
