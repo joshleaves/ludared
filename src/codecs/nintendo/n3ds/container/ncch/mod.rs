@@ -97,6 +97,10 @@ pub(crate) mod testkit {
   pub(crate) const UNIT: usize = 0x200;
 
   /// Builds a deterministic plaintext CXI or CFA for adapter tests.
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "Test-only NCCH fixture dimensions and byte patterns are deliberately narrowed to their on-disk fields."
+  )]
   pub(crate) fn build(exheader_size: usize, regions: &[(&str, u32, u32)]) -> Vec<u8> {
     let unit = UNIT;
     let access_size = if exheader_size == 0 { 0 } else { 0x400 };
@@ -354,7 +358,7 @@ impl NcchEngine {
         content_bytes(section)?,
         metadata.exefs_hash_region_size,
         unit,
-      ),
+      )?,
       Some(section) => {
         require_stored(
           &section.name,
@@ -374,7 +378,7 @@ impl NcchEngine {
         content_bytes(section)?,
         metadata.romfs_hash_region_size,
         unit,
-      ),
+      )?,
       Some(section) => {
         require_stored(
           &section.name,
@@ -607,7 +611,7 @@ impl NcchHeader {
             offset: cursor,
             size: offset - cursor,
           },
-          &data[cursor as usize..offset as usize],
+          &data[usize::try_from(cursor)?..usize::try_from(offset)?],
         ));
       }
       let end = offset
@@ -630,7 +634,7 @@ impl NcchHeader {
       };
       sections.push((
         NcchSection { kind, offset, size },
-        &data[offset as usize..end as usize],
+        &data[usize::try_from(offset)?..usize::try_from(end)?],
       ));
       cursor = end;
     }
@@ -642,7 +646,7 @@ impl NcchHeader {
           offset: cursor,
           size: data.len() as u64 - cursor,
         },
-        &data[cursor as usize..],
+        &data[usize::try_from(cursor)?..],
       ));
     }
 
@@ -1249,9 +1253,13 @@ fn digest(bytes: &[u8]) -> [u8; 0x20] {
 
 /// The hash of the first `hash_region_size` media units of a region, clamped
 /// to what the region actually holds.
-fn superblock_hash(bytes: &[u8], hash_region_size: u32, unit: u64) -> [u8; 0x20] {
+fn superblock_hash(
+  bytes: &[u8],
+  hash_region_size: u32,
+  unit: u64,
+) -> Result<[u8; 0x20], CodecError> {
   let covered = u64::from(hash_region_size).min(bytes.len() as u64 / unit) * unit;
-  digest(&bytes[..covered as usize])
+  Ok(digest(&bytes[..usize::try_from(covered)?]))
 }
 
 /// Refuses a rebuild that changes a region stored as ciphertext: its recorded

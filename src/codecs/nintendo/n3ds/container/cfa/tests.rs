@@ -1,3 +1,8 @@
+#![expect(
+  clippy::cast_possible_truncation,
+  reason = "Test fixtures intentionally use bounded narrowing and byte wrapping."
+)]
+
 use super::*;
 use crate::codecs::nintendo::n3ds::container::ncch::metadata::{
   METADATA_NAME, NcchMetadata, NcchVariableSectionKind,

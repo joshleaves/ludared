@@ -1,3 +1,8 @@
+#![expect(
+  clippy::cast_possible_truncation,
+  reason = "Test fixtures intentionally use bounded narrowing and byte wrapping."
+)]
+
 use hadris_iso::file::EntryType;
 use hadris_iso::read::IsoImage;
 use hadris_iso::read::PathSeparator;

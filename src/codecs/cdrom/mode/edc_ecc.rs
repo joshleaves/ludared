@@ -1,23 +1,23 @@
 // Table k advances a byte through k additional zero bytes of the EDC recurrence.
 pub(super) const EDC_TABLES: [[u32; 256]; 4] = {
   let mut tables = [[0u32; 256]; 4];
-  let mut index = 0;
+  let mut index = 0u32;
   while index < 256 {
-    let mut crc = index as u32;
+    let mut crc = index;
     let mut bit = 0;
     while bit < 8 {
       crc = (crc >> 1) ^ if crc & 1 != 0 { 0xD801_8001 } else { 0 };
       bit += 1;
     }
-    tables[0][index] = crc;
+    tables[0][index as usize] = crc;
     index += 1;
   }
-  let mut slice = 1;
+  let mut slice = 1u32;
   while slice < 4 {
-    let mut index = 0;
+    let mut index = 0u32;
     while index < 256 {
-      let crc = tables[slice - 1][index];
-      tables[slice][index] = (crc >> 8) ^ tables[0][(crc & 0xFF) as usize];
+      let crc = tables[(slice - 1) as usize][index as usize];
+      tables[slice as usize][index as usize] = (crc >> 8) ^ tables[0][(crc & 0xFF) as usize];
       index += 1;
     }
     slice += 1;
@@ -45,11 +45,11 @@ pub(super) fn ecc_tables() -> ([u8; 256], [u8; 256]) {
   let mut forward = [0u8; 256];
   let mut backward = [0u8; 256];
 
-  for i in 0..256 {
-    let j = ((i << 1) ^ if i & 0x80 != 0 { 0x11D } else { 0 }) as u8;
+  for i in 0u8..=u8::MAX {
+    let j = i.wrapping_shl(1) ^ if i & 0x80 != 0 { 0x1D } else { 0 };
 
-    forward[i] = j;
-    backward[(i as u8 ^ j) as usize] = i as u8;
+    forward[usize::from(i)] = j;
+    backward[usize::from(i ^ j)] = i;
   }
 
   (forward, backward)

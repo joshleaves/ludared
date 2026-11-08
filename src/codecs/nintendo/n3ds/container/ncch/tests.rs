@@ -1,3 +1,8 @@
+#![expect(
+  clippy::cast_possible_truncation,
+  reason = "Test fixtures intentionally use bounded narrowing and byte wrapping."
+)]
+
 use super::*;
 use crate::codecs::nintendo::n3ds::container::cfa::N3dsCfa;
 use crate::codecs::nintendo::n3ds::container::cxi::N3dsCxi;

@@ -468,8 +468,10 @@ fn is_one_version(value: &u8) -> bool {
   *value == 1
 }
 
-const fn block_size() -> u16 {
-  BLOCK_SIZE as u16
+const ISO_BLOCK_SIZE: u16 = 2048;
+
+fn block_size() -> u16 {
+  ISO_BLOCK_SIZE
 }
 
 #[expect(
@@ -477,7 +479,7 @@ const fn block_size() -> u16 {
   reason = "Required by Serde skip_serializing_if"
 )]
 fn is_block_size(value: &u16) -> bool {
-  *value == block_size()
+  *value == ISO_BLOCK_SIZE
 }
 
 #[expect(

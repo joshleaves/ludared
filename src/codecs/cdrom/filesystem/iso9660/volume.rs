@@ -42,7 +42,7 @@ pub(crate) const STANDARD_IDENTIFIER: &[u8; 5] = b"CD001";
 
 /// How many descriptors a volume descriptor set may hold before it is taken to
 /// be malformed.
-const MAX_DESCRIPTORS: usize = 64;
+const MAX_DESCRIPTORS: u32 = 64;
 
 /// How many directories a walk will open before the tree is taken to be looping.
 const MAX_DIRECTORIES: usize = 4096;
@@ -242,7 +242,7 @@ fn read_with_contents(
     } else {
       Hex::from(system_area)
     },
-    opaque: coverage.opaque_runs(image),
+    opaque: coverage.opaque_runs(image)?,
     primary,
     path_table,
     directories,
@@ -279,7 +279,7 @@ fn descriptor_set_holds_more(image: &[u8]) -> Result<bool, CodecError> {
   let mut more = false;
 
   loop {
-    if sector - DESCRIPTOR_SECTOR > MAX_DESCRIPTORS as u32 {
+    if sector - DESCRIPTOR_SECTOR > MAX_DESCRIPTORS {
       return Err(CodecError::Message(format!(
         "ISO 9660 volume descriptor set is not terminated after {MAX_DESCRIPTORS} descriptors"
       )));
@@ -420,13 +420,16 @@ fn put_application_use(bytes: &mut [u8], application_use: &Hex) -> Result<(), Co
 }
 
 /// The bytes of a path table, written the way round the table asks for.
-pub(crate) fn serialize_path_table(path_table: &PathTable, big_endian: bool) -> Vec<u8> {
+pub(crate) fn serialize_path_table(
+  path_table: &PathTable,
+  big_endian: bool,
+) -> Result<Vec<u8>, CodecError> {
   let mut bytes = Vec::with_capacity(path_table.size());
 
   for entry in &path_table.entries {
     let name = entry.name.as_bytes();
 
-    bytes.push(name.len() as u8);
+    bytes.push(u8::try_from(name.len())?);
     bytes.push(0);
 
     bytes.extend_from_slice(&if big_endian {
@@ -450,7 +453,7 @@ pub(crate) fn serialize_path_table(path_table: &PathTable, big_endian: bool) -> 
     }
   }
 
-  bytes
+  Ok(bytes)
 }
 
 /// The bytes of one directory record.
@@ -490,13 +493,13 @@ pub(crate) fn serialize_record(record: &Record) -> Result<Vec<u8>, CodecError> {
 
   let mut bytes = vec![0u8; length];
 
-  bytes[0] = length as u8;
+  bytes[0] = u8::try_from(length)?;
   put_both_ended(&mut bytes, 2, 4, record.extent)?;
   put_both_ended(&mut bytes, 10, 4, record.length)?;
   bytes[18..25].copy_from_slice(record.date.as_bytes());
   bytes[25] = record.flags;
   put_both_ended(&mut bytes, 28, 2, u32::from(record.volume_sequence_number))?;
-  bytes[32] = name.len() as u8;
+  bytes[32] = u8::try_from(name.len())?;
   bytes[33..33 + name.len()].copy_from_slice(name);
   bytes[33 + name.len() + pad..].copy_from_slice(record.system_use.as_bytes());
 
@@ -733,9 +736,14 @@ fn parse_primary(descriptor: &[u8]) -> Result<Primary, CodecError> {
     volume_modification_date: read_date(descriptor, 830),
     volume_expiration_date: read_date(descriptor, 847),
     volume_effective_date: read_date(descriptor, 864),
-    volume_set_size: read_both_ended(descriptor, 120, 2, "Volume Set Size")? as u16,
-    volume_sequence_number: read_both_ended(descriptor, 124, 2, "Volume Sequence Number")? as u16,
-    logical_block_size: block_size as u16,
+    volume_set_size: u16::try_from(read_both_ended(descriptor, 120, 2, "Volume Set Size")?)?,
+    volume_sequence_number: u16::try_from(read_both_ended(
+      descriptor,
+      124,
+      2,
+      "Volume Sequence Number",
+    )?)?,
+    logical_block_size: u16::try_from(block_size)?,
     application_use: {
       let field =
         &descriptor[PRIMARY_APPLICATION_USE..PRIMARY_APPLICATION_USE + PRIMARY_APPLICATION_USE_LEN];
@@ -795,12 +803,12 @@ fn parse_record(bytes: &[u8], what: &str) -> Result<Record, CodecError> {
     length: read_both_ended(bytes, 10, 4, &format!("the data length {what} gives"))?,
     flags: bytes[25],
     date: Hex::from(&bytes[18..25]),
-    volume_sequence_number: read_both_ended(
+    volume_sequence_number: u16::try_from(read_both_ended(
       bytes,
       28,
       2,
       &format!("the volume sequence number {what} gives"),
-    )? as u16,
+    )?)?,
     system_use: Hex::from(&bytes[name_end..]),
     // What the directory held before it, which the walk fills in.
     pad: Hex::default(),
@@ -1083,7 +1091,7 @@ fn verify_path_table(image: &[u8], path_table: &PathTable) -> Result<(), CodecEr
     (path_table.m_sector, true),
   ] {
     let start = sector as usize * BLOCK_SIZE;
-    let written = serialize_path_table(path_table, big_endian);
+    let written = serialize_path_table(path_table, big_endian)?;
 
     if image.get(start..start + size) != Some(&written[..]) {
       return Err(CodecError::Message(
@@ -1282,7 +1290,7 @@ impl Coverage {
   ///
   /// Zeroes are not recorded: an image is written from a buffer of them, so what
   /// a rebuild has to be told is where the bytes that are not zero belong.
-  fn opaque_runs(&self, image: &[u8]) -> Vec<Opaque> {
+  fn opaque_runs(&self, image: &[u8]) -> Result<Vec<Opaque>, CodecError> {
     let mut ranges = self.ranges.clone();
     ranges.sort_by_key(|(range, _)| (range.start, range.end));
 
@@ -1290,15 +1298,15 @@ impl Coverage {
     let mut cursor = 0;
 
     for (range, _) in ranges {
-      let start = range.start as usize;
-      let end = range.end as usize;
+      let start = usize::try_from(range.start)?;
+      let end = usize::try_from(range.end)?;
       scan(image, cursor, start, &mut runs);
       cursor = cursor.max(end);
     }
 
     scan(image, cursor, self.image_len, &mut runs);
 
-    runs
+    Ok(runs)
   }
 }
 

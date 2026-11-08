@@ -155,16 +155,23 @@ struct RawEntry {
   data_size: u64,
 }
 
-fn align4(value: u64) -> u64 {
-  value.div_ceil(4) * 4
+fn align4(value: u64) -> Result<u64, CodecError> {
+  value
+    .div_ceil(4)
+    .checked_mul(4)
+    .ok_or_else(|| CodecError::Message("RomFS name alignment overflows".to_owned()))
 }
 
-fn dir_entry_size(name_len: usize) -> u64 {
-  DIR_ENTRY_FIXED as u64 + align4(name_len as u64)
+fn dir_entry_size(name_len: usize) -> Result<u64, CodecError> {
+  (DIR_ENTRY_FIXED as u64)
+    .checked_add(align4(name_len as u64)?)
+    .ok_or_else(|| CodecError::Message("RomFS directory entry size overflows".to_owned()))
 }
 
-fn file_entry_size(name_len: usize) -> u64 {
-  FILE_ENTRY_FIXED as u64 + align4(name_len as u64)
+fn file_entry_size(name_len: usize) -> Result<u64, CodecError> {
+  (FILE_ENTRY_FIXED as u64)
+    .checked_add(align4(name_len as u64)?)
+    .ok_or_else(|| CodecError::Message("RomFS file entry size overflows".to_owned()))
 }
 
 /// Reads every entry of a metadata table in physical order.
@@ -177,8 +184,14 @@ fn parse_dir_table(table: &[u8]) -> Result<Vec<RawEntry>, CodecError> {
     // reading them here only bounds-checks the fixed part of the entry.
     let _ = u32_le(table, offset + 0x10)?;
     let name_size = u32_le(table, offset + 0x14)? as usize;
+    let name_start = offset.checked_add(DIR_ENTRY_FIXED).ok_or_else(|| {
+      CodecError::Message(format!("RomFS directory entry at {offset:#x} is truncated"))
+    })?;
+    let name_end = name_start.checked_add(name_size).ok_or_else(|| {
+      CodecError::Message(format!("RomFS directory entry at {offset:#x} is truncated"))
+    })?;
     let name = table
-      .get(offset + DIR_ENTRY_FIXED..offset + DIR_ENTRY_FIXED + name_size)
+      .get(name_start..name_end)
       .ok_or_else(|| {
         CodecError::Message(format!("RomFS directory entry at {offset:#x} is truncated"))
       })?
@@ -189,7 +202,9 @@ fn parse_dir_table(table: &[u8]) -> Result<Vec<RawEntry>, CodecError> {
       data_offset: 0,
       data_size: 0,
     });
-    offset += dir_entry_size(name_size) as usize;
+    offset = offset
+      .checked_add(usize::try_from(dir_entry_size(name_size)?)?)
+      .ok_or_else(|| CodecError::Message("RomFS directory table overflows".to_owned()))?;
   }
   if offset != table.len() {
     return Err(CodecError::Message(
@@ -210,8 +225,14 @@ fn parse_file_table(table: &[u8]) -> Result<Vec<RawEntry>, CodecError> {
     let data_offset = u64_le(table, offset + 0x8)?;
     let data_size = u64_le(table, offset + 0x10)?;
     let name_size = u32_le(table, offset + 0x1C)? as usize;
+    let name_start = offset.checked_add(FILE_ENTRY_FIXED).ok_or_else(|| {
+      CodecError::Message(format!("RomFS file entry at {offset:#x} is truncated"))
+    })?;
+    let name_end = name_start.checked_add(name_size).ok_or_else(|| {
+      CodecError::Message(format!("RomFS file entry at {offset:#x} is truncated"))
+    })?;
     let name = table
-      .get(offset + FILE_ENTRY_FIXED..offset + FILE_ENTRY_FIXED + name_size)
+      .get(name_start..name_end)
       .ok_or_else(|| CodecError::Message(format!("RomFS file entry at {offset:#x} is truncated")))?
       .to_vec();
     entries.push(RawEntry {
@@ -220,7 +241,9 @@ fn parse_file_table(table: &[u8]) -> Result<Vec<RawEntry>, CodecError> {
       data_offset,
       data_size,
     });
-    offset += file_entry_size(name_size) as usize;
+    offset = offset
+      .checked_add(usize::try_from(file_entry_size(name_size)?)?)
+      .ok_or_else(|| CodecError::Message("RomFS file table overflows".to_owned()))?;
   }
   if offset != table.len() {
     return Err(CodecError::Message(
@@ -616,7 +639,7 @@ impl Codec for N3dsRomFs {
       || file_hash_offset != expected_file_hash_offset
       || file_meta_offset != expected_file_meta_offset
       || data_offset < file_meta_end
-      || !data_offset.is_multiple_of(DATA_ALIGN as usize)
+      || !data_offset.is_multiple_of(usize::try_from(DATA_ALIGN)?)
     {
       return Err(CodecError::Message(
         "RomFS level 3 tables are not sequential or its file data offset is invalid".to_owned(),
@@ -644,7 +667,7 @@ impl Codec for N3dsRomFs {
         let name_size = u64::try_from(entry.name.len())
           .map_err(|_| CodecError::Message("RomFS entry name is impossibly large".to_owned()))?;
         let entry_size = (fixed as u64)
-          .checked_add(align4(name_size))
+          .checked_add(align4(name_size)?)
           .and_then(|size| u32::try_from(size).ok())
           .ok_or_else(|| CodecError::Message("RomFS metadata table overflows".to_owned()))?;
         offset = offset
@@ -834,8 +857,8 @@ impl Codec for N3dsRomFs {
       optional_info_size: header.optional_info_size,
       reserved_tail: hex::encode(header.reserved_tail),
       levels: header.levels,
-      dir_hash_buckets: Some((dir_hash_length / 4) as u32),
-      file_hash_buckets: Some((file_hash_length / 4) as u32),
+      dir_hash_buckets: Some(u32::try_from(dir_hash_length / 4)?),
+      file_hash_buckets: Some(u32::try_from(file_hash_length / 4)?),
       directories,
       files: file_metadata,
     };
@@ -1026,7 +1049,7 @@ impl Codec for N3dsRomFs {
     let mut offset = 0u32;
     for name in &dir_names {
       dir_offsets.push(offset);
-      let entry_size = u32::try_from(dir_entry_size(name.len()))
+      let entry_size = u32::try_from(dir_entry_size(name.len())?)
         .map_err(|_| CodecError::Message("RomFS directory entry is impossibly large".to_owned()))?;
       offset = offset
         .checked_add(entry_size)
@@ -1037,7 +1060,7 @@ impl Codec for N3dsRomFs {
     let mut offset = 0u32;
     for name in &file_names_raw {
       file_offsets.push(offset);
-      let entry_size = u32::try_from(file_entry_size(name.len()))
+      let entry_size = u32::try_from(file_entry_size(name.len())?)
         .map_err(|_| CodecError::Message("RomFS file entry is impossibly large".to_owned()))?;
       offset = offset
         .checked_add(entry_size)
@@ -1164,11 +1187,11 @@ impl Codec for N3dsRomFs {
       dir_bytes.extend_from_slice(&UNUSED_ENTRY.to_le_bytes()); // child, patched below
       dir_bytes.extend_from_slice(&UNUSED_ENTRY.to_le_bytes()); // first file, patched below
       dir_bytes.extend_from_slice(&hash_next.to_le_bytes());
-      dir_bytes.extend_from_slice(&(dir_names[index].len() as u32).to_le_bytes());
+      dir_bytes.extend_from_slice(&u32::try_from(dir_names[index].len())?.to_le_bytes());
       dir_bytes.extend_from_slice(&dir_names[index]);
       dir_bytes.extend(std::iter::repeat_n(
         0,
-        (align4(dir_names[index].len() as u64) as usize) - dir_names[index].len(),
+        usize::try_from(align4(dir_names[index].len() as u64)?)? - dir_names[index].len(),
       ));
     }
 
@@ -1189,11 +1212,11 @@ impl Codec for N3dsRomFs {
       file_bytes.extend_from_slice(&data_offsets[index].to_le_bytes());
       file_bytes.extend_from_slice(&(contents[index].len() as u64).to_le_bytes());
       file_bytes.extend_from_slice(&hash_next.to_le_bytes());
-      file_bytes.extend_from_slice(&(file_names_raw[index].len() as u32).to_le_bytes());
+      file_bytes.extend_from_slice(&u32::try_from(file_names_raw[index].len())?.to_le_bytes());
       file_bytes.extend_from_slice(&file_names_raw[index]);
       file_bytes.extend(std::iter::repeat_n(
         0,
-        (align4(file_names_raw[index].len() as u64) as usize) - file_names_raw[index].len(),
+        usize::try_from(align4(file_names_raw[index].len() as u64)?)? - file_names_raw[index].len(),
       ));
     }
 
@@ -1304,7 +1327,7 @@ impl Codec for N3dsRomFs {
     let data_offset = u32::try_from(data_offset)
       .map_err(|_| CodecError::Message("RomFS data offset does not fit the header".to_owned()))?;
     let mut l3_header = Vec::with_capacity(L3_HEADER_SIZE);
-    l3_header.extend_from_slice(&(L3_HEADER_SIZE as u32).to_le_bytes());
+    l3_header.extend_from_slice(&u32::try_from(L3_HEADER_SIZE)?.to_le_bytes());
     l3_header.extend_from_slice(&dir_hash_offset.to_le_bytes());
     l3_header.extend_from_slice(&dir_hash_size.to_le_bytes());
     l3_header.extend_from_slice(&dir_meta_offset.to_le_bytes());

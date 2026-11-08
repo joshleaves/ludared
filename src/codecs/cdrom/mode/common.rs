@@ -21,8 +21,14 @@ pub(super) const MODE1: u8 = 0x01;
 #[allow(dead_code)]
 pub(super) const MODE2: u8 = 0x02;
 
-fn bcd(value: u32) -> u8 {
-  ((value / 10) << 4 | (value % 10)) as u8
+fn bcd(value: u32) -> Result<u8, String> {
+  if value > 99 {
+    return Err(format!("BCD component {value} is outside 0 through 99"));
+  }
+
+  let tens = u8::try_from(value / 10).map_err(|_| "BCD component exceeds one byte")?;
+  let ones = u8::try_from(value % 10).map_err(|_| "BCD component exceeds one byte")?;
+  Ok((tens << 4) | ones)
 }
 
 pub(super) fn msf(frame: u32) -> Result<[u8; 3], String> {
@@ -33,9 +39,9 @@ pub(super) fn msf(frame: u32) -> Result<[u8; 3], String> {
   }
 
   Ok([
-    bcd(minutes),
-    bcd((frame / 75) % 60),
-    bcd(frame % 75),
+    bcd(minutes)?,
+    bcd((frame / 75) % 60)?,
+    bcd(frame % 75)?,
   ])
 }
 
@@ -52,4 +58,15 @@ pub(super) fn looks_like_xa(sector: &[u8]) -> bool {
   let stored_edc = u32::from_le_bytes(sector[edc_offset..edc_offset + 4].try_into().unwrap());
 
   stored_edc == edc_ecc::edc(&sector[16..edc_offset])
+}
+
+#[cfg(test)]
+mod tests {
+  use super::bcd;
+
+  #[test]
+  fn bcd_rejects_values_outside_the_decimal_byte_range() {
+    assert_eq!(bcd(99).unwrap(), 0x99);
+    assert!(bcd(100).is_err());
+  }
 }

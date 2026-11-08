@@ -230,6 +230,10 @@ impl Project {
 }
 
 #[cfg(test)]
+#[expect(
+  clippy::cast_possible_truncation,
+  reason = "The test fixture exercises signed wrapping for a deliberately moved output region."
+)]
 mod tests {
   use std::collections::BTreeMap;
 

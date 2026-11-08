@@ -1,3 +1,8 @@
+#![expect(
+  clippy::cast_possible_truncation,
+  reason = "Test fixtures intentionally use bounded narrowing and byte wrapping."
+)]
+
 //! Golden encoding and decoding checks through the public PRS codec contract.
 //!
 //! These synthetic inputs are generated below (CC0 1.0); no game data is used.

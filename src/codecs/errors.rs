@@ -2,6 +2,9 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum CodecError {
+  #[error("Integer conversion failed: {0}")]
+  TryFromInt(#[from] std::num::TryFromIntError),
+
   #[error(transparent)]
   Io(#[from] std::io::Error),
 

@@ -266,7 +266,7 @@ impl Codec for N3dsBcfnt {
       .unwrap_or(0);
 
     let mut out = Vec::with_capacity(file_size);
-    write_header(&mut out, &metadata, file_size_u32, section_count_u32);
+    write_header(&mut out, &metadata, file_size_u32, section_count_u32)?;
     write_finf(
       &mut out,
       &metadata.font,
@@ -274,7 +274,7 @@ impl Codec for N3dsBcfnt {
       cwdh_data_offset,
       cmap_data_offset,
       metadata.byte_order,
-    );
+    )?;
     write_tglp_header(
       &mut out,
       texture,
@@ -356,7 +356,7 @@ impl Header {
       }
     };
 
-    if read_u16(header, 6, order)? != HEADER_SIZE as u16 {
+    if read_u16(header, 6, order)? != u16::try_from(HEADER_SIZE)? {
       return Err(CodecError::Message(format!(
         "Invalid BCFNT header size: {} (expected {HEADER_SIZE})",
         read_u16(header, 6, order)?
@@ -409,7 +409,7 @@ impl Finf {
       ));
     }
 
-    if read_u32(section, 4, header.order)? != FINF_SIZE as u32 {
+    if read_u32(section, 4, header.order)? != u32::try_from(FINF_SIZE)? {
       return Err(CodecError::Message(format!(
         "Invalid BCFNT FINF size: {} (expected {FINF_SIZE})",
         read_u32(section, 4, header.order)?
@@ -1366,16 +1366,22 @@ fn encode_cmap(section: &CmapSection, order: ByteOrder) -> Result<Vec<u8>, Codec
   Ok(out)
 }
 
-fn write_header(out: &mut Vec<u8>, metadata: &BcfntMetadata, file_size: u32, section_count: u32) {
+fn write_header(
+  out: &mut Vec<u8>,
+  metadata: &BcfntMetadata,
+  file_size: u32,
+  section_count: u32,
+) -> Result<(), CodecError> {
   out.extend_from_slice(&metadata.magic.bytes());
   match metadata.byte_order {
     ByteOrder::Little => out.extend_from_slice(&[0xFF, 0xFE]),
     ByteOrder::Big => out.extend_from_slice(&[0xFE, 0xFF]),
   }
-  write_u16(out, HEADER_SIZE as u16, metadata.byte_order);
+  write_u16(out, u16::try_from(HEADER_SIZE)?, metadata.byte_order);
   write_u32(out, metadata.version, metadata.byte_order);
   write_u32(out, file_size, metadata.byte_order);
   write_u32(out, section_count, metadata.byte_order);
+  Ok(())
 }
 
 fn write_finf(
@@ -1385,9 +1391,9 @@ fn write_finf(
   cwdh_offset: u32,
   cmap_offset: u32,
   order: ByteOrder,
-) {
+) -> Result<(), CodecError> {
   out.extend_from_slice(b"FINF");
-  write_u32(out, FINF_SIZE as u32, order);
+  write_u32(out, u32::try_from(FINF_SIZE)?, order);
   out.push(font.font_type);
   out.push(font.line_feed);
   write_u16(out, font.alter_char_idx, order);
@@ -1402,6 +1408,7 @@ fn write_finf(
   out.push(font.width);
   out.push(font.ascent);
   out.push(font.reserved);
+  Ok(())
 }
 
 /// The TGLP header stores the sheet data offset explicitly, and the format

@@ -158,7 +158,7 @@ pub(super) fn encode_xa_raw(
           .map_err(|_| CodecError::Message("Invalid XA sector index".into()))?,
       );
 
-      if entry_index != index as u32 {
+      if entry_index != u32::try_from(index)? {
         return Err(CodecError::Message(format!(
           "Expected XA entry for sector {index}, found sector {entry_index}"
         )));
@@ -184,6 +184,10 @@ pub(super) fn encode_xa_raw(
 }
 
 #[cfg(test)]
+#[expect(
+  clippy::cast_possible_truncation,
+  reason = "Synthetic sector bytes intentionally wrap to exercise XA encoding."
+)]
 mod tests {
   use super::*;
   use crate::codecs::Codec;

@@ -55,7 +55,7 @@ impl Sheet {
       ));
     }
 
-    super::ensure_expanded_image_size(width as u16, height as u16, 1)?;
+    super::ensure_expanded_image_size(u16::try_from(width)?, u16::try_from(height)?, 1)?;
     let len = width
       .checked_mul(height)
       .ok_or_else(|| CodecError::Message("BCFNT texture sheet is impossibly large".to_owned()))?;
@@ -201,7 +201,15 @@ pub(crate) fn encode_sheet(
 }
 
 pub(crate) fn sheet_to_png(sheet: &Sheet) -> Result<Vec<u8>, CodecError> {
-  super::ensure_expanded_image_size(sheet.width as u16, sheet.height as u16, 1)?;
+  super::ensure_expanded_image_size(
+    u16::try_from(sheet.width).map_err(|_| {
+      CodecError::Message("BCFNT texture sheet is too wide for its metadata".to_owned())
+    })?,
+    u16::try_from(sheet.height).map_err(|_| {
+      CodecError::Message("BCFNT texture sheet is too tall for its metadata".to_owned())
+    })?,
+    1,
+  )?;
   let width = u32::try_from(sheet.width)
     .map_err(|_| CodecError::Message("BCFNT texture sheet is too wide for PNG".to_owned()))?;
   let height = u32::try_from(sheet.height)
@@ -854,7 +862,7 @@ fn decode_etc(
                 continue;
               }
 
-              let offset = (pixel_x * 4 + pixel_y) as u32;
+              let offset = u32::try_from(pixel_x * 4 + pixel_y)?;
 
               let (table, color) = if horizontal {
                 if pixel_y < 2 {
@@ -876,7 +884,7 @@ fn decode_etc(
               let red = clamp(color[0] + amount);
               let green = clamp(color[1] + amount);
               let blue = clamp(color[2] + amount);
-              let alpha = (((alphas >> (offset * 4)) & 0x0F) * 0x11) as u8;
+              let alpha = u8::try_from(((alphas >> (offset * 4)) & 0x0F) * 0x11)?;
 
               if let Some(target) = sheet.get_mut(x, y) {
                 *target = [
@@ -1096,7 +1104,7 @@ fn write_pixel(
       let offset = pixel_index.checked_mul(2).ok_or_else(truncated)?;
       let target = data.get_mut(offset..offset + 2).ok_or_else(truncated)?;
       target.copy_from_slice(&[
-        luminance(pixel),
+        luminance(pixel)?,
         alpha,
       ]);
     }
@@ -1107,7 +1115,7 @@ fn write_pixel(
     }
     TextureFormat::L8 => {
       let target = data.get_mut(pixel_index).ok_or_else(truncated)?;
-      *target = luminance(pixel);
+      *target = luminance(pixel)?;
     }
     TextureFormat::A8 => {
       let target = data.get_mut(pixel_index).ok_or_else(truncated)?;
@@ -1115,14 +1123,14 @@ fn write_pixel(
     }
     TextureFormat::La4 => {
       let target = data.get_mut(pixel_index).ok_or_else(truncated)?;
-      let light = (luminance(pixel) >> 4) & 0x0F;
+      let light = (luminance(pixel)? >> 4) & 0x0F;
       let alpha = (alpha >> 4) & 0x0F;
       *target = (light << 4) | alpha;
     }
     TextureFormat::L4 => {
       let target = data.get_mut(pixel_index / 2).ok_or_else(truncated)?;
       let shift = (pixel_index & 1) * 4;
-      let light = (luminance(pixel) >> 4) & 0x0F;
+      let light = (luminance(pixel)? >> 4) & 0x0F;
       *target |= light << shift;
     }
     TextureFormat::A4 => {
@@ -1193,11 +1201,11 @@ fn tile_count(value: usize) -> Result<usize, CodecError> {
 /// value. Doing this in floating point and truncating does not: the sum can land
 /// just below the input (255 becomes 254.999...), which silently loses one LSB
 /// when a decoded LA8 or L8 sheet is re-encoded.
-fn luminance(pixel: [u8; 4]) -> u8 {
+fn luminance(pixel: [u8; 4]) -> Result<u8, CodecError> {
   let [red, green, blue, _] = pixel;
   let weighted = 2126 * u32::from(red) + 7152 * u32::from(green) + 722 * u32::from(blue);
 
-  ((weighted + 5000) / 10000) as u8
+  Ok(u8::try_from((weighted + 5000) / 10000)?)
 }
 
 fn expand_five_signed(value: i32) -> i32 {

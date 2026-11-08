@@ -239,7 +239,10 @@ impl Codec for N3dsExeFs {
       let Some(body_start) = usize::try_from(file.offset).ok() else {
         return false;
       };
-      let Some(body_end) = body_start.checked_add(file.size as usize) else {
+      let Ok(file_size) = usize::try_from(file.size) else {
+        return false;
+      };
+      let Some(body_end) = body_start.checked_add(file_size) else {
         return false;
       };
       let Some(start) = HEADER_SIZE.checked_add(body_start) else {
@@ -313,14 +316,14 @@ impl Codec for N3dsExeFs {
       if let Some(error) = name_artifact_error(&file.name) {
         return Err(error);
       }
-      let gap = body
-        .get(previous_end as usize..file.offset as usize)
-        .ok_or_else(|| {
-          CodecError::Message(format!(
-            "ExeFS gap before {} is outside the image",
-            file.name
-          ))
-        })?;
+      let previous_end_usize = usize::try_from(previous_end)?;
+      let file_offset = usize::try_from(file.offset)?;
+      let gap = body.get(previous_end_usize..file_offset).ok_or_else(|| {
+        CodecError::Message(format!(
+          "ExeFS gap before {} is outside the image",
+          file.name
+        ))
+      })?;
       let gap = (!gap.iter().all(|&byte| byte == 0)).then(|| hex::encode(gap));
 
       metadata.files.push(FileMetadata {
@@ -335,7 +338,7 @@ impl Codec for N3dsExeFs {
         .checked_add(file.size)
         .ok_or_else(|| CodecError::Message(format!("ExeFS file {} range overflows", file.name)))?;
       let bytes = body
-        .get(file.offset as usize..file_end as usize)
+        .get(usize::try_from(file.offset)?..usize::try_from(file_end)?)
         .ok_or_else(|| {
           CodecError::Message(format!("ExeFS file {} is outside the image", file.name))
         })?
@@ -349,7 +352,7 @@ impl Codec for N3dsExeFs {
     }
 
     let trailing = body
-      .get(files_end as usize..)
+      .get(usize::try_from(files_end)?..)
       .ok_or_else(|| CodecError::Message("ExeFS trailing data is outside the image".to_owned()))?;
     if trailing.iter().all(|&byte| byte == 0) {
       metadata.trailing_zeros = trailing.len() as u64;
@@ -537,7 +540,7 @@ impl Codec for N3dsExeFs {
           }
           image.extend_from_slice(&gap_bytes);
         }
-        None => image.extend(std::iter::repeat_n(0, gap as usize)),
+        None => image.extend(std::iter::repeat_n(0, usize::try_from(gap)?)),
       }
 
       let base = index * FILE_HEADER_SIZE;
@@ -572,7 +575,10 @@ impl Codec for N3dsExeFs {
     if let Some(trailing) = trailing {
       image.extend_from_slice(&trailing);
     }
-    image.extend(std::iter::repeat_n(0, metadata.trailing_zeros as usize));
+    image.extend(std::iter::repeat_n(
+      0,
+      usize::try_from(metadata.trailing_zeros)?,
+    ));
 
     let mut result = Vec::with_capacity(HEADER_SIZE + image.len());
     result.extend_from_slice(&header);

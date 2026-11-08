@@ -111,19 +111,21 @@ impl Codec for PrsCompression {
     }
 
     let data = &artifacts[0].data;
-    let compressed = compress::prs_compress(data, args.chain);
-
-    Ok(compressed)
+    compress::prs_compress(data, args.chain)
   }
 }
 
 #[cfg(test)]
+#[expect(
+  clippy::cast_possible_truncation,
+  reason = "Synthetic PRS test bytes deliberately wrap while generating deterministic noise."
+)]
 mod tests {
   use super::compress::prs_compress;
   use super::decompress::prs_decompress;
 
   fn roundtrip(data: &[u8]) {
-    let compressed = prs_compress(data, 256);
+    let compressed = prs_compress(data, 256).unwrap();
     let decompressed = prs_decompress(&compressed).expect("Valid PRS stream");
 
     assert_eq!(decompressed, data);
@@ -203,7 +205,7 @@ mod tests {
       data.push((state >> 16) as u8);
     }
 
-    let compressed = prs_compress(&data, 256);
+    let compressed = prs_compress(&data, 256).unwrap();
 
     assert!(
       compressed.len() >= data.len(),
@@ -217,7 +219,7 @@ mod tests {
 
   #[test]
   fn empty_input_produces_a_valid_stream() {
-    let compressed = prs_compress(b"", 256);
+    let compressed = prs_compress(b"", 256).unwrap();
 
     assert_ne!(compressed, [] as [u8; 0]);
     assert_eq!(prs_decompress(&compressed).unwrap(), b"");

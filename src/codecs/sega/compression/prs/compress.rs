@@ -4,6 +4,8 @@
 //! <https://github.com/Sewer56/prs-rs>. This is an independent safe-Rust
 //! implementation; the candidate order and chain budget are unchanged.
 
+use crate::codecs::errors::CodecError;
+
 const MAX_DISTANCE: usize = 8191;
 const MAX_LENGTH: usize = 256;
 
@@ -24,8 +26,8 @@ enum MatchKind {
 #[derive(Clone, Copy)]
 struct Match {
   kind: MatchKind,
-  length: usize,
-  distance: usize,
+  length: u16,
+  distance: u16,
 }
 
 impl Default for Match {
@@ -38,11 +40,11 @@ impl Default for Match {
   }
 }
 
-pub fn prs_compress(data: &[u8], chain: usize) -> Vec<u8> {
+pub fn prs_compress(data: &[u8], chain: usize) -> Result<Vec<u8>, CodecError> {
   let n = data.len();
 
   if n == 0 {
-    return vec![0x02, 0x00, 0x00];
+    return Ok(vec![0x02, 0x00, 0x00]);
   }
 
   // Pass 1: Find the longest matches at each position.
@@ -71,10 +73,11 @@ pub fn prs_compress(data: &[u8], chain: usize) -> Vec<u8> {
   head.copy_from_slice(&starts);
 
   // Only the first MAX_LENGTH bytes of a run can contribute to a PRS match.
+  let max_length = u16::try_from(MAX_LENGTH)?;
   let mut runs = vec![1u16; n];
   for p in (0..n - 1).rev() {
     if data[p] == data[p + 1] {
-      runs[p] = (runs[p + 1] + 1).min(MAX_LENGTH as u16);
+      runs[p] = (runs[p + 1] + 1).min(max_length);
     }
   }
 
@@ -248,8 +251,8 @@ pub fn prs_compress(data: &[u8], chain: usize) -> Vec<u8> {
         best_bits = bits;
         best = Match {
           kind: MatchKind::Short,
-          length: short,
-          distance: dist_short[p],
+          length: u16::try_from(short)?,
+          distance: u16::try_from(dist_short[p])?,
         };
       }
     }
@@ -264,8 +267,8 @@ pub fn prs_compress(data: &[u8], chain: usize) -> Vec<u8> {
         best_bits = bits;
         best = Match {
           kind: MatchKind::Long,
-          length: mid,
-          distance: dist_long[p],
+          length: u16::try_from(mid)?,
+          distance: u16::try_from(dist_long[p])?,
         };
       }
 
@@ -276,8 +279,8 @@ pub fn prs_compress(data: &[u8], chain: usize) -> Vec<u8> {
           best_bits = bits;
           best = Match {
             kind: MatchKind::Long,
-            length: long,
-            distance: dist_long[p],
+            length: u16::try_from(long)?,
+            distance: u16::try_from(dist_long[p])?,
           };
         }
       }
@@ -292,12 +295,12 @@ pub fn prs_compress(data: &[u8], chain: usize) -> Vec<u8> {
   // Each control byte is reserved when its first bit is written.
   // Instruction payload follows the control byte containing its final bit.
 
-  let out = serialize(data, &matches);
+  let out = serialize(data, &matches)?;
   debug_assert_eq!(out.len(), cost[0].div_ceil(8));
-  out
+  Ok(out)
 }
 
-fn serialize(data: &[u8], matches: &[Match]) -> Vec<u8> {
+fn serialize(data: &[u8], matches: &[Match]) -> Result<Vec<u8>, CodecError> {
   let n = data.len();
   let mut out = Vec::with_capacity(n + n / 8 + 3);
   let mut bitpos = 0usize;
@@ -331,20 +334,32 @@ fn serialize(data: &[u8], matches: &[Match]) -> Vec<u8> {
       }
 
       MatchKind::Short => {
-        let size_bits = (m.length - 2) as u8;
+        let length_code = m
+          .length
+          .checked_sub(2)
+          .ok_or_else(|| CodecError::Message("Invalid short PRS match length".to_owned()))?;
+        let size_bits = u8::try_from(length_code)?;
         let bits = ((size_bits >> 1) << 2) | ((size_bits & 1) << 3);
-
-        emit(bits, 4, &[(256 - m.distance) as u8]);
+        let encoded_distance = 256u16
+          .checked_sub(m.distance)
+          .ok_or_else(|| CodecError::Message("Invalid short PRS match distance".to_owned()))?;
+        let encoded_distance = u8::try_from(encoded_distance)?;
+        emit(bits, 4, &[encoded_distance]);
       }
 
       MatchKind::Long => {
         let size_bits = if m.length <= 9 {
-          (m.length - 2) as u16
+          m.length
+            .checked_sub(2)
+            .ok_or_else(|| CodecError::Message("Invalid long PRS match length".to_owned()))?
         } else {
           0
         };
 
-        let value = (((8192 - m.distance) as u16) << 3) | size_bits;
+        let distance = 8192u16
+          .checked_sub(m.distance)
+          .ok_or_else(|| CodecError::Message("Invalid long PRS match distance".to_owned()))?;
+        let value = (distance << 3) | size_bits;
         let bytes = value.to_le_bytes();
 
         if m.length >= 10 {
@@ -354,7 +369,9 @@ fn serialize(data: &[u8], matches: &[Match]) -> Vec<u8> {
             &[
               bytes[0],
               bytes[1],
-              (m.length - 1) as u8,
+              u8::try_from(m.length.checked_sub(1).ok_or_else(|| {
+                CodecError::Message("Invalid extended PRS match length".to_owned())
+              })?)?,
             ],
           );
         } else {
@@ -363,16 +380,20 @@ fn serialize(data: &[u8], matches: &[Match]) -> Vec<u8> {
       }
     }
 
-    pos += m.length;
+    pos += usize::from(m.length);
   }
 
   // End marker: control bits 0,1 followed by word 0.
   emit(0b10, 2, &[0, 0]);
 
-  out
+  Ok(out)
 }
 
 #[cfg(test)]
+#[expect(
+  clippy::cast_possible_truncation,
+  reason = "Test input lengths are intentionally narrowed to generate byte fixtures."
+)]
 mod tests {
   use crate::codecs::sega::compression::prs::decompress::prs_decompress;
 
@@ -420,10 +441,10 @@ mod tests {
         let mut matches = vec![Match::default(); data.len()];
         matches[literals] = Match {
           kind,
-          length,
+          length: u16::try_from(length).unwrap(),
           distance: 1,
         };
-        let compressed = serialize(&data, &matches);
+        let compressed = serialize(&data, &matches).unwrap();
         assert_eq!(
           compressed.len(),
           (literals * LITERAL_BITS + bits + END_BITS).div_ceil(8)
@@ -444,13 +465,13 @@ mod tests {
   fn literal_and_end_costs_include_only_final_control_padding() {
     for length in 0usize..=16 {
       let data: Vec<_> = (0..length as u8).collect();
-      let compressed = serialize(&data, &vec![Match::default(); length]);
+      let compressed = serialize(&data, &vec![Match::default(); length]).unwrap();
       assert_eq!(compressed.len(), length + 2 + (length + 2).div_ceil(8));
       assert_eq!(
         compressed.len(),
         (length * LITERAL_BITS + END_BITS).div_ceil(8)
       );
-      assert_eq!(prs_compress(&data, 256), compressed);
+      assert_eq!(prs_compress(&data, 256).unwrap(), compressed);
       match length {
         0 => assert_eq!(compressed, [0x02, 0, 0]),
         6 => assert_eq!(

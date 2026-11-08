@@ -255,6 +255,10 @@ impl Codec for Mode1 {
 }
 
 #[cfg(test)]
+#[expect(
+  clippy::cast_possible_truncation,
+  reason = "Synthetic sector bytes intentionally wrap to exercise checksum paths."
+)]
 mod tests {
   use super::*;
 

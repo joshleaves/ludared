@@ -160,7 +160,7 @@ fn parse_header(data: &[u8]) -> Result<CiaHeader, CodecError> {
     ))
   })?;
   let archive_header_size = u32_le(header, 0x00)?;
-  if archive_header_size < HEADER_MIN_SIZE as u32 {
+  if archive_header_size < u32::try_from(HEADER_MIN_SIZE)? {
     return Err(CodecError::Message(format!(
       "CIA archive header size is {archive_header_size:#x} (expected at least {HEADER_MIN_SIZE:#x})"
     )));
@@ -985,7 +985,7 @@ impl Codec for N3dsCia {
       .ok_or_else(|| CodecError::Message("CIA layout overflows".to_owned()))?;
     image.extend(std::iter::repeat_n(
       0,
-      (first_section - image.len() as u64) as usize,
+      usize::try_from(first_section - image.len() as u64)?,
     ));
     put(&mut image, CERTCHAIN_NAME, certchain)?;
     put(&mut image, TICKET_NAME, ticket)?;
@@ -1046,7 +1046,7 @@ impl Codec for N3dsCia {
       .ok_or_else(|| CodecError::Message("CIA layout overflows".to_owned()))?;
     image.extend(std::iter::repeat_n(
       0,
-      (aligned - image.len() as u64) as usize,
+      usize::try_from(aligned - image.len() as u64)?,
     ));
 
     if let Some(meta) = meta {

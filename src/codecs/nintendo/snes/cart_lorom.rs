@@ -129,6 +129,10 @@ impl Codec for SnesLoRom {
 }
 
 #[cfg(test)]
+#[expect(
+  clippy::cast_possible_truncation,
+  reason = "The fixture models checksum wrapping with a deliberately narrowed signed bank delta."
+)]
 mod tests {
   use super::*;
   use crate::codecs::nintendo::snes::common::checksum::SnesChecksum;

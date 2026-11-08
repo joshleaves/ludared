@@ -1,3 +1,8 @@
+#![expect(
+  clippy::cast_possible_truncation,
+  reason = "Test fixtures intentionally use bounded narrowing and byte wrapping."
+)]
+
 //! Deterministic, synthetic-only source images for the 3DS codec E2E tests.
 //!
 //! These builders use no commercial or externally sourced data.

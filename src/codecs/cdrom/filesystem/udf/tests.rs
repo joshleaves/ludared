@@ -1,3 +1,8 @@
+#![expect(
+  clippy::cast_possible_truncation,
+  reason = "Test fixtures intentionally use bounded narrowing and byte wrapping."
+)]
+
 use super::volume::TAG_ANCHOR;
 use super::volume::TAG_FILE_ENTRY;
 use super::volume::TAG_FILE_IDENTIFIER;

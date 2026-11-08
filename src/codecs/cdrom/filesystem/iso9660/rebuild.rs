@@ -895,7 +895,7 @@ impl Building {
         artifact.name
       ))
     })?;
-    record.length = length as u32;
+    record.length = u32::try_from(length)?;
 
     Ok(())
   }
@@ -937,6 +937,7 @@ impl Building {
 
     self.refuse_tree_change(&artifact.name)?;
 
+    let length = u32::try_from(artifact.data.len())?;
     let extent = self.allocate(blocks_for(artifact.data.len()), &artifact.name)?;
 
     let (date, sequence) = {
@@ -956,7 +957,7 @@ impl Building {
           artifact.name
         ))
       })?,
-      length: artifact.data.len() as u32,
+      length,
       flags: 0,
       date,
       volume_sequence_number: sequence,
@@ -999,7 +1000,9 @@ impl Building {
 
     self.space.mark_range(from, extent + blocks)?;
 
-    let length = (blocks * BLOCK_SIZE) as u32;
+    let length = u32::try_from(blocks.checked_mul(BLOCK_SIZE).ok_or_else(|| {
+      CodecError::Message("ISO 9660 directory length overflows the address space".to_owned())
+    })?)?;
 
     self.layout.directories[directory].length = length;
 
@@ -1310,7 +1313,7 @@ impl Building {
       (self.layout.path_table.l_sector, false),
       (self.layout.path_table.m_sector, true),
     ] {
-      let table = volume::serialize_path_table(&self.layout.path_table, big_endian);
+      let table = volume::serialize_path_table(&self.layout.path_table, big_endian)?;
       let start = sector as usize * BLOCK_SIZE;
 
       if start + table.len() > image.len() {

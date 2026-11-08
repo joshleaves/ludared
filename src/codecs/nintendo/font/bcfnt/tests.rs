@@ -1,3 +1,8 @@
+#![expect(
+  clippy::cast_possible_truncation,
+  reason = "Test fixtures intentionally use bounded narrowing and byte wrapping."
+)]
+
 //! Tests for the Nintendo 3DS BCFNT codec.
 
 use super::metadata::{

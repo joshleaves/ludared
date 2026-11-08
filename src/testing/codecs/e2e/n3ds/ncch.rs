@@ -1,3 +1,8 @@
+#![expect(
+  clippy::cast_possible_truncation,
+  reason = "Test fixtures intentionally use bounded narrowing and byte wrapping."
+)]
+
 //! Shared NCCH-engine E2E properties exercised through the CXI codec.
 
 use crate::codecs::nintendo::n3ds::container::cxi::N3dsCxi;

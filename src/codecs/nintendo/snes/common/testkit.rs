@@ -1,3 +1,8 @@
+#![expect(
+  clippy::cast_possible_truncation,
+  reason = "Test fixtures intentionally use bounded narrowing and byte wrapping."
+)]
+
 //! Building SNES images for the codec tests.
 //!
 //! Round-tripping needs images holding several banks, a copier header, or both,

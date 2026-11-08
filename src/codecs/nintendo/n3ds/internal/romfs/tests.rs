@@ -1,3 +1,8 @@
+#![expect(
+  clippy::cast_possible_truncation,
+  reason = "Test fixtures intentionally use bounded narrowing and byte wrapping."
+)]
+
 use super::*;
 use crate::codecs::{Codec, CodecHandlingConfidence, DecodedArtifact};
 
@@ -133,7 +138,7 @@ fn overwrite_file_name(image: &mut [u8], entry_index: usize, name: &[u16]) {
   let mut entry_offset = u32_le(level3, 0x1C).unwrap() as usize;
   for _ in 0..entry_index {
     let name_size = u32_le(level3, entry_offset + 0x1C).unwrap() as usize;
-    entry_offset += file_entry_size(name_size) as usize;
+    entry_offset += usize::try_from(file_entry_size(name_size).unwrap()).unwrap();
   }
   let name_size = u32_le(level3, entry_offset + 0x1C).unwrap() as usize;
   assert_eq!(
@@ -268,8 +273,8 @@ fn rejects_directory_that_points_to_a_later_parent() {
   let first_dir_offset = level3_start + dir_meta_offset;
   // The second directory's parent field must reference the root (offset 0),
   // not its own offset, which creates a forward/self parent link.
-  let second_dir_offset = first_dir_offset + dir_entry_size(0) as usize;
-  let self_parent = u32::try_from(dir_entry_size(0)).unwrap();
+  let second_dir_offset = first_dir_offset + usize::try_from(dir_entry_size(0).unwrap()).unwrap();
+  let self_parent = u32::try_from(dir_entry_size(0).unwrap()).unwrap();
   image[second_dir_offset..second_dir_offset + 4].copy_from_slice(&self_parent.to_le_bytes());
 
   let error = N3dsRomFs

@@ -9,7 +9,9 @@ use crate::codecs::cdrom::common::block_offset;
 use crate::codecs::cdrom::filesystem::iso9660::volume as iso_volume;
 use crate::codecs::errors::CodecError;
 
-const MAX_VDS_DESCRIPTORS: usize = 256;
+const MAX_VDS_DESCRIPTORS: u32 = 256;
+const UDF_BLOCK_SIZE_U32: u32 = 2048;
+const UDF_BLOCK_SIZE_U64: u64 = 2048;
 const MAX_DIRECTORY_DEPTH: usize = 128;
 pub(super) const TAG_ANCHOR: u16 = 2;
 pub(super) const TAG_PRIMARY_VOLUME: u16 = 1;
@@ -86,8 +88,8 @@ pub(super) fn read_udf(image: &[u8]) -> Result<UdfReading, CodecError> {
   let anchor = block(image, 256)?;
   check_tag(anchor, TAG_ANCHOR)?;
   let (sequence_len, sequence_location) = extent_ad(anchor, 16)?;
-  let sequence_blocks = sequence_len.div_ceil(BLOCK_SIZE as u32);
-  if sequence_blocks == 0 || sequence_blocks > MAX_VDS_DESCRIPTORS as u32 {
+  let sequence_blocks = sequence_len.div_ceil(UDF_BLOCK_SIZE_U32);
+  if sequence_blocks == 0 || sequence_blocks > MAX_VDS_DESCRIPTORS {
     return Err(CodecError::Message(format!(
       "UDF volume descriptor sequence spans {sequence_blocks} blocks; supported sequences span 1 through {MAX_VDS_DESCRIPTORS} blocks"
     )));
@@ -97,13 +99,13 @@ pub(super) fn read_udf(image: &[u8]) -> Result<UdfReading, CodecError> {
   let mut lvd = None;
   let mut protected = vec![
     ProtectedRange {
-      offset: 16 * BLOCK_SIZE as u64,
-      length: 16 * BLOCK_SIZE as u64,
+      offset: 16 * UDF_BLOCK_SIZE_U64,
+      length: 16 * UDF_BLOCK_SIZE_U64,
       description: "the UDF volume recognition sequence".to_owned(),
     },
     ProtectedRange {
-      offset: 256 * BLOCK_SIZE as u64,
-      length: BLOCK_SIZE as u64,
+      offset: 256 * UDF_BLOCK_SIZE_U64,
+      length: UDF_BLOCK_SIZE_U64,
       description: "the UDF anchor descriptor".to_owned(),
     },
   ];
@@ -210,7 +212,7 @@ pub(super) fn read_udf(image: &[u8]) -> Result<UdfReading, CodecError> {
     )));
   }
   let logical_block_size = u32_at(&lvd, 212)?;
-  if logical_block_size != BLOCK_SIZE as u32 {
+  if logical_block_size != UDF_BLOCK_SIZE_U32 {
     return Err(CodecError::Message(format!(
       "UDF logical block size is {logical_block_size}, but this codec requires {BLOCK_SIZE}"
     )));
@@ -680,7 +682,7 @@ pub(super) fn validate_bridge_allocations(
       .ok_or_else(|| CodecError::Message("ISO 9660 directory block offset overflows".to_owned()))?;
     iso_structures.push(ProtectedRange {
       offset,
-      length: u64::from(directory.length.div_ceil(BLOCK_SIZE as u32)) * BLOCK_SIZE as u64,
+      length: u64::from(directory.length.div_ceil(UDF_BLOCK_SIZE_U32)) * UDF_BLOCK_SIZE_U64,
       description: format!("ISO 9660 directory '{}'", directory.path),
     });
   }
