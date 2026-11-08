@@ -39,12 +39,11 @@ impl SnesChecksum {
       return 0;
     }
 
-    match rom_type {
-      SnesRomMapType::SPC7110 => Self::checksum_spc7110(rom, declared_size),
-      _ => {
-        let mapped_size = std::cmp::max(rom.len(), declared_size);
-        Self::checksum_mapped_rom(rom, mapped_size)
-      }
+    if rom_type == SnesRomMapType::SPC7110 {
+      Self::checksum_spc7110(rom, declared_size)
+    } else {
+      let mapped_size = std::cmp::max(rom.len(), declared_size);
+      Self::checksum_mapped_rom(rom, mapped_size)
     }
   }
 
@@ -138,8 +137,8 @@ impl SnesChecksum {
   }
 
   fn checksum_bytes(bytes: &[u8]) -> u16 {
-    bytes
-      .iter()
-      .fold(0u16, |checksum, &value| checksum.wrapping_add(value as u16))
+    bytes.iter().fold(0u16, |checksum, &value| {
+      checksum.wrapping_add(u16::from(value))
+    })
   }
 }

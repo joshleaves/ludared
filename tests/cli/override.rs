@@ -6,6 +6,7 @@
 //! owns its project directory and runs the binary with that directory as its
 //! working directory, which is what the CLI resolves a project from.
 
+use std::fmt::Write;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
@@ -81,6 +82,7 @@ cache = "builds/cache"
   /// decodes on the source with one decode nested under `head.bin`. That gives
   /// the three shapes the commands have to tell apart: a top-level leaf, a
   /// nested leaf, and an artifact with decodes of its own.
+  #[expect(clippy::unused_self, reason = "Consistent test fixture API")]
   fn decode_tree(&self) -> String {
     // Arguments are opaque to ludared and recorded as the string the codec was
     // handed, so each one is written into the manifest as a JSON string rather
@@ -192,42 +194,27 @@ cache = "builds/cache"
   /// matched as text. The whole decode tree is searched, since a node may hang
   /// off an output of another.
   fn declares_override(&self, node: &str, output: &str) -> bool {
-    let manifest: serde_json::Value =
-      serde_json::from_str(&self.manifest()).expect("manifest should be valid JSON");
+    let manifest: serde_json::Value = serde_json::from_str(&self.manifest()).unwrap();
+    let mut pending = vec![&manifest["decodes"][SOURCE]];
 
-    fn find(node: &str, decodes: &[serde_json::Value]) -> Option<serde_json::Value> {
-      for decode in decodes {
-        if decode["name"] == node {
-          return Some(decode.clone());
-        }
+    while let Some(value) = pending.pop() {
+      if let Some(decodes) = value.as_array() {
+        for decode in decodes {
+          if decode["name"] == node {
+            return decode["overrides"]
+              .as_array()
+              .is_some_and(|overrides| overrides.iter().any(|declared| declared == output));
+          }
 
-        for nested in decode["decodes"]
-          .as_object()
-          .into_iter()
-          .flat_map(|d| d.values())
-        {
-          if let Some(found) = find(node, nested.as_array().unwrap()) {
-            return Some(found);
+          if let Some(nested) = decode["decodes"].as_object() {
+            pending.extend(nested.values());
           }
         }
       }
-
-      None
     }
 
-    let decodes = manifest["decodes"][SOURCE]
-      .as_array()
-      .expect("decodes should be an array");
-    let node = find(node, decodes).unwrap_or_else(|| panic!("no decode node named '{node}'"));
-
-    node["overrides"]
-      .as_array()
-      // A decode node declaring none leaves the field out entirely.
-      .map_or([].as_slice(), Vec::as_slice)
-      .iter()
-      .any(|declared| declared == output)
+    panic!("no decode node named '{node}'");
   }
-
   /// The number of decode nodes of the manifest carrying an `overrides` field.
   fn override_fields(&self) -> usize {
     fn count(node: &serde_json::Value) -> usize {
@@ -1338,23 +1325,21 @@ fn still_reads_the_bytes_and_the_path_of_a_cached_artifact() {
       "game.sfc/tail.bin"
     ]
   );
-  assert!(
-    !project
-      .fails(&[
-        "cache",
-        "cat",
-        TITLE
-      ])
-      .is_empty()
+  assert_ne!(
+    project.fails(&[
+      "cache",
+      "cat",
+      TITLE
+    ]),
+    ""
   );
-  assert!(
-    !project
-      .fails(&[
-        "cache",
-        "path",
-        TITLE
-      ])
-      .is_empty()
+  assert_ne!(
+    project.fails(&[
+      "cache",
+      "path",
+      TITLE
+    ]),
+    ""
   );
 }
 
@@ -1408,8 +1393,10 @@ fn sha256_of(bytes: &[u8]) -> String {
 
   sha2::Sha256::digest(bytes)
     .iter()
-    .map(|byte| format!("{byte:02x}"))
-    .collect()
+    .fold(String::with_capacity(64), |mut output, byte| {
+      write!(output, "{byte:02x}").unwrap();
+      output
+    })
 }
 
 /// Decodes `target` out of the source, as a second decode operation on it.

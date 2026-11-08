@@ -250,7 +250,7 @@ pub fn assert_finalizes_header(
       fields(&rebuilt, header_offset).1,
       fields(&image, header_offset)
         .1
-        .wrapping_add((after.wrapping_sub(before)) as u16),
+        .wrapping_add(u16::from(after.wrapping_sub(before))),
       "the checksum should have moved by what the change was worth ({copier})"
     );
     assert_valid_header(codec, &rebuilt, header_offset);

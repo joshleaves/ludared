@@ -1,4 +1,4 @@
-use log::*;
+use log::info;
 
 use clap::Args;
 use clap_complete::engine::ArgValueCompleter;

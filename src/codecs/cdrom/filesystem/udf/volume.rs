@@ -365,8 +365,7 @@ fn walk_directory(
     }
     if tag != TAG_FILE_IDENTIFIER {
       return Err(CodecError::Message(format!(
-        "UDF directory '{}' contains tag {tag}, expected a File Identifier Descriptor",
-        path
+        "UDF directory '{path}' contains tag {tag}, expected a File Identifier Descriptor"
       )));
     }
     let record = &directory_data[cursor..];
@@ -681,7 +680,7 @@ pub(super) fn validate_bridge_allocations(
       .ok_or_else(|| CodecError::Message("ISO 9660 directory block offset overflows".to_owned()))?;
     iso_structures.push(ProtectedRange {
       offset,
-      length: directory.length.div_ceil(BLOCK_SIZE as u32) as u64 * BLOCK_SIZE as u64,
+      length: u64::from(directory.length.div_ceil(BLOCK_SIZE as u32)) * BLOCK_SIZE as u64,
       description: format!("ISO 9660 directory '{}'", directory.path),
     });
   }

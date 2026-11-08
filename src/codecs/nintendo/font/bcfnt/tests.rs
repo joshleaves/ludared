@@ -402,9 +402,8 @@ fn rejects_texture_dimensions_that_exceed_the_expanded_image_limit() {
   source[tglp_start + 0x18..tglp_start + 0x1A].copy_from_slice(&u16::MAX.to_le_bytes());
   source[tglp_start + 0x1A..tglp_start + 0x1C].copy_from_slice(&u16::MAX.to_le_bytes());
 
-  let error = match N3dsBcfnt.decode(&source, None) {
-    Ok(_) => panic!("oversized texture dimensions should be rejected"),
-    Err(error) => error,
+  let Err(error) = N3dsBcfnt.decode(&source, None) else {
+    panic!("oversized texture dimensions should be rejected");
   };
   assert!(error.to_string().contains("expand to"), "{error}");
   assert_ne!(
@@ -710,9 +709,9 @@ fn reencoding_a_decoded_la8_sheet_is_deterministic() {
   let sheet = texture::Sheet {
     width: 8,
     height: 8,
-    pixels: (0..64)
+    pixels: (0..64u8)
       .map(|index| {
-        let value = index as u8;
+        let value = index;
         [
           value,
           value.wrapping_mul(3),
@@ -755,15 +754,15 @@ fn encodes_etc1_and_etc1a4_from_pixels() {
   let sheet = texture::Sheet {
     width: 8,
     height: 8,
-    pixels: (0..64)
+    pixels: (0..64u8)
       .map(|index| {
         let x = index % 8;
         let y = index / 8;
         [
-          (x * 32) as u8,
-          (y * 32) as u8,
-          ((x + y) * 16) as u8,
-          (x * 16 + y * 8) as u8,
+          (x * 32),
+          (y * 32),
+          ((x + y) * 16),
+          (x * 16 + y * 8),
         ]
       })
       .collect(),

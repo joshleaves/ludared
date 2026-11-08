@@ -239,7 +239,7 @@ fn bridge_layout_read_skips_iso_file_content_copies() {
     assert_eq!(layout_file.name, full_file.name);
     assert_eq!(layout_file.extent, full_file.extent);
     assert_eq!(layout_file.length, full_file.data.len());
-    assert!(layout_file.data.is_empty());
+    assert_eq!(layout_file.data, [] as [u8; 0]);
   }
 }
 

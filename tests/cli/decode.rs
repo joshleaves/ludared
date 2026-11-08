@@ -75,6 +75,7 @@ cache = "builds/cache"
   /// The source itself has two decodes, which is what makes a name mandatory
   /// there. `head.bin` carries the only decode below it, so that one does not
   /// need a name. `head.bin` is not terminal because `TITLE.txt` hangs off it.
+  #[expect(clippy::unused_self, reason = "Consistent test fixture API")]
   fn decode_tree(&self) -> String {
     let head = codec_args("head.bin", 0, 4);
     let title = codec_args("TITLE.txt", 0, 4);
@@ -166,19 +167,23 @@ cache = "builds/cache"
   /// Whether any decode node of the manifest is named `name`.
   fn has_decode(&self, name: &str) -> bool {
     let manifest: serde_json::Value = serde_json::from_str(&self.manifest()).unwrap();
+    let mut pending = vec![&manifest["decodes"][SOURCE]];
 
-    fn find(name: &str, decodes: &[serde_json::Value]) -> bool {
-      decodes.iter().any(|decode| {
-        decode["name"] == name
-          || decode["decodes"]
-            .as_object()
-            .into_iter()
-            .flat_map(|nested| nested.values())
-            .any(|children| find(name, children.as_array().unwrap()))
-      })
+    while let Some(value) = pending.pop() {
+      if let Some(nodes) = value.as_array() {
+        for node in nodes {
+          if node["name"] == name {
+            return true;
+          }
+
+          if let Some(nested) = node["decodes"].as_object() {
+            pending.extend(nested.values());
+          }
+        }
+      }
     }
 
-    find(name, manifest["decodes"][SOURCE].as_array().unwrap())
+    false
   }
 
   /// Every virtual path in the persisted cache index.

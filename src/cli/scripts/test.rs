@@ -1,4 +1,4 @@
-use log::*;
+use log::debug;
 use std::collections::HashMap;
 
 use clap::Args;

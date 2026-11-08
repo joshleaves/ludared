@@ -7,6 +7,8 @@ pub fn format_size(size: u64) -> String {
     "TiB",
   ];
 
+  // Human-readable formatting; exact precision isn't required.
+  #[allow(clippy::cast_precision_loss)]
   let mut size = size as f64;
   let mut unit = 0;
 

@@ -1,5 +1,6 @@
 use clap::Args;
-use log::*;
+use log::info;
+use log::warn;
 use std::path::Path;
 
 use ludared::errors::app_error::AppError;
@@ -15,8 +16,12 @@ pub(crate) struct SourcesListArgs {
   status: bool,
 }
 
+#[expect(
+  clippy::unnecessary_wraps,
+  reason = "CLI commands share a consistent Result return type"
+)]
 pub(crate) fn command_sources_list(
-  project: Project,
+  project: &Project,
   args: &SourcesListArgs,
 ) -> Result<(), AppError> {
   info!("Listing sources for project {}", project.name());
@@ -24,8 +29,8 @@ pub(crate) fn command_sources_list(
     warn!("No source files defined in project");
     return Ok(());
   }
-  for (source_name, source) in project.manifest.sources.iter() {
-    display_source_entry(&project, source_name, source, args);
+  for (source_name, source) in &project.manifest.sources {
+    display_source_entry(project, source_name, source, args);
   }
 
   Ok(())
@@ -47,7 +52,7 @@ fn display_source_entry(
     }
   }
   if let Some(source_label) = &source.label {
-    println!("  Label:  {}", source_label);
+    println!("  Label:  {source_label}");
   }
   if let Some(source_size) = &source.size {
     println!(

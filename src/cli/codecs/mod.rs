@@ -52,7 +52,7 @@ pub(crate) fn registry() -> Result<CodecRegistry, AppError> {
   if !Path::new("ludared.toml").exists() {
     return Ok(CodecRegistry::new(
       PathBuf::new(),
-      ScriptEnvironment::default(),
+      &ScriptEnvironment::default(),
     )?);
   }
 

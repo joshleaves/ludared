@@ -3,7 +3,7 @@
 //! Everything here works in logical blocks: the codec never sees the sector
 //! headers, error correction or the raw 2352-byte sectors a disc image may hold
 //! them in. That is the Mode 1/2352 codec's business.
-use log::*;
+use log::debug;
 use std::collections::BTreeSet;
 use std::collections::VecDeque;
 

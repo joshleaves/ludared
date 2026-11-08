@@ -140,5 +140,5 @@ fn fails_for_an_unknown_artifact() {
     "nope.sfc",
   ]);
   assert_ne!(code, 0);
-  assert!(!stderr.is_empty());
+  assert_ne!(stderr, "");
 }

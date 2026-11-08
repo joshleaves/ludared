@@ -1,4 +1,5 @@
-use log::*;
+use log::debug;
+use log::trace;
 
 use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
@@ -70,9 +71,10 @@ pub(crate) fn command_override_remove(
 
     project.remove_override(&vpath)?;
 
-    match args.clean {
-      true => println!("✓ Removed the override of '{vpath}' and its workspace file"),
-      false => println!("✓ Removed the override of '{vpath}', keeping its workspace file"),
+    if args.clean {
+      println!("✓ Removed the override of '{vpath}' and its workspace file");
+    } else {
+      println!("✓ Removed the override of '{vpath}', keeping its workspace file");
     }
   }
 

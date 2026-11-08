@@ -19,12 +19,12 @@ pub struct Source {
 
 impl Source {
   pub fn new_from_file(source_path: &PathBuf) -> Result<Self, AppError> {
-    let sha256 = Source::compute_sha256(source_path)?;
+    let sha256 = Self::compute_sha256(source_path)?;
     let metadata =
       std::fs::metadata(source_path).map_err(|e| AppError::SourceFileIo(source_path.clone(), e))?;
 
     let size = Some(metadata.len());
-    let source = Source {
+    let source = Self {
       sha256,
       size,
       label: None,

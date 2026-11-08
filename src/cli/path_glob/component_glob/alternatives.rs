@@ -1,4 +1,4 @@
-use super::*;
+use super::GlobToken;
 use std::iter::Peekable;
 use std::str::Chars;
 
@@ -37,7 +37,7 @@ impl GlobToken {
       return None;
     }
 
-    Some(GlobToken::Alternatives(words))
+    Some(Self::Alternatives(words))
   }
 }
 

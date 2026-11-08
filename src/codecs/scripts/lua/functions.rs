@@ -7,6 +7,10 @@ use crate::codecs::common::hash::sha256 as codec_sha256;
 
 use super::codec_handle::LuaCodecHandle;
 
+#[expect(
+  clippy::needless_pass_by_value,
+  reason = "Required by mlua::FromLuaMulti"
+)]
 fn get_codec(_: &Lua, id: String) -> Result<LuaCodecHandle, mlua::Error> {
   let codec = CodecRegistry::get_builtin(&id)
     .ok_or_else(|| mlua::Error::runtime(format!("Unknown builtin codec: {id}")))?;
@@ -14,8 +18,12 @@ fn get_codec(_: &Lua, id: String) -> Result<LuaCodecHandle, mlua::Error> {
   Ok(LuaCodecHandle { codec })
 }
 
-fn sha256(lua: &Lua, input: LuaString) -> Result<LuaString, mlua::Error> {
-  let hash = hex::encode(codec_sha256(input.as_bytes().as_ref()));
+#[expect(
+  clippy::needless_pass_by_value,
+  reason = "Required by mlua::FromLuaMulti"
+)]
+fn sha256(lua: &Lua, input: String) -> Result<LuaString, mlua::Error> {
+  let hash = hex::encode(codec_sha256(input.as_bytes()));
 
   lua.create_string(&hash)
 }

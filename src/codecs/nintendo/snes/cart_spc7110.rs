@@ -5,7 +5,7 @@ use crate::codecs::DecodedArtifact;
 use crate::codecs::errors::CodecError;
 use crate::codecs::nintendo::snes::common::HIROM_HEADER_OFFSET;
 use crate::codecs::nintendo::snes::common::SnesRomMapType;
-use log::*;
+use log::trace;
 
 const CODEC_ID: &str = "std/nintendo/snes/cart/spc7110";
 const CODEC_NAME: &str = "SNES SPC7110 ROM";
@@ -42,7 +42,11 @@ impl Codec for SnesSpc7110Rom {
   }
 
   fn can_handle(&self, data: &[u8]) -> Result<CodecHandlingConfidence, CodecError> {
-    super::common::can_handle(data, HIROM_HEADER_OFFSET, &SnesRomMapType::SPC7110)
+    Ok(super::common::can_handle(
+      data,
+      HIROM_HEADER_OFFSET,
+      SnesRomMapType::SPC7110,
+    ))
   }
 
   fn decode_name(&self, _: Option<&str>) -> Result<String, CodecError> {
@@ -175,7 +179,7 @@ mod tests {
   fn plain_sum(image: &[u8]) -> u16 {
     image
       .iter()
-      .fold(0u16, |sum, &byte| sum.wrapping_add(byte as u16))
+      .fold(0u16, |sum, &byte| sum.wrapping_add(u16::from(byte)))
   }
 
   #[test]
@@ -230,7 +234,7 @@ mod tests {
     bank.data[0x40] = now;
 
     let rebuilt = SnesSpc7110Rom.encode(Vec::new(), &artifacts, None).unwrap();
-    let moved = (now.wrapping_sub(was)) as u16;
+    let moved = u16::from(now.wrapping_sub(was));
 
     assert_eq!(
       testkit::fields(&rebuilt, HIROM_HEADER_OFFSET).1,

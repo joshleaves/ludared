@@ -2,7 +2,7 @@ use clap::CommandFactory as _;
 use clap::Parser;
 use clap::Subcommand;
 use clap_complete::CompleteEnv;
-use log::*;
+use log::error;
 use std::process::ExitCode;
 
 mod cli;

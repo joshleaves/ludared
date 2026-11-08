@@ -33,7 +33,7 @@ enum SourcesCommands {
 pub(crate) fn command_sources(args: &SourcesArgs) -> Result<(), AppError> {
   let mut project = Project::load_default()?;
   match &args.command {
-    SourcesCommands::List(args) => list::command_sources_list(project, args),
+    SourcesCommands::List(args) => list::command_sources_list(&project, args),
     SourcesCommands::Add(args) => add::command_sources_add(&mut project, args),
     SourcesCommands::Remove(args) => remove::command_sources_remove(&mut project, args),
   }

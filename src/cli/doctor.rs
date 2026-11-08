@@ -1,4 +1,6 @@
-use log::*;
+use log::debug;
+use log::info;
+use log::warn;
 use std::path::PathBuf;
 
 use ludared::errors::app_error::AppError;
@@ -13,7 +15,7 @@ pub(crate) fn command_doctor() -> Result<(), AppError> {
     return Ok(());
   }
   let sources_path = project.root.join(project.configuration.paths.sources);
-  for (source_name, source) in project.manifest.sources.iter() {
+  for (source_name, source) in &project.manifest.sources {
     debug!("Verifying source file: {}", source_name.display());
     verify_source(sources_path.join(source_name), source)?;
   }
@@ -29,12 +31,12 @@ fn verify_source(source_path: PathBuf, source: &Source) -> Result<(), AppError> 
   let actual = Source::compute_sha256(&source_path)?;
   if actual != source.sha256 {
     return Err(AppError::SourceFileMismatch(
-      source_path.clone(),
+      source_path,
       source.sha256.clone(),
       actual,
     ));
   }
-  debug!("Matching SHA256: {}", actual);
+  debug!("Matching SHA256: {actual}");
 
   Ok(())
 }

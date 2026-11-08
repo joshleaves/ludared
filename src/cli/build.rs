@@ -1,6 +1,7 @@
 use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
-use log::*;
+use log::debug;
+use log::info;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -23,7 +24,7 @@ pub(crate) fn command_build(args: &BuildArgs) -> Result<(), AppError> {
   info!("Building project '{}'", project.name());
 
   for source in select_sources(&project, args.source.as_deref())? {
-    let output = output_path(&project, &source)?;
+    let output = output_path(&project, &source);
     let bytes = project.build(&source)?;
 
     debug!("Writing {} bytes to {}", bytes.len(), output.display());
@@ -61,9 +62,9 @@ fn select_sources(
   }
 }
 
-fn output_path(project: &Project, source: &VirtualPath) -> Result<PathBuf, AppError> {
+fn output_path(project: &Project, source: &VirtualPath) -> PathBuf {
   let name = source.to_string();
-  Ok(Path::new(&project.configuration.paths.builds).join(&name))
+  Path::new(&project.configuration.paths.builds).join(&name)
 }
 
 fn virtual_path_of(name: &Path) -> Result<VirtualPath, AppError> {

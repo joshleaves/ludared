@@ -1,4 +1,5 @@
-use log::*;
+use log::debug;
+use log::trace;
 use std::collections::HashSet;
 
 use crate::codecs::DecodedArtifact;
@@ -224,6 +225,7 @@ mod tests {
   use super::*;
   use crate::testing::fixtures::lorom;
   use crate::testing::fixtures::project::ProjectFixture;
+  use std::collections::HashMap;
 
   const EXTRACT: &str = "std/generic/extract";
 
@@ -441,11 +443,11 @@ mod tests {
       codec: crate::manifest::decode_node::CodecNode {
         id: EXTRACT.to_owned(),
         version: 1,
-        args: Default::default(),
+        args: Option::default(),
       },
       outputs: vec!["head.bin".to_owned()],
       overrides: Vec::new(),
-      decodes: Default::default(),
+      decodes: HashMap::default(),
     };
     let artifacts = [
       DecodedArtifact {

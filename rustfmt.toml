@@ -1,10 +1,11 @@
-edition = "2015"
+edition = "2024"
 
 # Who are we kidding here?
 tab_spaces = 2
 hard_tabs = false
 
 # My OCD is here to stay.
+# imports_granularity = "Item"
 reorder_imports = true
 reorder_modules = true
 

@@ -1,7 +1,6 @@
 use crate::codecs::CodecHandlingConfidence;
-use crate::codecs::errors::CodecError;
 use checksum::SnesChecksum;
-use log::*;
+use log::trace;
 
 pub mod checksum;
 pub mod rom_banks;
@@ -28,7 +27,7 @@ pub fn rom_layout(data: &[u8]) -> RomLayout {
     0 => RomLayout::Headerless,
     COPIER_HEADER_SIZE => RomLayout::CopierHeader,
     _ => {
-      trace!("    Copier header: {:#06x}", copier_size);
+      trace!("    Copier header: {copier_size:#06x}");
       RomLayout::Invalid
     }
   }
@@ -38,7 +37,7 @@ pub struct SnesHeader<'a> {
   bytes: &'a [u8],
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum SnesRomMapType {
   LoROM,
   HiROM,
@@ -73,7 +72,9 @@ impl SnesHeader<'_> {
     // A size byte of 0x40 declares more than a `usize` can hold, and shifting by
     // it would panic. No such cartridge exists, so a header declaring one
     // declares no size at all.
-    1024usize.checked_shl(self.bytes[0x17] as u32).unwrap_or(0)
+    1024usize
+      .checked_shl(u32::from(self.bytes[0x17]))
+      .unwrap_or(0)
   }
 
   // Check 1: Header checksum + complement
@@ -91,10 +92,10 @@ impl SnesHeader<'_> {
   }
 
   // Check 2: Known RomMapType
-  pub fn has_valid_rom_map_type(&self, rom_type: &SnesRomMapType) -> bool {
+  pub fn has_valid_rom_map_type(&self, rom_type: SnesRomMapType) -> bool {
     trace!("    ROM map type:  {:?}", self.rom_map_type());
-    trace!("    Expected type: {:?}", rom_type);
-    debug_result!("Valid ROM type" => rom_type == &self.rom_map_type())
+    trace!("    Expected type: {rom_type:?}");
+    debug_result!("Valid ROM type" => rom_type == self.rom_map_type())
   }
 
   // Check 3: Valid ROM size
@@ -129,19 +130,19 @@ pub fn parse_snes_header(data: &[u8], offset: usize) -> Option<SnesHeader<'_>> {
 pub fn can_handle(
   data: &[u8],
   offset: usize,
-  expected_type: &SnesRomMapType,
-) -> Result<CodecHandlingConfidence, CodecError> {
+  expected_type: SnesRomMapType,
+) -> CodecHandlingConfidence {
   let header_offset = match rom_layout(data) {
     RomLayout::Invalid => {
       debug_result!("Invalid copier header" => false);
-      return Ok(CodecHandlingConfidence::No);
+      return CodecHandlingConfidence::No;
     }
     RomLayout::Headerless => offset,
     RomLayout::CopierHeader => offset + COPIER_HEADER_SIZE,
   };
   let Some(rom_header) = super::common::parse_snes_header(data, header_offset) else {
     debug_result!("Can extract a header" => false);
-    return Ok(CodecHandlingConfidence::No);
+    return CodecHandlingConfidence::No;
   };
 
   let heuristics = [
@@ -154,9 +155,9 @@ pub fn can_handle(
 
   let passed = heuristics.iter().filter(|result| **result).count();
   match passed {
-    0 => Ok(CodecHandlingConfidence::No),
-    1 => Ok(CodecHandlingConfidence::Possible),
-    n if n == heuristics.len() => Ok(CodecHandlingConfidence::Certain),
-    _ => Ok(CodecHandlingConfidence::Likely),
+    0 => CodecHandlingConfidence::No,
+    1 => CodecHandlingConfidence::Possible,
+    n if n == heuristics.len() => CodecHandlingConfidence::Certain,
+    _ => CodecHandlingConfidence::Likely,
   }
 }

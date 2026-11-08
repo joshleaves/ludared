@@ -1,4 +1,4 @@
-use log::*;
+use log::trace;
 use serde::Deserialize;
 use std::collections::BTreeSet;
 
@@ -275,7 +275,7 @@ impl Codec for Iso9660 {
   }
 }
 
-#[derive(Debug, Default, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Default, Deserialize, PartialEq, Eq, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum OutOfBoundsEntries {
   Error,

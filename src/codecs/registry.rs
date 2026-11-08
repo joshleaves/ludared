@@ -28,7 +28,7 @@ use crate::codecs::sony::playstation::graphics::str_xa::StrXa;
 use crate::scripts::discovery::ScriptDiscovery;
 use crate::scripts::discovery::ScriptKind;
 use crate::scripts::errors::ScriptError;
-use log::*;
+use log::debug;
 use std::path::PathBuf;
 
 static BUILTINS: &[&dyn Codec] = &[
@@ -62,7 +62,7 @@ pub struct CodecRegistry {
 }
 
 impl CodecRegistry {
-  pub fn new(scripts_root: PathBuf, env: ScriptEnvironment) -> Result<Self, ScriptError> {
+  pub fn new(scripts_root: PathBuf, env: &ScriptEnvironment) -> Result<Self, ScriptError> {
     let mut registry = Self {
       scripts_root,
       scripts: Vec::new(),
@@ -73,7 +73,7 @@ impl CodecRegistry {
     Ok(registry)
   }
 
-  fn discover_scripts(&mut self, env: ScriptEnvironment) -> Result<(), ScriptError> {
+  fn discover_scripts(&mut self, env: &ScriptEnvironment) -> Result<(), ScriptError> {
     let scripts = ScriptDiscovery::new(self.scripts_root.clone())?;
 
     // TODO: Script setup should belong to each Script codec

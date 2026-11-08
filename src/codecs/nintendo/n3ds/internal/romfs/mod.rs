@@ -21,7 +21,8 @@ use crate::codecs::common::hash::sha256;
 use crate::codecs::errors::CodecError;
 use crate::codecs::nintendo::n3ds::common::{align_up, hex_field};
 use crate::codecs::{Codec, CodecHandlingConfidence, CodecKind, DecodedArtifact, LudaredCodecArgs};
-use log::*;
+use log::debug;
+use log::trace;
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
@@ -283,7 +284,7 @@ fn validate_file_paths<'a>(paths: impl IntoIterator<Item = &'a str>) -> Result<(
   Ok(())
 }
 
-fn encode_name(entry_name: &str, name_raw: &Option<String>) -> Result<Vec<u8>, CodecError> {
+fn encode_name(entry_name: &str, name_raw: Option<&String>) -> Result<Vec<u8>, CodecError> {
   match name_raw {
     Some(raw) => {
       let bytes = hex::decode(raw).map_err(|err| {
@@ -331,8 +332,11 @@ fn hash_table_count(entries: u32) -> u32 {
 }
 
 /// The makerom path hash (romfs_gen.c CalcPathHash).
+#[allow(clippy::decimal_bitwise_operands)]
+const PATH_HASH_SEED: u32 = 123_456_789;
+
 fn calc_path_hash(parent_offset: u32, name: &[u8]) -> u32 {
-  let mut hash = parent_offset ^ 123456789;
+  let mut hash = parent_offset ^ PATH_HASH_SEED;
   for pair in name.as_chunks::<2>().0 {
     hash = hash.rotate_right(5);
     hash ^= u32::from(u16::from_le_bytes([pair[0], pair[1]]));
@@ -534,7 +538,7 @@ impl Codec for N3dsRomFs {
     let Ok(level3) = header.level(2) else {
       return Ok(CodecHandlingConfidence::No);
     };
-    let Some(l3) = data.get(level3.clone()) else {
+    let Some(l3) = data.get(level3) else {
       return Ok(CodecHandlingConfidence::No);
     };
     if l3.len() < L3_HEADER_SIZE {
@@ -564,7 +568,7 @@ impl Codec for N3dsRomFs {
     let header = parse_ivfc(data)?;
     let level3_range = header.level(2)?;
     let level3 = data
-      .get(level3_range.clone())
+      .get(level3_range)
       .ok_or_else(|| CodecError::Message("RomFS level 3 region exceeds the image".to_owned()))?;
 
     let header_length = u32_le(level3, 0)? as usize;
@@ -904,7 +908,7 @@ impl Codec for N3dsRomFs {
     // Validate raw-name placeholders too: the readable path name must stay
     // consistent with the bytes that will be written to the RomFS table.
     for directory in &metadata.directories {
-      let raw = encode_name(&directory.name, &directory.name_raw)?;
+      let raw = encode_name(&directory.name, directory.name_raw.as_ref())?;
       let (decoded, expected_raw) = decode_name(&raw, "directory")?;
       if decoded != directory.name || expected_raw != directory.name_raw {
         return Err(CodecError::Message(format!(
@@ -914,7 +918,7 @@ impl Codec for N3dsRomFs {
       }
     }
     for file in &metadata.files {
-      let raw = encode_name(&file.name, &file.name_raw)?;
+      let raw = encode_name(&file.name, file.name_raw.as_ref())?;
       let (decoded, expected_raw) = decode_name(&raw, "file")?;
       if decoded != file.name || expected_raw != file.name_raw {
         return Err(CodecError::Message(format!(
@@ -969,12 +973,12 @@ impl Codec for N3dsRomFs {
     let dir_names: Vec<Vec<u8>> = metadata
       .directories
       .iter()
-      .map(|directory| encode_name(&directory.name, &directory.name_raw))
+      .map(|directory| encode_name(&directory.name, directory.name_raw.as_ref()))
       .collect::<Result<_, _>>()?;
     let file_names_raw: Vec<Vec<u8>> = metadata
       .files
       .iter()
-      .map(|file| encode_name(&file.name, &file.name_raw))
+      .map(|file| encode_name(&file.name, file.name_raw.as_ref()))
       .collect::<Result<_, _>>()?;
 
     // Directory paths and parent lookups.
@@ -1028,7 +1032,7 @@ impl Codec for N3dsRomFs {
         .checked_add(entry_size)
         .ok_or_else(|| CodecError::Message("RomFS directory table overflows".to_owned()))?;
     }
-    let dir_table_len = offset as u64;
+    let dir_table_len = u64::from(offset);
     let mut file_offsets = Vec::with_capacity(metadata.files.len());
     let mut offset = 0u32;
     for name in &file_names_raw {
@@ -1039,7 +1043,7 @@ impl Codec for N3dsRomFs {
         .checked_add(entry_size)
         .ok_or_else(|| CodecError::Message("RomFS file table overflows".to_owned()))?;
     }
-    let file_table_len = offset as u64;
+    let file_table_len = u64::from(offset);
 
     // File data offsets: reuse the recorded layout while it still fits.
     let mut data_offsets: Vec<u64> = Vec::with_capacity(metadata.files.len());

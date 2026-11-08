@@ -1,7 +1,7 @@
 use crate::errors::app_error::AppError;
 use crate::source::Source;
 use crate::virtual_path::VirtualPath;
-use log::*;
+use log::warn;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -33,7 +33,7 @@ impl Project {
     let source_path = self.source_path(source_name);
     if !source_path.is_file() {
       return Err(AppError::NoSuchFile(source_name.to_path_buf()));
-    };
+    }
 
     if self.manifest.sources.contains_key(source_name) {
       return Err(AppError::SourceAlreadyExists(source_name.to_path_buf()));

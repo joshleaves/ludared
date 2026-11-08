@@ -1,4 +1,7 @@
-use super::*;
+use super::{
+  Codec, CodecError, DecodedArtifact, FORM1_USER_SIZE, FORM2_USER_SIZE, LEAD_IN_FRAMES,
+  Mode2XaCodecArgs, RAW_SECTOR_SIZE, SUBHEADER_SIZE, ecc_tables, encode_sector, is_form2,
+};
 use crate::codecs::cdrom::filesystem::iso9660::Iso9660;
 use crate::codecs::cdrom::filesystem::iso9660::metadata::IsoMetadata;
 use serde::{Deserialize, Serialize};
@@ -135,9 +138,9 @@ fn file_ranges(
 }
 
 pub(super) fn decode_xa_iso9660(
-  user_data: Vec<u8>,
-  xa_data: HashMap<usize, [u8; EXTRA]>,
-  xa_subheaders: Vec<u8>,
+  user_data: &[u8],
+  xa_data: &HashMap<usize, [u8; EXTRA]>,
+  xa_subheaders: &[u8],
 ) -> Result<Vec<DecodedArtifact>, CodecError> {
   if !user_data.len().is_multiple_of(FORM1_USER_SIZE)
     || xa_subheaders.len() != user_data.len() / FORM1_USER_SIZE * SUBHEADER_SIZE
@@ -145,20 +148,18 @@ pub(super) fn decode_xa_iso9660(
     return Err(err("XA data/subheader length mismatch"));
   }
   let count = user_data.len() / FORM1_USER_SIZE;
-  let mut iso = Iso9660.decode(&user_data, None)?;
+  let mut iso = Iso9660.decode(user_data, None)?;
   let metadata =
     IsoMetadata::from_json(&iso.first().ok_or_else(|| err("Missing ISO metadata"))?.data)?;
   let ranges = file_ranges(&metadata, count)?;
   let mut xa = XaMetadata::default();
   let mut covered = vec![false; count];
-  let mut names = HashSet::new();
 
   for (name, start, n) in &ranges {
     let file = iso
       .iter_mut()
       .find(|artifact| artifact.name == *name)
       .ok_or_else(|| err(format!("ISO file artifact missing: {name}")))?;
-    names.insert(name.clone());
     let mut sidecar = Vec::with_capacity(n * 3);
     let mut noncanonical = false;
     let mut expanded = Vec::with_capacity(file.data.len() + n * EXTRA);
@@ -239,9 +240,11 @@ pub(super) fn decode_xa_iso9660(
   Ok(result)
 }
 
+// We control .json and .XA
+#[allow(clippy::case_sensitive_file_extension_comparisons)]
 pub(super) fn encode_xa_iso9660(
   artifacts: &[DecodedArtifact],
-  args: Mode2XaCodecArgs,
+  args: &Mode2XaCodecArgs,
 ) -> Result<Vec<u8>, CodecError> {
   let (xa_artifact, rest) = artifacts
     .split_first()
@@ -380,12 +383,14 @@ pub(super) fn encode_xa_iso9660(
     for local in 0..*n {
       let index = start + local;
       covered[index] = true;
-      let triple = subs.map_or(
-        [
-          0,
-          default_file_submode(local + 1 == *n),
-          0,
-        ],
+      let triple = subs.map_or_else(
+        || {
+          [
+            0,
+            default_file_submode(local + 1 == *n),
+            0,
+          ]
+        },
         |v| v[local],
       );
       headers[index] = [

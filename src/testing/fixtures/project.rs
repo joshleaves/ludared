@@ -1,9 +1,11 @@
-use crate::project::Project;
+use std::fmt::Write;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use tempfile::TempDir;
 use uuid::Uuid;
+
+use crate::project::Project;
 
 #[allow(dead_code)]
 pub(crate) struct ProjectFixture {
@@ -100,7 +102,9 @@ cache = "{}"
     use sha2::Digest as _;
     sha2::Sha256::digest(bytes)
       .iter()
-      .map(|byte| format!("{byte:02x}"))
-      .collect()
+      .fold(String::with_capacity(64), |mut output, byte| {
+        write!(output, "{byte:02x}").unwrap();
+        output
+      })
   }
 }

@@ -264,7 +264,7 @@ fn rejects_directory_that_points_to_a_later_parent() {
   let mut image = encode(&sample_artifacts());
   let level3_range = parse_ivfc(&image).unwrap().level(2).unwrap();
   let level3_start = level3_range.start;
-  let dir_meta_offset = u32_le(&image[level3_range.clone()], 0xC).unwrap() as usize;
+  let dir_meta_offset = u32_le(&image[level3_range], 0xC).unwrap() as usize;
   let first_dir_offset = level3_start + dir_meta_offset;
   // The second directory's parent field must reference the root (offset 0),
   // not its own offset, which creates a forward/self parent link.
@@ -287,11 +287,11 @@ fn rejects_file_names_that_escape_or_break_artifact_paths() {
     &mut image,
     0,
     &[
-      b'a' as u16,
-      b'/' as u16,
-      b'p' as u16,
-      b'h' as u16,
-      b'a' as u16,
+      u16::from(b'a'),
+      u16::from(b'/'),
+      u16::from(b'p'),
+      u16::from(b'h'),
+      u16::from(b'a'),
     ],
   );
 
@@ -350,11 +350,11 @@ fn rejects_duplicate_file_artifact_paths() {
     &mut image,
     1,
     &[
-      b'a' as u16,
-      b'l' as u16,
-      b'p' as u16,
-      b'h' as u16,
-      b'a' as u16,
+      u16::from(b'a'),
+      u16::from(b'l'),
+      u16::from(b'p'),
+      u16::from(b'h'),
+      u16::from(b'a'),
     ],
   );
 
@@ -374,10 +374,10 @@ fn preserves_invalid_utf16_names_with_safe_artifact_paths() {
     1,
     &[
       0xD800,
-      b'r' as u16,
-      b'a' as u16,
-      b'v' as u16,
-      b'o' as u16,
+      u16::from(b'r'),
+      u16::from(b'a'),
+      u16::from(b'v'),
+      u16::from(b'o'),
     ],
   );
 

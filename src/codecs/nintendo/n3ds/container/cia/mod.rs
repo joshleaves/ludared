@@ -9,6 +9,8 @@
 //! - <https://www.3dbrew.org/wiki/CIA>
 //! - <https://www.3dbrew.org/wiki/Title_metadata>
 
+use std::collections::BTreeMap;
+
 use crate::codecs::common::bytes::{
   read_u16_be as u16_be, read_u16_le as u16_le, read_u32_be as u32_be, read_u32_le as u32_le,
   read_u64_be as u64_be, read_u64_le as u64_le,
@@ -17,7 +19,7 @@ use crate::codecs::common::hash::sha256;
 use crate::codecs::errors::CodecError;
 use crate::codecs::nintendo::n3ds::common::{align_up, hex_field};
 use crate::codecs::{Codec, CodecHandlingConfidence, CodecKind, DecodedArtifact, LudaredCodecArgs};
-use log::*;
+use log::trace;
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
@@ -309,7 +311,9 @@ fn update_tmd_content_hashes(
       .ok_or_else(|| CodecError::Message("CIA TMD content record is truncated".to_owned()))?
       .copy_from_slice(&hash);
     record.hash = hex::encode(hash);
-    metadata.contents[*record_index].hash = record.hash.clone();
+    metadata.contents[*record_index]
+      .hash
+      .clone_from(&record.hash);
   }
 
   let mut covered_chunk_records = vec![false; records.len()];
@@ -549,7 +553,7 @@ impl Codec for N3dsCia {
     let (sections, content_end) = section_layout(&header, data.len())?;
 
     let mut artifacts = Vec::new();
-    let mut padding: std::collections::BTreeMap<String, String> = Default::default();
+    let mut padding: std::collections::BTreeMap<String, String> = BTreeMap::default();
 
     // The content region sits between the TMD and the meta section; its start
     // bounds the padding gap that follows the TMD.
@@ -962,7 +966,9 @@ impl Codec for N3dsCia {
       let expected_padding = align_up(image.len() as u64, SECTION_ALIGN)
         .and_then(|aligned| usize::try_from(aligned - image.len() as u64).ok())
         .ok_or_else(|| CodecError::Message("CIA layout overflows".to_owned()))?;
-      if !padding.is_empty() {
+      if padding.is_empty() {
+        image.resize(image.len() + expected_padding, 0);
+      } else {
         if padding.len() != expected_padding {
           return Err(CodecError::Message(format!(
             "CIA padding after {name} is {} bytes, expected {expected_padding}",
@@ -970,8 +976,6 @@ impl Codec for N3dsCia {
           )));
         }
         image.extend_from_slice(&padding);
-      } else {
-        image.resize(image.len() + expected_padding, 0);
       }
       Ok(())
     };
@@ -995,7 +999,9 @@ impl Codec for N3dsCia {
         let expected_size = align_up(image.len() as u64, SECTION_ALIGN)
           .and_then(|next| usize::try_from(next - image.len() as u64).ok())
           .ok_or_else(|| CodecError::Message("CIA content alignment overflows".to_owned()))?;
-        if !gap.is_empty() {
+        if gap.is_empty() {
+          image.resize(image.len() + expected_size, 0);
+        } else {
           if gap.len() != expected_size {
             return Err(CodecError::Message(format!(
               "CIA content {} alignment padding is {} bytes, expected {expected_size}",
@@ -1004,8 +1010,6 @@ impl Codec for N3dsCia {
             )));
           }
           image.extend_from_slice(&gap);
-        } else {
-          image.resize(image.len() + expected_size, 0);
         }
       }
     }

@@ -56,7 +56,7 @@ pub(crate) fn section_name(kind: NcchVariableSectionKind, index: usize) -> Strin
     NcchVariableSectionKind::PlainRegion => "plain_region.bin".to_owned(),
     NcchVariableSectionKind::Exefs => "exefs.bin".to_owned(),
     NcchVariableSectionKind::Romfs => "romfs.bin".to_owned(),
-    NcchVariableSectionKind::Padding => format!("padding{}.bin", index),
+    NcchVariableSectionKind::Padding => format!("padding{index}.bin"),
   }
 }
 

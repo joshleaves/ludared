@@ -348,8 +348,12 @@ mod tests {
   }
 
   #[test]
+  #[expect(
+    clippy::cast_possible_truncation,
+    reason = "Intentional byte wrapping in test fixture"
+  )]
   fn edc_matches_bitwise_reference_at_chunk_boundaries() {
-    let data: Vec<u8> = (0..2080)
+    let data: Vec<u8> = (0..2080usize)
       .map(|index| (index as u8).wrapping_mul(37).wrapping_add(13))
       .collect();
 

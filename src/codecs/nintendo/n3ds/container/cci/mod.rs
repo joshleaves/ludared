@@ -7,7 +7,7 @@
 //! The declared image size is a capacity, not necessarily the physical length:
 //! trimmed images are accepted, but a rebuild cannot exceed that capacity.
 
-use log::*;
+use log::trace;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 
@@ -226,9 +226,9 @@ impl Codec for N3dsCci {
       card_info,
       trailer,
       partitions,
-    } = N3dsCci::sort_artifacts(artifacts)?;
+    } = Self::sort_artifacts(artifacts)?;
     let metadata = NcsdMetadata::from_json(metadata)?;
-    let entries = N3dsCci::ordered_partitions(&metadata, &partitions)?;
+    let entries = Self::ordered_partitions(&metadata, &partitions)?;
 
     let media_unit = media_unit_size(metadata.flags[FLAG_MEDIA_UNIT]).ok_or_else(|| {
       CodecError::Message(format!(
@@ -256,7 +256,7 @@ impl Codec for N3dsCci {
     }
 
     // The final position is already known while building the table.
-    let (table, used_end) = N3dsCci::partition_table(&entries, first_offset, media_unit)?;
+    let (table, used_end) = Self::partition_table(&entries, first_offset, media_unit)?;
 
     let capacity = u64::from(metadata.image_size)
       .checked_mul(media_unit)
@@ -286,7 +286,7 @@ impl Codec for N3dsCci {
       )));
     }
 
-    let header = N3dsCci::header_bytes(&metadata, &table)?;
+    let header = Self::header_bytes(&metadata, &table)?;
 
     let mut image = Vec::new();
     image.extend_from_slice(&header);

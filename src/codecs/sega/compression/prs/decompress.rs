@@ -37,8 +37,8 @@ impl<'a> BitReader<'a> {
   }
 
   pub(super) fn read_word(&mut self) -> Result<u16, PrsError> {
-    let lo = self.read_byte()? as u16;
-    let hi = self.read_byte()? as u16;
+    let lo = u16::from(self.read_byte()?);
+    let hi = u16::from(self.read_byte()?);
 
     Ok(lo | (hi << 8))
   }

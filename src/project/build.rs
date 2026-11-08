@@ -1,4 +1,5 @@
-use log::*;
+use log::debug;
+use log::trace;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -61,7 +62,7 @@ impl Project {
   /// - an output declared an override has no readable workspace file;
   /// - a codec refuses the artifacts or the parent buffer it is handed.
   pub fn build(&self, source: &VirtualPath) -> Result<Vec<u8>, AppError> {
-    debug!("Building '{}'", source);
+    debug!("Building '{source}'");
 
     let name = source.to_string();
     let entry = self
@@ -447,14 +448,14 @@ mod tests {
     let moved: i32 = RETITLE
       .iter()
       .zip(lorom::TITLE)
-      .map(|(after, before)| *after as i32 - *before as i32)
+      .map(|(after, before)| i32::from(*after) - i32::from(*before))
       .sum();
 
     assert_eq!(
       testkit::fields(&rebuilt, LOROM_HEADER_OFFSET).1,
       testkit::fields(lorom::SOURCE, LOROM_HEADER_OFFSET)
         .1
-        .wrapping_add(moved as u16)
+        .wrapping_add_signed(moved as i16)
     );
   }
 
@@ -620,7 +621,7 @@ mod tests {
 
     match build_err(&fixture.project, &source) {
       AppError::CacheError(CacheError::BlobIo(path, _)) => {
-        assert_eq!(path, of(&source, "rom_bank_00.bin").to_string())
+        assert_eq!(path, of(&source, "rom_bank_00.bin").to_string());
       }
       err => panic!("Unexpected error: {err:?}"),
     }
@@ -662,7 +663,7 @@ mod tests {
 
     match build_err(&fixture.project, &source) {
       AppError::CacheError(CacheError::NotIndexed(path)) => {
-        assert_eq!(path, of(&source, "tail.bin").to_string())
+        assert_eq!(path, of(&source, "tail.bin").to_string());
       }
       err => panic!("Unexpected error: {err:?}"),
     }
@@ -798,7 +799,7 @@ mod tests {
         ISO9660.to_owned(),
         &None,
         "iso".to_owned(),
-        iso_decode(&image),
+        &iso_decode(&image),
       )
       .unwrap();
 

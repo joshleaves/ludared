@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use std::iter::Peekable;
 use std::str::Chars;
 
-use super::*;
+use super::GlobToken;
 
 enum CharClassToken {
   Literal(char),
@@ -39,12 +39,9 @@ impl GlobToken {
       if chars_iter.next_if_eq(&'-').is_none() {
         tokens.push(CharClassToken::Literal(next_ch));
       } else {
-        let chr_end = match chars_iter.next() {
-          None => {
-            *chars_iter = checkpoint;
-            return None;
-          }
-          Some(chr_end) => chr_end,
+        let Some(chr_end) = chars_iter.next() else {
+          *chars_iter = checkpoint;
+          return None;
         };
         let chr_escape = chr_end == '\\';
         let chr_end = Self::parse_backslash(chars_iter, chr_end);
@@ -64,7 +61,7 @@ impl GlobToken {
     };
 
     let chars: BTreeSet<char> = tokens.iter().flat_map(CharClassToken::to_chars).collect();
-    Some(GlobToken::CharClass(chars.into_iter().collect(), *repeat))
+    Some(Self::CharClass(chars.into_iter().collect(), *repeat))
   }
 }
 

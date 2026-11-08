@@ -287,6 +287,10 @@ impl Manifest {
   ///
   /// Returns an [`AppError`] if the decode configuration is invalid
   /// or conflicts with the existing manifest.
+  #[expect(
+    clippy::suspicious_operation_groupings,
+    reason = "Ancestor overlap must be checked in both directions"
+  )]
   pub fn add_decode(
     &mut self,
     codecs: &CodecRegistry,
@@ -401,7 +405,7 @@ impl Manifest {
     // which only a hand-edited manifest produces, stands in no relation to
     // anything.
     let mut declared: Vec<&str> = existing.iter().copied().collect();
-    declared.sort();
+    declared.sort_unstable();
     let declared: Vec<VirtualPath> = declared
       .iter()
       .filter_map(|name| VirtualPath::new(name).ok())
@@ -546,7 +550,7 @@ mod tests {
   }
 
   /// The virtual paths a manifest method reported, as plain names.
-  fn names(paths: Vec<VirtualPath>) -> Vec<String> {
+  fn names(paths: &[VirtualPath]) -> Vec<String> {
     paths.iter().map(VirtualPath::to_string).collect()
   }
 
@@ -579,7 +583,7 @@ mod tests {
       let fixture = fixture(manifest);
 
       assert_eq!(
-        names(fixture.project.manifest.artifacts()),
+        names(&fixture.project.manifest.artifacts()),
         [
           "a.sfc",
           "a.sfc/head.bin",
@@ -626,7 +630,7 @@ mod tests {
     let source = source_of(&fixture);
 
     assert_eq!(
-      names(fixture.project.manifest.artifacts()),
+      names(&fixture.project.manifest.artifacts()),
       [
         source.clone(),
         format!("{source}/rom_bank_00.bin"),
@@ -640,7 +644,7 @@ mod tests {
     // overridden, and the two directories the nested names imply are not
     // artifacts at all.
     assert_eq!(
-      names(fixture.project.manifest.overrides()),
+      names(&fixture.project.manifest.overrides()),
       [
         format!("{source}/rom_bank_00.bin/TITLE.txt"),
         format!("{source}/rom_bank_00.bin/data/gfx/head.bin"),
@@ -755,7 +759,7 @@ mod tests {
 
     let node: DecodeNode = serde_json::from_str(json).unwrap();
 
-    assert!(node.overrides.is_empty());
+    assert_eq!(node.overrides, [] as [std::string::String; 0]);
   }
 
   #[test]
@@ -788,7 +792,7 @@ mod tests {
     // the same thing twice in a row.
     for _ in 0..20 {
       assert_eq!(
-        names(fixture.project.manifest.overrides()),
+        names(&fixture.project.manifest.overrides()),
         [
           "a.sfc/head.bin",
           "b.sfc/tail.bin"
@@ -846,7 +850,7 @@ mod tests {
     }
 
     assert_eq!(
-      names(fixture.project.manifest.overrides()),
+      names(&fixture.project.manifest.overrides()),
       [
         "roms/eu/game.sfc/data/head.bin",
         "roms/jp/game.sfc/data/head.bin"
@@ -931,7 +935,7 @@ mod tests {
         "'{path}' should resolve to the deepest source"
       );
       assert_eq!(
-        names(manifest.overrides()),
+        names(&manifest.overrides()),
         ["roms/game.sfc/extra/head.bin"]
       );
     }
@@ -969,7 +973,7 @@ mod tests {
         .is_overridden(&vpath("roms/game.sfc/head.bin"))
     );
     assert_eq!(
-      names(fixture.project.manifest.overrides()),
+      names(&fixture.project.manifest.overrides()),
       ["roms/game.sfc/head.bin"]
     );
   }
@@ -1014,7 +1018,7 @@ mod tests {
         .is_overridden(&vpath("game.sfc.bak/head.bin"))
     );
     assert_eq!(
-      names(fixture.project.manifest.overrides()),
+      names(&fixture.project.manifest.overrides()),
       ["game.sfc/head.bin"]
     );
   }
@@ -1044,7 +1048,7 @@ mod tests {
 
     let scripts = tempfile::tempdir().unwrap();
     let codecs =
-      CodecRegistry::new(scripts.path().to_path_buf(), ScriptEnvironment::default()).unwrap();
+      CodecRegistry::new(scripts.path().to_path_buf(), &ScriptEnvironment::default()).unwrap();
     recorded
       .add_decode(
         &codecs,
@@ -1062,7 +1066,7 @@ mod tests {
     expected.extend(outputs.iter().map(|name| format!("{source}/{name}")));
     expected.sort();
 
-    assert_eq!(names(recorded.artifacts()), expected);
+    assert_eq!(names(&recorded.artifacts()), expected);
 
     for name in outputs {
       let path = VirtualPath::new(&format!("{source}/{name}")).unwrap();
@@ -1088,7 +1092,7 @@ mod tests {
 
     let scripts = tempfile::tempdir().unwrap();
     let codecs =
-      CodecRegistry::new(scripts.path().to_path_buf(), ScriptEnvironment::default()).unwrap();
+      CodecRegistry::new(scripts.path().to_path_buf(), &ScriptEnvironment::default()).unwrap();
     let err = fixture
       .project
       .manifest
@@ -1183,7 +1187,7 @@ mod tests {
   ) -> Result<(), AppError> {
     let scripts = tempfile::tempdir().unwrap();
     let codecs =
-      CodecRegistry::new(scripts.path().to_path_buf(), ScriptEnvironment::default()).unwrap();
+      CodecRegistry::new(scripts.path().to_path_buf(), &ScriptEnvironment::default()).unwrap();
     manifest.add_decode(
       &codecs,
       &VirtualPath::new(source).unwrap(),
@@ -1217,7 +1221,7 @@ mod tests {
       let (source, mut manifest) = source_manifest("[]");
 
       declaring_codec(&source, &mut manifest, first, first_outputs).unwrap();
-      let before = names(manifest.artifacts());
+      let before = names(&manifest.artifacts());
 
       match declaring_named(&source, &mut manifest, second, "second", second_outputs).unwrap_err() {
         AppError::ManifestError(ManifestError::ConflictingDecodeKind(name, under)) => {
@@ -1227,7 +1231,7 @@ mod tests {
       }
 
       // The refused decode left the manifest with only the first one on it.
-      assert_eq!(names(manifest.artifacts()), before);
+      assert_eq!(names(&manifest.artifacts()), before);
     }
   }
 
@@ -1248,7 +1252,7 @@ mod tests {
     }
 
     assert_eq!(
-      names(manifest.artifacts()),
+      names(&manifest.artifacts()),
       [
         source.clone(),
         format!("{source}/head.bin"),
@@ -1269,7 +1273,7 @@ mod tests {
       err => panic!("Unexpected error: {err:?}"),
     }
 
-    assert_eq!(names(manifest.artifacts()), [source]);
+    assert_eq!(names(&manifest.artifacts()), [source]);
   }
 
   #[test]
@@ -1286,7 +1290,7 @@ mod tests {
       r"data\file.bin",
     ] {
       let (source, mut manifest) = source_manifest("[]");
-      let before = names(manifest.artifacts());
+      let before = names(&manifest.artifacts());
 
       // Each name must be refused for the reason it is invalid, and no other,
       // carrying that name back out.
@@ -1313,14 +1317,14 @@ mod tests {
         err => panic!("Unexpected error for '{name}': {err:?}"),
       }
 
-      assert_eq!(names(manifest.artifacts()), before);
+      assert_eq!(names(&manifest.artifacts()), before);
     }
   }
 
   #[test]
   fn blames_the_codec_for_a_decode_repeating_one_of_its_own_outputs() {
     let (source, mut manifest) = manifest_with_decode(&["elsewhere.bin"]);
-    let before = names(manifest.artifacts());
+    let before = names(&manifest.artifacts());
 
     match declaring(&source, &mut manifest, &["foo.bin", "foo.bin"]).unwrap_err() {
       AppError::CodecError(CodecError::DuplicateArtifact(name)) => {
@@ -1329,7 +1333,7 @@ mod tests {
       err => panic!("Unexpected error: {err:?}"),
     }
 
-    assert_eq!(names(manifest.artifacts()), before);
+    assert_eq!(names(&manifest.artifacts()), before);
   }
 
   #[test]
@@ -1341,7 +1345,7 @@ mod tests {
       ("data/gfx/head.bin", "data/gfx"),
     ] {
       let (source, mut manifest) = manifest_with_decode(&["elsewhere.bin"]);
-      let before = names(manifest.artifacts());
+      let before = names(&manifest.artifacts());
 
       match declaring(&source, &mut manifest, &[first, second]).unwrap_err() {
         AppError::CodecError(CodecError::OverlappingArtifacts(left, right)) => {
@@ -1350,14 +1354,14 @@ mod tests {
         err => panic!("Unexpected error for '{first}' and '{second}': {err:?}"),
       }
 
-      assert_eq!(names(manifest.artifacts()), before);
+      assert_eq!(names(&manifest.artifacts()), before);
     }
   }
 
   #[test]
   fn blames_the_manifest_for_an_output_already_declared() {
     let (source, mut manifest) = manifest_with_decode(&["foo.bin"]);
-    let before = names(manifest.artifacts());
+    let before = names(&manifest.artifacts());
 
     match declaring(&source, &mut manifest, &["foo.bin"]).unwrap_err() {
       AppError::ManifestError(ManifestError::DuplicateOutput(name, under)) => {
@@ -1367,7 +1371,7 @@ mod tests {
       err => panic!("Unexpected error: {err:?}"),
     }
 
-    assert_eq!(names(manifest.artifacts()), before);
+    assert_eq!(names(&manifest.artifacts()), before);
   }
 
   #[test]
@@ -1380,7 +1384,7 @@ mod tests {
       ("data/gfx/head.bin", "data/gfx"),
     ] {
       let (source, mut manifest) = manifest_with_decode(&[existing]);
-      let before = names(manifest.artifacts());
+      let before = names(&manifest.artifacts());
 
       match declaring(&source, &mut manifest, &[new]).unwrap_err() {
         AppError::ManifestError(ManifestError::OverlappingArtifacts(left, right)) => {
@@ -1389,7 +1393,7 @@ mod tests {
         err => panic!("Unexpected error for '{new}' over '{existing}': {err:?}"),
       }
 
-      assert_eq!(names(manifest.artifacts()), before);
+      assert_eq!(names(&manifest.artifacts()), before);
     }
   }
 
@@ -1429,7 +1433,7 @@ mod tests {
       declaring(&source, &mut manifest, &outputs)
         .unwrap_or_else(|err| panic!("{outputs:?} should be accepted: {err:?}"));
 
-      let mut expected = names(manifest.artifacts());
+      let mut expected = names(&manifest.artifacts());
       expected.sort();
 
       assert_eq!(
@@ -1458,10 +1462,10 @@ mod tests {
 
     assert_eq!(removed.name, "head");
     assert_eq!(removed.outputs, ["head.bin"]);
-    assert!(removed.overrides.is_empty());
+    assert_eq!(removed.overrides, [] as [std::string::String; 0]);
 
     // The output is gone with its recipe, and the empty source bucket too.
-    assert_eq!(names(manifest.artifacts()), vec![source.to_owned()]);
+    assert_eq!(names(&manifest.artifacts()), vec![source.clone()]);
     assert!(!manifest.decodes.contains_key(&source));
   }
 
@@ -1490,7 +1494,7 @@ mod tests {
 
     // Nothing was selected, so nothing was removed.
     assert_eq!(
-      names(manifest.artifacts()),
+      names(&manifest.artifacts()),
       [
         source.clone(),
         format!("{source}/head.bin"),
@@ -1506,7 +1510,7 @@ mod tests {
     assert_eq!(removed.name, "tail");
     assert_eq!(removed.outputs, ["tail.bin"]);
     assert_eq!(
-      names(manifest.artifacts()),
+      names(&manifest.artifacts()),
       [
         source.clone(),
         format!("{source}/head.bin"),
@@ -1540,7 +1544,7 @@ mod tests {
     }
 
     assert_eq!(
-      names(manifest.artifacts()),
+      names(&manifest.artifacts()),
       [
         source.clone(),
         format!("{source}/head.bin"),
@@ -1556,7 +1560,7 @@ mod tests {
     assert_eq!(removed.name, "TITLE");
     assert_eq!(removed.outputs, ["TITLE.txt"]);
     assert_eq!(
-      names(manifest.artifacts()),
+      names(&manifest.artifacts()),
       [
         source.clone(),
         format!("{source}/head.bin"),
@@ -1594,7 +1598,7 @@ mod tests {
     }
 
     assert_eq!(
-      names(manifest.artifacts()),
+      names(&manifest.artifacts()),
       [
         source.clone(),
         format!("{source}/head.bin"),

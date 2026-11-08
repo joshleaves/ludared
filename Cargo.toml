@@ -1,6 +1,8 @@
 [package]
 name = "ludared"
 description = "Tool for unpacking, editing, and repacking game archives, designed for romhacking and modding workflows"
+keywords = ["romhacking", "mods", "gaming"]
+categories = ["command-line-utilities", "encoding"]
 version = "0.12.0"
 edition = "2024"
 
@@ -9,6 +11,36 @@ readme = "README.md"
 license = "MIT"
 homepage = "https://github.com/joshleaves/ludared"
 repository = "https://github.com/joshleaves/ludared"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+# TODO: Clean me in a future refactor
+cast_possible_truncation = "allow"
+# TODO: Clean me in a future refactor
+too_many_lines = "allow"
+too_many_arguments = "deny"
+excessive_nesting = "deny"
+
+# Pedantic lints
+pedantic = { level = "deny", priority = -1 }
+map_unwrap_or = "allow"
+missing_const_for_fn = "allow"
+missing_errors_doc = "allow"
+must_use_candidate = "allow"
+needless_raw_string_hashes = "allow"
+redundant_closure_for_method_calls = "allow"
+similar_names = "allow"
+unreadable_literal = "allow"
+
+# Nursery lints
+nursery = { level = "deny", priority = -1 }
+option_if_let_else = "allow"
+redundant_pub_crate = "allow"
+
+# Cargo lints
+cargo = { level = "deny", priority = -1 }
+doc_markdown = "allow"
+multiple_crate_versions = "allow"
 
 [lib]
 name = "ludared"

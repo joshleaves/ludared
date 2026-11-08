@@ -444,38 +444,62 @@ pub(crate) const FLAG_ASSOCIATED: u8 = 0x04;
 /// How much of a directory record precedes its file identifier.
 pub(crate) const RECORD_HEADER: usize = 33;
 
-fn one() -> u16 {
+const fn one() -> u16 {
   1
 }
 
+#[expect(
+  clippy::trivially_copy_pass_by_ref,
+  reason = "Required by Serde skip_serializing_if"
+)]
 fn is_one(value: &u16) -> bool {
   *value == 1
 }
 
-fn one_version() -> u8 {
+const fn one_version() -> u8 {
   1
 }
 
+#[expect(
+  clippy::trivially_copy_pass_by_ref,
+  reason = "Required by Serde skip_serializing_if"
+)]
 fn is_one_version(value: &u8) -> bool {
   *value == 1
 }
 
-fn block_size() -> u16 {
+const fn block_size() -> u16 {
   BLOCK_SIZE as u16
 }
 
+#[expect(
+  clippy::trivially_copy_pass_by_ref,
+  reason = "Required by Serde skip_serializing_if"
+)]
 fn is_block_size(value: &u16) -> bool {
   *value == block_size()
 }
 
+#[expect(
+  clippy::trivially_copy_pass_by_ref,
+  reason = "Required by Serde skip_serializing_if"
+)]
 fn is_zero(value: &u32) -> bool {
   *value == 0
 }
 
+#[expect(
+  clippy::trivially_copy_pass_by_ref,
+  reason = "Required by Serde skip_serializing_if"
+)]
 fn is_zero_u8(value: &u8) -> bool {
   *value == 0
 }
 
+#[expect(
+  clippy::trivially_copy_pass_by_ref,
+  reason = "Required by Serde skip_serializing_if"
+)]
 fn is_false(value: &bool) -> bool {
   !*value
 }

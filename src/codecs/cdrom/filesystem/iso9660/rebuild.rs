@@ -36,7 +36,8 @@
 //! contents, or growing within the room that follows a file, keeps both where
 //! they were.
 
-use log::*;
+use log::debug;
+use log::warn;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 
@@ -118,10 +119,10 @@ enum Region {
 impl Region {
   fn bytes(&self) -> usize {
     match self {
-      Region::File { bytes, .. }
-      | Region::Directory { bytes, .. }
-      | Region::PathTable { bytes, .. }
-      | Region::Opaque { bytes, .. } => *bytes,
+      Self::File { bytes, .. }
+      | Self::Directory { bytes, .. }
+      | Self::PathTable { bytes, .. }
+      | Self::Opaque { bytes, .. } => *bytes,
     }
   }
 }
@@ -209,8 +210,8 @@ impl Building {
       table_entries,
     };
 
-    building.reserve()?;
-    building.check_beyond()?;
+    building.reserve();
+    building.check_beyond();
 
     Ok(building)
   }
@@ -225,7 +226,7 @@ impl Building {
   /// past its end is a single run of blocks across the boundary, and growing the
   /// image would insert new blocks into the middle of it, so it is recorded here
   /// and refuses growth.
-  fn check_beyond(&mut self) -> Result<(), CodecError> {
+  fn check_beyond(&mut self) {
     for directory in &self.layout.directories {
       for record in directory.records.iter().filter(|record| record.is_file()) {
         let extent = record.extent as usize;
@@ -253,8 +254,6 @@ impl Building {
         self.beyond.join(", ")
       );
     }
-
-    Ok(())
   }
 
   /// Whether the image may grow past the blocks it held.
@@ -282,15 +281,18 @@ impl Building {
   }
 
   /// Why the image may not grow, for an error that has to say.
+  #[expect(
+    clippy::option_if_let_else,
+    reason = "Explicit match is clearer for error messages"
+  )]
   fn cannot_grow(&self) -> String {
-    match self.straddling.iter().next() {
-      Some(file) => format!(
+    if let Some(file) = self.straddling.iter().next() {
+      format!(
         "the file '{file}' declares blocks on both sides of the image's end, so a longer image \
          would insert new blocks into the middle of it"
-      ),
-      None => {
-        "the image describes data beyond its own end, which a longer image would move".to_owned()
-      }
+      )
+    } else {
+      "the image describes data beyond its own end, which a longer image would move".to_owned()
     }
   }
 
@@ -317,7 +319,7 @@ impl Building {
     let beyond: BTreeSet<String> = self.beyond.iter().cloned().collect();
 
     for directory in &mut self.layout.directories {
-      for record in directory.records.iter_mut() {
+      for record in &mut directory.records {
         if !record.is_file() {
           continue;
         }
@@ -681,7 +683,7 @@ impl Building {
   }
 
   /// Marks the blocks the layout's own structures occupy.
-  fn reserve(&mut self) -> Result<(), CodecError> {
+  fn reserve(&mut self) {
     self.space.reserve_range(0, SYSTEM_AREA_SIZE);
     self.space.reserve_range(
       DESCRIPTOR_SECTOR as usize * BLOCK_SIZE,
@@ -727,8 +729,6 @@ impl Building {
 
       self.space.reserve_range(start, start + length);
     }
-
-    Ok(())
   }
 
   /// Checks that the layout describes an image this codec can write.

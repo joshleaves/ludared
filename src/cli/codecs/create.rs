@@ -28,7 +28,7 @@ pub(crate) fn command_codecs_create(args: &CodecsCreateArgs) -> Result<(), AppEr
     }
     if RESERVED_DIRECTORIES.contains(&component.as_os_str().to_str().unwrap_or("")) {
       let path = component.as_os_str().to_string_lossy();
-      return Err(AppError::InvalidCodecScriptPath(format!("'{}'", path)));
+      return Err(AppError::InvalidCodecScriptPath(format!("'{path}'")));
     }
   }
 

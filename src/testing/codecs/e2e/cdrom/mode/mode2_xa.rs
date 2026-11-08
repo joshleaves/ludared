@@ -86,22 +86,38 @@ const ISO9660_ARTIFACTS: [(&str, usize, &str); 7] = [
   ),
 ];
 
+#[expect(
+  clippy::cast_possible_truncation,
+  reason = "Intentional byte wrapping in test fixture"
+)]
 fn plain_data() -> Vec<u8> {
-  (0..3000).map(|index| (index * 11 + 5) as u8).collect()
+  (0usize..3000).map(|index| (index * 11 + 5) as u8).collect()
 }
 
+#[expect(
+  clippy::cast_possible_truncation,
+  reason = "Intentional byte wrapping in test fixture"
+)]
 fn form2_extra() -> Vec<u8> {
-  (0..276).map(|index| (index * 19 + 11) as u8).collect()
+  (0usize..276).map(|index| (index * 19 + 11) as u8).collect()
 }
 
+#[expect(
+  clippy::cast_possible_truncation,
+  reason = "Intentional byte wrapping in test fixture"
+)]
 fn form2_file() -> Vec<u8> {
-  let mut data: Vec<u8> = (0..2048).map(|index| (index * 17 + 9) as u8).collect();
+  let mut data: Vec<u8> = (0usize..2048).map(|index| (index * 17 + 9) as u8).collect();
   data.extend(form2_extra());
   data
 }
 
+#[expect(
+  clippy::cast_possible_truncation,
+  reason = "Intentional byte wrapping in test fixture"
+)]
 fn form1_file() -> Vec<u8> {
-  (0..4096).map(|index| (index * 13 + 7) as u8).collect()
+  (0usize..4096).map(|index| (index * 13 + 7) as u8).collect()
 }
 
 fn xa_metadata() -> Vec<u8> {

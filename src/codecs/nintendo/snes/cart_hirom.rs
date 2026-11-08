@@ -10,7 +10,7 @@ use crate::codecs::nintendo::snes::common::SnesRomMapType;
 use crate::codecs::nintendo::snes::common::rom_banks::BankNumbers;
 use crate::codecs::nintendo::snes::common::rom_banks::SnesCodecArgs;
 use crate::codecs::nintendo::snes::common::rom_banks::SnesRomExtractor;
-use log::*;
+use log::trace;
 
 const CODEC_ID: &str = "std/nintendo/snes/cart/hirom";
 const CODEC_NAME: &str = "SNES HiROM";
@@ -47,7 +47,11 @@ impl Codec for SnesHiRom {
   }
 
   fn can_handle(&self, data: &[u8]) -> Result<CodecHandlingConfidence, CodecError> {
-    super::common::can_handle(data, HIROM_HEADER_OFFSET, &SnesRomMapType::HiROM)
+    Ok(super::common::can_handle(
+      data,
+      HIROM_HEADER_OFFSET,
+      SnesRomMapType::HiROM,
+    ))
   }
 
   fn decode_name(&self, _: Option<&str>) -> Result<String, CodecError> {
@@ -74,8 +78,7 @@ impl Codec for SnesHiRom {
     let bank_count = extractor.banks_left();
     if bank_count > 64 {
       return Err(CodecError::Message(format!(
-        "Too many ROM banks: {} (Max for HiROM: 64)",
-        bank_count
+        "Too many ROM banks: {bank_count} (Max for HiROM: 64)"
       )));
     }
 
@@ -85,9 +88,9 @@ impl Codec for SnesHiRom {
       BankNumbers::Sequential => 0x00,
     };
 
-    extractor.extract_rom_banks(64)?.iter().for_each(|bytes| {
+    extractor.extract_rom_banks(64).iter().for_each(|bytes| {
       results.push(DecodedArtifact {
-        name: format!("rom_bank_{:02x}.bin", rom_bank),
+        name: format!("rom_bank_{rom_bank:02x}.bin"),
         data: bytes.to_vec(),
       });
       rom_bank += 1;

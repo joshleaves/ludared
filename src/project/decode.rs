@@ -1,4 +1,5 @@
-use log::*;
+use log::debug;
+use log::warn;
 
 use crate::codecs::DecodedArtifact;
 use crate::errors::app_error::AppError;
@@ -28,15 +29,15 @@ impl Project {
     codec_id: String,
     args: &Option<String>,
     name: String,
-    artifacts: Vec<DecodedArtifact>,
+    artifacts: &[DecodedArtifact],
   ) -> Result<(), AppError> {
-    debug!("Adding decode '{}' on '{path}'", name);
+    debug!("Adding decode '{name}' on '{path}'");
 
     self
       .manifest
-      .add_decode(&self.codecs, path, codec_id, args, name, &artifacts)?;
+      .add_decode(&self.codecs, path, codec_id, args, name, artifacts)?;
 
-    for artifact in &artifacts {
+    for artifact in artifacts {
       let artifact_path = path.join(&artifact.name)?;
       self.cache.add_entry(&artifact_path, &artifact.data)?;
     }
@@ -176,7 +177,7 @@ mod tests {
         "std/generic/extract".to_owned(),
         &None,
         "head".to_owned(),
-        artifacts(&[
+        &artifacts(&[
           "head.bin",
           "TITLE.txt",
         ]),
@@ -209,7 +210,7 @@ mod tests {
         "std/generic/extract".to_owned(),
         &Some(r#"{"offset":0}"#.to_owned()),
         "head".to_owned(),
-        artifacts(&["head.bin"]),
+        &artifacts(&["head.bin"]),
       )
       .unwrap();
 
@@ -254,7 +255,7 @@ mod tests {
           "std/generic/extract".to_owned(),
           &Some(args.to_owned()),
           "head".to_owned(),
-          artifacts(&["head.bin"]),
+          &artifacts(&["head.bin"]),
         )
         .unwrap();
 
@@ -282,7 +283,7 @@ mod tests {
           "std/generic/extract".to_owned(),
           &args.map(str::to_owned),
           "head".to_owned(),
-          artifacts(&["head.bin"]),
+          &artifacts(&["head.bin"]),
         )
         .unwrap();
 
@@ -319,7 +320,7 @@ mod tests {
           "std/generic/extract".to_owned(),
           &None,
           "head".to_owned(),
-          artifacts(&["head.bin"]),
+          &artifacts(&["head.bin"]),
         )
         .is_err()
     );
@@ -341,7 +342,7 @@ mod tests {
           "std/generic/extract".to_owned(),
           &None,
           "head".to_owned(),
-          artifacts(&[
+          &artifacts(&[
             "data",
             "data/gfx/head.bin"
           ]),
@@ -369,7 +370,7 @@ mod tests {
           "std/generic/extract".to_owned(),
           &None,
           "head".to_owned(),
-          artifacts(&["head.bin"]),
+          &artifacts(&["head.bin"]),
         )
         .is_err()
     );
@@ -389,7 +390,7 @@ mod tests {
         "std/generic/extract".to_owned(),
         &None,
         "head".to_owned(),
-        artifacts(&["head.bin"]),
+        &artifacts(&["head.bin"]),
       )
       .unwrap();
 
@@ -424,7 +425,7 @@ mod tests {
         "std/generic/extract".to_owned(),
         &None,
         "head".to_owned(),
-        artifacts(&["head.bin"]),
+        &artifacts(&["head.bin"]),
       )
       .unwrap();
     fixture.project.add_override(&head, false).unwrap();
@@ -477,7 +478,7 @@ mod tests {
         "std/generic/extract".to_owned(),
         &None,
         "head".to_owned(),
-        artifacts(&["head.bin"]),
+        &artifacts(&["head.bin"]),
       )
       .unwrap();
     fixture.project.add_override(&head, false).unwrap();
@@ -530,7 +531,7 @@ mod tests {
         "std/generic/extract".to_owned(),
         &None,
         "head".to_owned(),
-        artifacts(&["head.bin"]),
+        &artifacts(&["head.bin"]),
       )
       .unwrap();
 
@@ -569,7 +570,7 @@ mod tests {
         "std/generic/extract".to_owned(),
         &None,
         "head".to_owned(),
-        artifacts(&["head.bin"]),
+        &artifacts(&["head.bin"]),
       )
       .unwrap();
     fixture.project.add_override(&head, false).unwrap();
@@ -584,7 +585,7 @@ mod tests {
 
     fixture.reload();
 
-    assert!(fixture.project.manifest.overrides().is_empty());
+    assert_eq!(fixture.project.manifest.overrides(), [] as [VirtualPath; 0]);
     assert!(!fixture.project.manifest.is_overridden(&head));
     // Without `clean`, the workspace file is the operator's to keep.
     assert!(workspace.is_file());
@@ -602,7 +603,7 @@ mod tests {
         "std/generic/extract".to_owned(),
         &None,
         "head".to_owned(),
-        artifacts(&["head.bin"]),
+        &artifacts(&["head.bin"]),
       )
       .unwrap();
     fixture.project.add_override(&head, false).unwrap();

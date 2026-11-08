@@ -30,7 +30,7 @@ impl VirtualPath {
     if path.ends_with('/') {
       return Err(VirtualPathError::EndsWithSlash(path.to_owned()));
     }
-    if path.split('/').any(|c| c.is_empty()) {
+    if path.split('/').any(str::is_empty) {
       return Err(VirtualPathError::EmptyComponent(path.to_owned()));
     }
     if path.split('/').any(|c| c == "." || c == "..") {
@@ -38,7 +38,7 @@ impl VirtualPath {
         path.to_owned(),
       ));
     }
-    if path.contains(r"\") {
+    if path.contains('\\') {
       return Err(VirtualPathError::ContainsBackslash(path.to_owned()));
     }
 
@@ -114,16 +114,17 @@ impl VirtualPath {
   /// intermediate paths are not artifacts of their own, but they still name a
   /// branch of the virtual file system, which is what makes them worth asking
   /// about.
-  pub fn ancestors(&self) -> impl Iterator<Item = VirtualPath> {
+  pub fn ancestors(&self) -> impl Iterator<Item = Self> {
     let mut prefix = String::new();
 
     self.components().map(move |component| {
-      prefix = match prefix.is_empty() {
-        true => component.to_owned(),
-        false => format!("{prefix}/{component}"),
+      prefix = if prefix.is_empty() {
+        component.to_owned()
+      } else {
+        format!("{prefix}/{component}")
       };
 
-      VirtualPath {
+      Self {
         path: prefix.clone(),
       }
     })
@@ -145,7 +146,7 @@ impl VirtualPath {
   /// assert!(vpath.is_within(&root));
   /// assert!(!vpath.is_within(&partial));
   /// ```
-  pub fn is_within(&self, root: &VirtualPath) -> bool {
+  pub fn is_within(&self, root: &Self) -> bool {
     let mut components = self.components();
 
     root

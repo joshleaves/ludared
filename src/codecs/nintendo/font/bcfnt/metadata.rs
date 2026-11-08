@@ -211,6 +211,10 @@ pub(crate) struct BcfntMetadata {
   pub file_trailer: Option<String>,
 }
 
+#[expect(
+  clippy::ref_option,
+  reason = "Serde skip_serializing_if requires &Option<String>"
+)]
 fn is_none_or_empty(value: &Option<String>) -> bool {
   value.as_ref().is_none_or(String::is_empty)
 }

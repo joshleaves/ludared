@@ -41,7 +41,7 @@ use crate::codecs::errors::CodecError;
 use crate::codecs::nintendo::n3ds::container::media_unit::media_unit_size;
 use crate::codecs::{CodecHandlingConfidence, DecodedArtifact, LudaredCodecArgs};
 use crate::hash::sha256_bytes as sha256_hex;
-use log::*;
+use log::trace;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
@@ -175,7 +175,7 @@ impl NcchEngine {
     if data.len() as u64 > header.capacity()? {
       return Ok(CodecHandlingConfidence::No);
     }
-    let variant = header.variant()?;
+    let variant = header.variant();
     if expected.is_some_and(|wanted| wanted != variant) {
       return Ok(CodecHandlingConfidence::No);
     }
@@ -208,7 +208,7 @@ impl NcchEngine {
   ) -> Result<Vec<DecodedArtifact>, CodecError> {
     trace!("Decoding Nintendo 3DS NCCH image");
     let args = NcchCodecArgs::from_args(args)?;
-    let variant = NcchHeader::parse(data)?.variant()?;
+    let variant = NcchHeader::parse(data)?.variant();
     if expected.is_some_and(|wanted| wanted != variant) {
       return Err(CodecError::Message(format!(
         "NCCH variant is {variant:?}, not the requested {expected:?}"
@@ -281,7 +281,7 @@ impl NcchEngine {
     expected: Option<NcchVariant>,
   ) -> Result<Vec<u8>, CodecError> {
     trace!("Encoding Nintendo 3DS NCCH image");
-    let sorted = NcchEngine::sort_artifacts(artifacts)?;
+    let sorted = Self::sort_artifacts(artifacts)?;
     let metadata = NcchMetadata::from_json(sorted.metadata)?;
     let metadata_variant = if metadata
       .fixed_sections
@@ -310,17 +310,17 @@ impl NcchEngine {
     // assigned only once the order is known.
     let mut sections = metadata.variable_sections.clone();
     sections.sort_by_key(|section| section.position);
-    let named = NcchEngine::name_sections(&sections)?;
-    let explicit = NcchEngine::uses_explicit_padding(&metadata);
-    NcchEngine::check_artifacts(&named, &sorted, explicit)?;
+    let named = Self::name_sections(&sections)?;
+    let explicit = Self::uses_explicit_padding(&metadata);
+    Self::check_artifacts(&named, &sorted, explicit)?;
 
     let layout = if explicit {
-      NcchEngine::layout_explicit(&named, &sorted)?
+      Self::layout_explicit(&named, &sorted)?
     } else {
-      NcchEngine::layout_implicit(&named, &sorted)?
+      Self::layout_implicit(&named, &sorted)?
     };
 
-    NcchEngine::validate_geometry(&layout, &metadata, unit)?;
+    Self::validate_geometry(&layout, &metadata, unit)?;
 
     // Hashes over plaintext are recomputed; over ciphertext the recorded bytes
     // are kept and the region is required to be unchanged.
@@ -386,7 +386,7 @@ impl NcchEngine {
       None => hex_field(&metadata.romfs_hash, "RomFS hash")?,
     };
 
-    let header = NcchEngine::header_bytes(
+    let header = Self::header_bytes(
       &metadata,
       &layout.sections,
       unit,
@@ -508,11 +508,11 @@ impl NcchHeader {
     })
   }
 
-  fn variant(&self) -> Result<NcchVariant, CodecError> {
+  fn variant(&self) -> NcchVariant {
     if self.exheader_size > 0 {
-      Ok(NcchVariant::Cxi)
+      NcchVariant::Cxi
     } else {
-      Ok(NcchVariant::Cfa)
+      NcchVariant::Cfa
     }
   }
 

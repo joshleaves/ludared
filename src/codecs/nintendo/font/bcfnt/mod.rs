@@ -121,7 +121,7 @@ impl Codec for N3dsBcfnt {
     }
     let file_end = cwdh_end.max(cmap_end).max(tglp.end);
 
-    let texture = tglp.texture_info()?;
+    let texture = tglp.texture_info();
 
     let metadata = BcfntMetadata {
       magic: header.magic,
@@ -266,7 +266,7 @@ impl Codec for N3dsBcfnt {
       .unwrap_or(0);
 
     let mut out = Vec::with_capacity(file_size);
-    write_header(&mut out, &metadata, file_size_u32, section_count_u32)?;
+    write_header(&mut out, &metadata, file_size_u32, section_count_u32);
     write_finf(
       &mut out,
       &metadata.font,
@@ -274,7 +274,7 @@ impl Codec for N3dsBcfnt {
       cwdh_data_offset,
       cmap_data_offset,
       metadata.byte_order,
-    )?;
+    );
     write_tglp_header(
       &mut out,
       texture,
@@ -656,8 +656,8 @@ impl Tglp {
     })
   }
 
-  fn texture_info(&self) -> Result<TextureInfo, CodecError> {
-    Ok(TextureInfo {
+  fn texture_info(&self) -> TextureInfo {
+    TextureInfo {
       cell_width: self.cell_width,
       cell_height: self.cell_height,
       baseline: self.baseline,
@@ -667,7 +667,7 @@ impl Tglp {
       rows: self.rows,
       width: self.width,
       height: self.height,
-    })
+    }
   }
 }
 
@@ -796,8 +796,9 @@ fn parse_cwdh_chain(
       let offset = index * 3;
       let left = *payload
         .get(offset)
-        .ok_or_else(|| CodecError::Message("BCFNT CWDH entry is truncated".to_owned()))?
-        as i8;
+        .ok_or_else(|| CodecError::Message("BCFNT CWDH entry is truncated".to_owned()))?;
+
+      let left = left.cast_signed();
       let glyph = *payload
         .get(offset + 1)
         .ok_or_else(|| CodecError::Message("BCFNT CWDH entry is truncated".to_owned()))?;
@@ -1266,7 +1267,7 @@ fn encode_cwdh(section: &CwdhSection, order: ByteOrder) -> Result<Vec<u8>, Codec
   write_u32(&mut out, 0, order);
 
   for entry in &section.entries {
-    out.push(entry.left as u8);
+    out.push(entry.left.cast_unsigned());
     out.push(entry.glyph);
     out.push(entry.char_width);
   }
@@ -1365,12 +1366,7 @@ fn encode_cmap(section: &CmapSection, order: ByteOrder) -> Result<Vec<u8>, Codec
   Ok(out)
 }
 
-fn write_header(
-  out: &mut Vec<u8>,
-  metadata: &BcfntMetadata,
-  file_size: u32,
-  section_count: u32,
-) -> Result<(), CodecError> {
+fn write_header(out: &mut Vec<u8>, metadata: &BcfntMetadata, file_size: u32, section_count: u32) {
   out.extend_from_slice(&metadata.magic.bytes());
   match metadata.byte_order {
     ByteOrder::Little => out.extend_from_slice(&[0xFF, 0xFE]),
@@ -1380,7 +1376,6 @@ fn write_header(
   write_u32(out, metadata.version, metadata.byte_order);
   write_u32(out, file_size, metadata.byte_order);
   write_u32(out, section_count, metadata.byte_order);
-  Ok(())
 }
 
 fn write_finf(
@@ -1390,7 +1385,7 @@ fn write_finf(
   cwdh_offset: u32,
   cmap_offset: u32,
   order: ByteOrder,
-) -> Result<(), CodecError> {
+) {
   out.extend_from_slice(b"FINF");
   write_u32(out, FINF_SIZE as u32, order);
   out.push(font.font_type);
@@ -1407,7 +1402,6 @@ fn write_finf(
   out.push(font.width);
   out.push(font.ascent);
   out.push(font.reserved);
-  Ok(())
 }
 
 /// The TGLP header stores the sheet data offset explicitly, and the format

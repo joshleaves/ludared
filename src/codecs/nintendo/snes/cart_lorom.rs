@@ -10,7 +10,7 @@ use crate::codecs::nintendo::snes::common::SnesRomMapType;
 use crate::codecs::nintendo::snes::common::rom_banks::BankNumbers;
 use crate::codecs::nintendo::snes::common::rom_banks::SnesCodecArgs;
 use crate::codecs::nintendo::snes::common::rom_banks::SnesRomExtractor;
-use log::*;
+use log::trace;
 
 const CODEC_ID: &str = "std/nintendo/snes/cart/lorom";
 const CODEC_NAME: &str = "SNES LoROM";
@@ -54,7 +54,11 @@ impl Codec for SnesLoRom {
   }
 
   fn can_handle(&self, data: &[u8]) -> Result<CodecHandlingConfidence, CodecError> {
-    super::common::can_handle(data, LOROM_HEADER_OFFSET, &SnesRomMapType::LoROM)
+    Ok(super::common::can_handle(
+      data,
+      LOROM_HEADER_OFFSET,
+      SnesRomMapType::LoROM,
+    ))
   }
 
   fn decode_name(&self, _: Option<&str>) -> Result<String, CodecError> {
@@ -80,8 +84,7 @@ impl Codec for SnesLoRom {
     let bank_count = extractor.banks_left();
     if bank_count > 128 {
       return Err(CodecError::Message(format!(
-        "Too many ROM banks: {} (Max for LoROM: 128)",
-        bank_count
+        "Too many ROM banks: {bank_count} (Max for LoROM: 128)"
       )));
     }
 
@@ -91,10 +94,10 @@ impl Codec for SnesLoRom {
       BankNumbers::Sequential => 0x00,
     };
 
-    extractor.extract_rom_banks(128)?.iter().for_each(|bytes| {
+    extractor.extract_rom_banks(128).iter().for_each(|bytes| {
       // trace!(format!("  Found ROM bank {:02x}", rom_bank))
       results.push(DecodedArtifact {
-        name: format!("rom_bank_{:02x}.bin", rom_bank),
+        name: format!("rom_bank_{rom_bank:02x}.bin"),
         data: bytes.to_vec(),
       });
       rom_bank += 1;
@@ -268,7 +271,7 @@ mod tests {
     let moved: i32 = RETITLE
       .iter()
       .zip(lorom::TITLE)
-      .map(|(after, before)| *after as i32 - *before as i32)
+      .map(|(after, before)| i32::from(*after) - i32::from(*before))
       .sum();
 
     assert_eq!(
@@ -280,7 +283,7 @@ mod tests {
       testkit::fields(&rebuilt, LOROM_HEADER_OFFSET).1,
       testkit::fields(lorom::SOURCE, LOROM_HEADER_OFFSET)
         .1
-        .wrapping_add(moved as u16),
+        .wrapping_add_signed(moved as i16),
       "the checksum should have moved by what the change was worth"
     );
     testkit::assert_valid_header(&SnesLoRom, &rebuilt, LOROM_HEADER_OFFSET);

@@ -1,4 +1,4 @@
-use log::*;
+use log::info;
 
 use ludared::errors::app_error::AppError;
 use ludared::project::Project;

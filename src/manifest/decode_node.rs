@@ -39,7 +39,7 @@ pub struct DecodeNode {
   pub overrides: Vec<String>,
 
   #[serde(default)]
-  pub decodes: HashMap<String, Vec<DecodeNode>>,
+  pub decodes: HashMap<String, Vec<Self>>,
 }
 
 impl DecodeNode {
@@ -122,7 +122,7 @@ impl DecodeNode {
   /// This distinction ensures that decode buckets may be created lazily without
   /// allowing arbitrary virtual paths to create artifacts that were never
   /// produced by a decoder.
-  pub(super) fn decodes_at_mut(&mut self, remaining: &[&str]) -> Option<&mut Vec<DecodeNode>> {
+  pub(super) fn decodes_at_mut(&mut self, remaining: &[&str]) -> Option<&mut Vec<Self>> {
     let output = self.producing_output(remaining)?.to_owned();
     let rest = &remaining[components_of(&output).len()..];
 
@@ -143,7 +143,7 @@ impl DecodeNode {
 
   /// Resolves the decode node that produced an artifact for a path relative to
   /// this decode node.
-  pub(super) fn decode_at<'s>(&'s self, remaining: &[&str]) -> Option<(&'s DecodeNode, &'s str)> {
+  pub(super) fn decode_at<'s>(&'s self, remaining: &[&str]) -> Option<(&'s Self, &'s str)> {
     let output = self.producing_output(remaining)?;
 
     if components_of(output).as_slice() == remaining {
@@ -166,7 +166,7 @@ impl DecodeNode {
 
   /// Resolves the decode node that produced an artifact for a path relative to
   /// this decode node, for callers holding a unique borrow of that node.
-  pub fn resolve_output_mut(&mut self, remaining: &[&str]) -> Option<(&mut DecodeNode, String)> {
+  pub fn resolve_output_mut(&mut self, remaining: &[&str]) -> Option<(&mut Self, String)> {
     let output = self.producing_output(remaining)?.to_owned();
 
     if components_of(&output).as_slice() == remaining {

@@ -112,7 +112,7 @@ fn reports_a_missing_script_without_running_other_tests() {
 
   let output = project.run(&["tests/missing.lua"]);
   assert_eq!(output.status.code(), Some(1));
-  assert!(output.stdout.is_empty());
+  assert_eq!(output.stdout, [] as [u8; 0]);
   let stderr = String::from_utf8(output.stderr).unwrap();
   assert!(
     stderr.contains("Script not found: tests/missing.lua"),
@@ -141,7 +141,7 @@ fn reports_an_unmatched_glob_without_running_other_tests() {
 
   let output = project.run(&["tests/missing_*.lua"]);
   assert_eq!(output.status.code(), Some(1));
-  assert!(output.stdout.is_empty());
+  assert_eq!(output.stdout, [] as [u8; 0]);
   let stderr = String::from_utf8(output.stderr).unwrap();
   assert!(
     stderr.contains("No glob matches for pattern 'tests/missing_*.lua'"),

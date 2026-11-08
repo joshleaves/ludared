@@ -118,7 +118,7 @@ fn rejects_names_that_do_not_fit_the_exefs_name_field() {
     panic!("an ExeFS name longer than eight bytes must be rejected");
   };
   let error = error.to_string();
-  assert!(error.contains("8"), "{error}");
+  assert!(error.contains('8'), "{error}");
 }
 
 #[test]

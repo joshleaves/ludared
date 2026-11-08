@@ -5,7 +5,7 @@ use crate::codecs::DecodedArtifact;
 use crate::codecs::errors::CodecError;
 use crate::codecs::nintendo::snes::common::LOROM_HEADER_OFFSET;
 use crate::codecs::nintendo::snes::common::SnesRomMapType;
-use log::*;
+use log::trace;
 
 const CODEC_ID: &str = "std/nintendo/snes/cart/sdd1";
 const CODEC_NAME: &str = "SNES SDD-1 ROM";
@@ -42,7 +42,11 @@ impl Codec for SnesSdd1Rom {
   }
 
   fn can_handle(&self, data: &[u8]) -> Result<CodecHandlingConfidence, CodecError> {
-    super::common::can_handle(data, LOROM_HEADER_OFFSET, &SnesRomMapType::SDD1)
+    Ok(super::common::can_handle(
+      data,
+      LOROM_HEADER_OFFSET,
+      SnesRomMapType::SDD1,
+    ))
   }
 
   fn decode_name(&self, _: Option<&str>) -> Result<String, CodecError> {

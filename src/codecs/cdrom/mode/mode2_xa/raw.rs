@@ -1,4 +1,15 @@
-use super::*;
+use super::CodecError;
+use super::DecodedArtifact;
+use super::FORM1_USER_SIZE;
+use super::FORM2_USER_SIZE;
+use super::HashMap;
+use super::LEAD_IN_FRAMES;
+use super::Mode2XaCodecArgs;
+use super::RAW_SECTOR_SIZE;
+use super::SUBHEADER_SIZE;
+use super::ecc_tables;
+use super::encode_sector;
+use super::is_form2;
 
 const XA_ENTRY_SIZE: usize = 4 + (FORM2_USER_SIZE - FORM1_USER_SIZE);
 
@@ -21,7 +32,7 @@ const XA_ENTRY_SIZE: usize = 4 + (FORM2_USER_SIZE - FORM1_USER_SIZE);
 //   is not stored, as it can be regenerated during encoding.
 pub(super) fn decode_xa_raw(
   user_data: Vec<u8>,
-  xa_data: HashMap<usize, [u8; 276]>,
+  xa_data: &HashMap<usize, [u8; 276]>,
   xa_subheaders: Vec<u8>,
 ) -> Result<Vec<DecodedArtifact>, CodecError> {
   let mut entries: Vec<_> = xa_data.iter().collect();
@@ -64,7 +75,7 @@ pub(super) fn decode_xa_raw(
 /// subheaders, EDC and ECC. Sector addresses are derived from `start_lba`.
 pub(super) fn encode_xa_raw(
   artifacts: &[DecodedArtifact],
-  mode2_xa_args: Mode2XaCodecArgs,
+  mode2_xa_args: &Mode2XaCodecArgs,
 ) -> Result<Vec<u8>, CodecError> {
   if artifacts.len() != 3
     || artifacts[0].name != "data.bin"
@@ -175,6 +186,9 @@ pub(super) fn encode_xa_raw(
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::codecs::Codec;
+  use crate::codecs::CodecHandlingConfidence;
+  use crate::codecs::cdrom::mode::mode2_xa::Mode2Xa;
 
   #[test]
   fn roundtrip_mixed_forms() {

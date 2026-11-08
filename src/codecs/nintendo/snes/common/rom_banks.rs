@@ -64,7 +64,7 @@ impl<'a> SnesRomExtractor<'a> {
     }
   }
 
-  pub fn extract_rom_banks(&mut self, mut bank_count: usize) -> Result<Vec<&[u8]>, CodecError> {
+  pub fn extract_rom_banks(&mut self, mut bank_count: usize) -> Vec<&[u8]> {
     let mut results: Vec<&[u8]> = vec![];
     while bank_count != 0
       && let Some(bytes) = self.data.get(self.position..self.position + self.bank_size)
@@ -73,7 +73,7 @@ impl<'a> SnesRomExtractor<'a> {
       bank_count -= 1;
       self.position += self.bank_size;
     }
-    Ok(results)
+    results
   }
 }
 
@@ -94,8 +94,7 @@ pub fn extract_extended_rom_banks(
   let bank_count = extractor.banks_left();
   if bank_count > 130 {
     return Err(CodecError::Message(format!(
-      "Too many ROM banks: {} (Maximum: 130)",
-      bank_count
+      "Too many ROM banks: {bank_count} (Maximum: 130)"
     )));
   }
 
@@ -105,9 +104,9 @@ pub fn extract_extended_rom_banks(
     BankNumbers::Sequential => 0x00,
   };
 
-  extractor.extract_rom_banks(64)?.iter().for_each(|bytes| {
+  extractor.extract_rom_banks(64).iter().for_each(|bytes| {
     results.push(DecodedArtifact {
-      name: format!("rom_bank_{:02x}.bin", rom_bank),
+      name: format!("rom_bank_{rom_bank:02x}.bin"),
       data: bytes.to_vec(),
     });
     rom_bank += 1;
@@ -118,9 +117,9 @@ pub fn extract_extended_rom_banks(
     BankNumbers::Sequential => rom_bank,
   };
 
-  extractor.extract_rom_banks(64)?.iter().for_each(|bytes| {
+  extractor.extract_rom_banks(64).iter().for_each(|bytes| {
     results.push(DecodedArtifact {
-      name: format!("rom_bank_{:02x}.bin", rom_bank),
+      name: format!("rom_bank_{rom_bank:02x}.bin"),
       data: bytes.to_vec(),
     });
     rom_bank += 1;
@@ -131,9 +130,9 @@ pub fn extract_extended_rom_banks(
     BankNumbers::Sequential => rom_bank,
   };
 
-  extractor.extract_rom_banks(2)?.iter().for_each(|bytes| {
+  extractor.extract_rom_banks(2).iter().for_each(|bytes| {
     results.push(DecodedArtifact {
-      name: format!("rom_bank_{:02x}.bin", rom_bank),
+      name: format!("rom_bank_{rom_bank:02x}.bin"),
       data: bytes.to_vec(),
     });
     rom_bank += 1;

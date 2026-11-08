@@ -1,5 +1,5 @@
 //! UDF filesystem extraction and reconstruction, including UDF Bridge images.
-use log::*;
+use log::trace;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;

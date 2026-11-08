@@ -21,7 +21,7 @@ pub(crate) fn completion_override_list(current: &OsStr) -> Vec<CompletionCandida
     .flat_map(VirtualPath::ancestors)
     .collect();
 
-  roots.sort_by_key(|root| root.to_string());
+  roots.sort_by_key(std::string::ToString::to_string);
   roots.dedup();
 
   roots

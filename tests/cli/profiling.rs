@@ -1,10 +1,9 @@
 //! Check trace export against real builtin and scripted codec executions.
 
+use serde_json::Value;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
-
-use serde_json::Value;
 
 const BUILTIN: &str = "std/generic/extract";
 const ARGS: &str = r#"{"name":"part.bin","offset":1,"length":2}"#;
@@ -61,7 +60,7 @@ fn run(dir: &Path, args: &[&str], success: bool) -> Vec<Value> {
 
 fn assert_spans(events: &[Value], codec: &str, operation: &str) {
   if !cfg!(feature = "profiling") {
-    assert!(events.is_empty());
+    assert_eq!(events, &[] as &[Value]);
     return;
   }
 

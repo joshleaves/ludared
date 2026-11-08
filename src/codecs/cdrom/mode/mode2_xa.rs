@@ -233,8 +233,8 @@ impl Codec for Mode2Xa {
     }
 
     match mode2_xa_args.filesystem {
-      CdRomFileSystem::Raw => raw::decode_xa_raw(user_data, xa_data, xa_subheaders),
-      CdRomFileSystem::Iso9660 => iso9660::decode_xa_iso9660(user_data, xa_data, xa_subheaders),
+      CdRomFileSystem::Raw => raw::decode_xa_raw(user_data, &xa_data, xa_subheaders),
+      CdRomFileSystem::Iso9660 => iso9660::decode_xa_iso9660(&user_data, &xa_data, &xa_subheaders),
     }
   }
 
@@ -252,8 +252,8 @@ impl Codec for Mode2Xa {
     let mode2_xa_args = Mode2XaCodecArgs::from_args(args)?;
 
     match mode2_xa_args.filesystem {
-      CdRomFileSystem::Raw => raw::encode_xa_raw(artifacts, mode2_xa_args),
-      CdRomFileSystem::Iso9660 => iso9660::encode_xa_iso9660(artifacts, mode2_xa_args),
+      CdRomFileSystem::Raw => raw::encode_xa_raw(artifacts, &mode2_xa_args),
+      CdRomFileSystem::Iso9660 => iso9660::encode_xa_iso9660(artifacts, &mode2_xa_args),
     }
   }
 }

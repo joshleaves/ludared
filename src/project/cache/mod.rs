@@ -1,4 +1,6 @@
-use log::*;
+use log::debug;
+use log::trace;
+use log::warn;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -227,7 +229,7 @@ mod tests {
     let (_temp, mut cache) = cache_with(&ENTRIES);
     cache.clear_index();
     cache.save().unwrap();
-    assert!(listed(&cache).is_empty());
+    assert_eq!(listed(&cache), [] as [&str; 0]);
 
     let (_temp, cache) = cache_with(&ENTRIES);
     let blob = cache.get_entry(&vpath("game.sfc/rom_bank_00.bin")).unwrap();
@@ -412,11 +414,11 @@ mod tests {
     cache.remove_entries(&targets).unwrap();
 
     // Both references went in one call, so the shared blob is deleted once.
-    assert!(listed(&cache).is_empty());
+    assert_eq!(listed(&cache), [] as [&str; 0]);
     assert!(!blob.exists());
 
     let reloaded = Cache::new(temp.path().to_path_buf()).unwrap();
-    assert!(listed(&reloaded).is_empty());
+    assert_eq!(listed(&reloaded), [] as [&str; 0]);
   }
 
   #[test]

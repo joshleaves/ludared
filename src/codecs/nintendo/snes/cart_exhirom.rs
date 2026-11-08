@@ -5,7 +5,7 @@ use crate::codecs::DecodedArtifact;
 use crate::codecs::errors::CodecError;
 use crate::codecs::nintendo::snes::common::EXHIROM_HEADER_OFFSET;
 use crate::codecs::nintendo::snes::common::SnesRomMapType;
-use log::*;
+use log::trace;
 
 const CODEC_ID: &str = "std/nintendo/snes/cart/exhirom";
 const CODEC_NAME: &str = "SNES ExHiROM";
@@ -42,7 +42,11 @@ impl Codec for SnesExHiRom {
   }
 
   fn can_handle(&self, data: &[u8]) -> Result<CodecHandlingConfidence, CodecError> {
-    super::common::can_handle(data, EXHIROM_HEADER_OFFSET, &SnesRomMapType::ExHiROM)
+    Ok(super::common::can_handle(
+      data,
+      EXHIROM_HEADER_OFFSET,
+      SnesRomMapType::ExHiROM,
+    ))
   }
 
   fn decode_name(&self, _: Option<&str>) -> Result<String, CodecError> {

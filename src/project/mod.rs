@@ -1,4 +1,5 @@
-use log::*;
+use log::debug;
+use log::trace;
 use std::collections::HashMap;
 use std::path::Path;
 use std::path::PathBuf;
@@ -68,7 +69,7 @@ impl Project {
 
     let codecs = CodecRegistry::new(
       root.join(&configuration.paths.scripts),
-      ScriptEnvironment(env),
+      &ScriptEnvironment(env),
     )?;
 
     Ok(Self {

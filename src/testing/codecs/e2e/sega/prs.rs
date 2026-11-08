@@ -117,7 +117,7 @@ impl CodecE2E for PrsE2E {
         "1c1a38b694f94328ecabc184b1c650a88c556cc145c5688c15e6997c8bae0e03",
       ),
     ] {
-      fixtures.push(fixture(name, data.to_vec(), args, expected));
+      fixtures.push(fixture(name, data.clone(), args, expected));
     }
 
     let mut data = Vec::new();
@@ -153,7 +153,7 @@ impl CodecE2E for PrsE2E {
         "b2ce97d96454fea85eb853cde114e489c6307ae3508a086020a357162c6dc979",
       ),
     ] {
-      fixtures.push(fixture(name, data.to_vec(), args, expected));
+      fixtures.push(fixture(name, data.clone(), args, expected));
     }
 
     let data = [
@@ -185,7 +185,7 @@ impl CodecE2E for PrsE2E {
         "e7377295e612acb199a99e9320fd92cde874606c9b739647fdfbf33c5cf3c8f2",
       ),
     ] {
-      fixtures.push(fixture(name, data.to_vec(), args, expected));
+      fixtures.push(fixture(name, data.clone(), args, expected));
     }
 
     let mut data = vec![b'A'; 48];
@@ -214,7 +214,7 @@ impl CodecE2E for PrsE2E {
         "3ce76d6baa269ba26b848330c9d44b81cffbd0205dc7b245766dedc83a225054",
       ),
     ] {
-      fixtures.push(fixture(name, data.to_vec(), args, expected));
+      fixtures.push(fixture(name, data.clone(), args, expected));
     }
 
     for (distance, name, expected) in [

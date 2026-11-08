@@ -1,5 +1,6 @@
 use clap::Args;
-use log::*;
+use log::debug;
+use log::trace;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -20,9 +21,14 @@ pub(crate) fn command_clean(args: &CleanArgs) -> Result<(), AppError> {
   let cache = root.join(&configuration.paths.cache);
   let dry_run = args.dry_run;
 
+  let success_message = if dry_run {
+    "✓ Dry run complete"
+  } else {
+    "✓ All artifacts cleaned"
+  };
   let clean_targets = determine_targets(&builds, &cache);
   if clean_targets.is_empty() {
-    success_message(dry_run);
+    println!("{success_message}");
     return Ok(());
   }
 
@@ -37,21 +43,15 @@ pub(crate) fn command_clean(args: &CleanArgs) -> Result<(), AppError> {
   }
 
   for (_, target) in clean_targets {
-    match dry_run {
-      true => clean_path_dry(target)?,
-      false => clean_path(target)?,
+    if dry_run {
+      clean_path_dry(&target);
+    } else {
+      clean_path(target)?;
     }
   }
 
-  success_message(dry_run);
+  println!("{success_message}");
   Ok(())
-}
-
-fn success_message(dry_run: bool) {
-  match dry_run {
-    true => println!("✓ Dry run complete"),
-    false => println!("✓ All artifacts cleaned"),
-  }
 }
 
 fn determine_targets(builds: &Path, cache: &Path) -> Vec<(&'static str, PathBuf)> {
@@ -60,8 +60,10 @@ fn determine_targets(builds: &Path, cache: &Path) -> Vec<(&'static str, PathBuf)
   if builds.is_dir() {
     targets.push(("builds", builds.to_path_buf()));
 
-    let builds_abs = builds.canonicalize().unwrap_or(builds.to_path_buf());
-    let cache_abs = cache.canonicalize().unwrap_or(cache.to_path_buf());
+    let builds_abs = builds
+      .canonicalize()
+      .unwrap_or_else(|_| builds.to_path_buf());
+    let cache_abs = cache.canonicalize().unwrap_or_else(|_| cache.to_path_buf());
 
     if cache_abs.starts_with(&builds_abs) {
       return targets;
@@ -87,20 +89,22 @@ fn clean_path(path: PathBuf) -> Result<(), AppError> {
   Ok(())
 }
 
-fn clean_path_dry(path: PathBuf) -> Result<(), AppError> {
+fn clean_path_dry(path: &Path) {
   debug!("Clean (dry-run): Target folder {}", path.display());
   if !path.is_dir() {
     trace!(
       "Clean (dry-run): Target folder {} does not exist",
       path.display()
     );
-    return Ok(());
+    return;
   }
 
   println!(
     "Would remove {} ({})",
     path.display(),
-    path.canonicalize().unwrap_or(path.clone()).display()
+    path
+      .canonicalize()
+      .unwrap_or_else(|_| path.to_path_buf())
+      .display()
   );
-  Ok(())
 }

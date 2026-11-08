@@ -9,6 +9,7 @@
 //! while its bucket stayed in `decodes`, which left `artifacts list` reporting
 //! paths no resolver could reach.
 
+use std::fmt::Write;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
@@ -225,8 +226,10 @@ fn codec_args(name: &str, offset: usize, length: usize) -> String {
 fn sha256_hex(bytes: &[u8]) -> String {
   sha2::Sha256::digest(bytes)
     .iter()
-    .map(|byte| format!("{byte:02x}"))
-    .collect()
+    .fold(String::with_capacity(64), |mut output, byte| {
+      write!(output, "{byte:02x}").unwrap();
+      output
+    })
 }
 
 fn lines(output: &str) -> Vec<&str> {

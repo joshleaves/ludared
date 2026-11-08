@@ -1176,6 +1176,10 @@ fn accepts_every_name_level_1_does_hold() {
 // --------------------------------------------------------- the layout itself
 
 #[test]
+#[expect(
+  clippy::case_sensitive_file_extension_comparisons,
+  reason = "Metadata filenames use a canonical, case-sensitive extension"
+)]
 fn never_puts_the_metadata_inside_the_image() {
   let rebuilt = rebuild(&sample());
 
@@ -1344,7 +1348,10 @@ fn decodes_an_image_holding_no_files_at_all() {
   let artifacts = Iso9660.decode(&source, None).unwrap();
 
   assert_eq!(names(&artifacts), [METADATA_NAME]);
-  assert!(metadata(&artifacts).file_order.is_empty());
+  assert_eq!(
+    metadata(&artifacts).file_order,
+    [] as [std::string::String; 0]
+  );
 
   rebuild(&source);
 }
@@ -1385,8 +1392,8 @@ fn refuses_a_descriptor_set_that_never_ends() {
 
   let primary = source[DESCRIPTOR_START..DESCRIPTOR_START + BLOCK_SIZE].to_vec();
 
-  for sector in 17..=80 {
-    let at = sector as usize * BLOCK_SIZE;
+  for sector in 17usize..=80usize {
+    let at = sector * BLOCK_SIZE;
     source[at..at + BLOCK_SIZE].copy_from_slice(&primary);
   }
 
@@ -1872,7 +1879,7 @@ fn refuses_a_layout_that_would_write_over_the_bytes_it_preserves() {
   // cannot write both, and says so rather than choosing.
   let mut meta = metadata(&artifacts);
   meta.layout.opaque.push(super::metadata::Opaque {
-    offset: both_ended(&source, 156 + 2) as u64 * BLOCK_SIZE as u64,
+    offset: u64::from(both_ended(&source, 156 + 2)) * BLOCK_SIZE as u64,
     data: super::metadata::Hex::from(&b"over the tree"[..]),
   });
 
@@ -2630,7 +2637,7 @@ fn shift_moves_a_directory_and_every_reference_to_it() {
   // block the directory 'A' holds.
   let mut extended = copy(&artifacts);
   let mut meta = metadata(&artifacts);
-  let added = 48;
+  let added = 48usize;
 
   for index in 0..added {
     let name = format!("ADDED{index:02}.BIN");
@@ -2658,7 +2665,7 @@ fn shift_moves_a_directory_and_every_reference_to_it() {
   );
   assert_eq!(
     regions_of(&rebuilt).len(),
-    before.len() + added as usize,
+    before.len() + added,
     "every file should still be there"
   );
 
@@ -2687,7 +2694,7 @@ fn shift_moves_a_directory_and_every_reference_to_it() {
     assert_eq!(contents_at(&rebuilt, &name), b"x".to_vec());
   }
 
-  assert_eq!(read_back(&rebuilt).len(), added as usize + 4);
+  assert_eq!(read_back(&rebuilt).len(), added + 4);
 }
 
 /// The records that describe data beyond the image are carried by the blocks the

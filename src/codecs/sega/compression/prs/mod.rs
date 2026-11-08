@@ -219,7 +219,7 @@ mod tests {
   fn empty_input_produces_a_valid_stream() {
     let compressed = prs_compress(b"", 256);
 
-    assert!(!compressed.is_empty());
+    assert_ne!(compressed, [] as [u8; 0]);
     assert_eq!(prs_decompress(&compressed).unwrap(), b"");
   }
 

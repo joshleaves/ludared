@@ -2,7 +2,7 @@ use std::fs::create_dir_all;
 use std::path::Path;
 use std::path::PathBuf;
 
-use log::*;
+use log::debug;
 
 use crate::errors::app_error::AppError;
 use crate::manifest::decode_node::DecodeNode;
@@ -252,7 +252,7 @@ mod tests {
     ));
 
     fixture.reload();
-    assert!(fixture.project.manifest.overrides().is_empty());
+    assert_eq!(fixture.project.manifest.overrides(), [] as [VirtualPath; 0]);
   }
 
   #[test]
@@ -290,7 +290,7 @@ mod tests {
     ));
 
     fixture.reload();
-    assert!(fixture.project.manifest.overrides().is_empty());
+    assert_eq!(fixture.project.manifest.overrides(), [] as [VirtualPath; 0]);
   }
 
   #[test]

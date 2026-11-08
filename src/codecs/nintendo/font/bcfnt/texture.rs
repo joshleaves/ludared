@@ -611,23 +611,23 @@ fn encode_etc_candidate(block: &[[u8; 4]; 16], horizontal: bool, differential: b
       first_codes,
       deltas,
     } => {
-      bits |= (u64::from((deltas[2] & 0x07) as u8) << ETC_BLUE_OFFSET)
-        | (u64::from((deltas[1] & 0x07) as u8) << ETC_GREEN2_OFFSET)
-        | (u64::from((deltas[0] & 0x07) as u8) << ETC_RED2_OFFSET)
-        | (u64::from(first_codes[2] as u8) << ETC_DIFF_BLUE_OFFSET)
-        | (u64::from(first_codes[1] as u8) << ETC_DIFF_GREEN1_OFFSET)
-        | (u64::from(first_codes[0] as u8) << ETC_DIFF_RED1_OFFSET);
+      bits |= (u64::from((deltas[2] & 0x07).cast_unsigned()) << ETC_BLUE_OFFSET)
+        | (u64::from((deltas[1] & 0x07).cast_unsigned()) << ETC_GREEN2_OFFSET)
+        | (u64::from((deltas[0] & 0x07).cast_unsigned()) << ETC_RED2_OFFSET)
+        | (u64::from(first_codes[2].cast_unsigned()) << ETC_DIFF_BLUE_OFFSET)
+        | (u64::from(first_codes[1].cast_unsigned()) << ETC_DIFF_GREEN1_OFFSET)
+        | (u64::from(first_codes[0].cast_unsigned()) << ETC_DIFF_RED1_OFFSET);
     }
     EtcColors::Individual {
       first_codes,
       second_codes,
     } => {
-      bits |= (u64::from(second_codes[2] as u8) << ETC_BLUE_OFFSET)
-        | (u64::from(first_codes[2] as u8) << ETC_INDIV_BLUE1_OFFSET)
-        | (u64::from(second_codes[1] as u8) << ETC_GREEN2_OFFSET)
-        | (u64::from(first_codes[1] as u8) << ETC_INDIV_GREEN1_OFFSET)
-        | (u64::from(second_codes[0] as u8) << ETC_RED2_OFFSET)
-        | (u64::from(first_codes[0] as u8) << ETC_INDIV_RED1_OFFSET);
+      bits |= (u64::from(second_codes[2].cast_unsigned()) << ETC_BLUE_OFFSET)
+        | (u64::from(first_codes[2].cast_unsigned()) << ETC_INDIV_BLUE1_OFFSET)
+        | (u64::from(second_codes[1].cast_unsigned()) << ETC_GREEN2_OFFSET)
+        | (u64::from(first_codes[1].cast_unsigned()) << ETC_INDIV_GREEN1_OFFSET)
+        | (u64::from(second_codes[0].cast_unsigned()) << ETC_RED2_OFFSET)
+        | (u64::from(first_codes[0].cast_unsigned()) << ETC_INDIV_RED1_OFFSET);
     }
   }
 
@@ -666,21 +666,17 @@ fn etc_region(horizontal: bool, first: bool) -> [usize; 8] {
 }
 
 fn etc_region_mean(block: &[[u8; 4]; 16], offsets: &[usize; 8]) -> [i32; 3] {
-  let mut sums = [0u32; 3];
+  let mut sums = [0i32; 3];
 
   for offset in offsets {
     if let Some(pixel) = block.get(*offset) {
       for channel in 0..3 {
-        sums[channel] += u32::from(pixel[channel]);
+        sums[channel] += i32::from(pixel[channel]);
       }
     }
   }
 
-  [
-    ((sums[0] + 4) / 8) as i32,
-    ((sums[1] + 4) / 8) as i32,
-    ((sums[2] + 4) / 8) as i32,
-  ]
+  sums.map(|sum| (sum + 4) / 8)
 }
 
 fn encode_etc_region(
@@ -717,7 +713,7 @@ fn encode_etc_region(
           for channel in 0..3 {
             let decoded = clamp(base[channel] + signed);
             let difference = i64::from(decoded) - i64::from(pixel[channel]);
-            pixel_error += (difference * difference) as u64;
+            pixel_error += (difference * difference).cast_unsigned();
           }
 
           if pixel_error < best_pixel_error {
@@ -1213,7 +1209,8 @@ fn expand_five(value: i64) -> u8 {
     return 0;
   }
 
-  let value = value.min(0x1F) as u8;
+  let value =
+    u8::try_from(value.min(0x1F)).unwrap_or_else(|_| unreachable!("nonnegative 5-bit value"));
   (value << 3) | (value >> 2)
 }
 
@@ -1222,12 +1219,13 @@ fn expand_six(value: i64) -> u8 {
     return 0;
   }
 
-  let value = value.min(0x3F) as u8;
+  let value =
+    u8::try_from(value.min(0x3F)).unwrap_or_else(|_| unreachable!("nonnegative 6-bit value"));
   (value << 2) | (value >> 4)
 }
 
 fn clamp(value: i32) -> u8 {
-  value.clamp(0, 0xFF) as u8
+  u8::try_from(value.clamp(0, 0xFF)).unwrap_or_else(|_| unreachable!("clamped byte"))
 }
 
 fn complement(value: i32, bits: u32) -> i32 {

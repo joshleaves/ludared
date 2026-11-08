@@ -9,7 +9,7 @@ use ludared::virtual_path::VirtualPath;
 /// lexicographic order the paths themselves are enumerated in.
 struct Node {
   name: String,
-  children: BTreeMap<String, Node>,
+  children: BTreeMap<String, Self>,
 }
 
 /// Renders virtual paths as a tree.

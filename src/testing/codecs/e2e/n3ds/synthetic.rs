@@ -128,10 +128,16 @@ fn build_tmd(content: &[u8]) -> Vec<u8> {
   tmd
 }
 
+#[expect(
+  clippy::cast_possible_truncation,
+  reason = "Intentional byte wrapping in test fixture"
+)]
 pub(crate) fn cia_source() -> Vec<u8> {
   let certchain = vec![0xC1; 0x900];
   let ticket = vec![0x71; 0x400];
-  let content: Vec<u8> = (0..0x1234).map(|i| (i as u8).wrapping_add(1)).collect();
+  let content: Vec<u8> = (0usize..0x1234)
+    .map(|i| (i as u8).wrapping_add(1))
+    .collect();
   let tmd = build_tmd(&content);
   let mut image = vec![0; CIA_HEADER_SIZE];
   image[..4].copy_from_slice(&(CIA_HEADER_SIZE as u32).to_le_bytes());

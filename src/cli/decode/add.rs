@@ -90,10 +90,10 @@ pub(crate) fn command_decode_add(args: &DecodeAddArgs) -> Result<(), AppError> {
       Ok(CodecHandlingConfidence::No) if !args.force => {
         return Err(AppError::CodecIncompatible(codec.id().to_owned()));
       }
-      Ok(CodecHandlingConfidence::No) | Ok(CodecHandlingConfidence::Possible) => {
+      Ok(CodecHandlingConfidence::No | CodecHandlingConfidence::Possible) => {
         eprintln!("Warning: codec handling confidence is low");
       }
-      Ok(CodecHandlingConfidence::Likely) | Ok(CodecHandlingConfidence::Certain) => {}
+      Ok(CodecHandlingConfidence::Likely | CodecHandlingConfidence::Certain) => {}
       Err(e) => return Err(e.into()),
     }
 
@@ -109,7 +109,7 @@ pub(crate) fn command_decode_add(args: &DecodeAddArgs) -> Result<(), AppError> {
       codec_id.clone(),
       &codec_args,
       decode_name,
-      artifacts,
+      &artifacts,
     )?;
 
     println!("✓ Added decode '{codec_id}' to {vpath}");

@@ -1,13 +1,15 @@
 use clap::Args;
+use std::fs::OpenOptions;
+use std::io;
+use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
+
 use ludared::configuration::Configuration;
 use ludared::configuration::PathsConfiguration;
 use ludared::configuration::ProjectConfiguration;
 use ludared::errors::app_error::AppError;
 use ludared::manifest::Manifest;
-use std::fs::OpenOptions;
-use std::io;
-use std::io::Write;
-use std::path::PathBuf;
 
 #[derive(Args)]
 pub(crate) struct InitArgs {
@@ -145,29 +147,29 @@ pub(crate) fn command_init(args: &mut InitArgs) -> Result<(), AppError> {
     }
 
     let default = args.manifest_value();
-    prompt_path(&mut args.manifest, "Project manifest", default)?;
+    prompt_path(&mut args.manifest, "Project manifest", &default)?;
 
     let default = args.sources_value();
-    prompt_path(&mut args.sources, "Sources directory", default)?;
+    prompt_path(&mut args.sources, "Sources directory", &default)?;
 
     let default = args.workspace_value();
-    prompt_path(&mut args.workspace, "Workspace directory", default)?;
+    prompt_path(&mut args.workspace, "Workspace directory", &default)?;
 
     let default = args.scripts_value();
-    prompt_path(&mut args.scripts, "Scripts directory", default)?;
+    prompt_path(&mut args.scripts, "Scripts directory", &default)?;
 
     let default = args.builds_value();
-    prompt_path(&mut args.builds, "Builds directory", default)?;
+    prompt_path(&mut args.builds, "Builds directory", &default)?;
 
     let default = args.cache_value();
-    prompt_path(&mut args.cache, "Cache directory", default)?;
+    prompt_path(&mut args.cache, "Cache directory", &default)?;
   }
 
   args.initialize_project()
 }
 
 fn prompt(label: &str, default: &str) -> Result<String, AppError> {
-  print!("{} [{}]: ", label, default);
+  print!("{label} [{default}]: ");
   io::stdout()
     .flush()
     .map_err(AppError::ConfigurationFileIo)?;
@@ -186,7 +188,7 @@ fn prompt(label: &str, default: &str) -> Result<String, AppError> {
   })
 }
 
-fn prompt_path(value: &mut Option<PathBuf>, label: &str, default: PathBuf) -> Result<(), AppError> {
+fn prompt_path(value: &mut Option<PathBuf>, label: &str, default: &Path) -> Result<(), AppError> {
   if value.is_none() {
     *value = Some(PathBuf::from(prompt(
       label,

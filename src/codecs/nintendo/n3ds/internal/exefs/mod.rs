@@ -13,7 +13,8 @@ use crate::codecs::common::hash::sha256;
 use crate::codecs::errors::CodecError;
 use crate::codecs::nintendo::n3ds::common::hex_field;
 use crate::codecs::{Codec, CodecHandlingConfidence, CodecKind, DecodedArtifact, LudaredCodecArgs};
-use log::*;
+use log::debug;
+use log::trace;
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
@@ -366,6 +367,10 @@ impl Codec for N3dsExeFs {
     Ok(artifacts)
   }
 
+  #[expect(
+    clippy::single_match_else,
+    reason = "Both branches construct and validate the file name differently"
+  )]
   fn encode(
     &self,
     _: Vec<u8>,

@@ -5,7 +5,7 @@ use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
 
 use crate::cli::completions::artifacts::completion_artifacts_list;
-use log::*;
+use log::info;
 
 use ludared::errors::app_error::AppError;
 use ludared::project::Project;

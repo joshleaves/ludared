@@ -327,7 +327,7 @@ fn serialize(data: &[u8], matches: &[Match]) -> Vec<u8> {
 
     match m.kind {
       MatchKind::Literal => {
-        emit(1, 1, &data[pos..pos + 1]);
+        emit(1, 1, &data[pos..=pos]);
       }
 
       MatchKind::Short => {
