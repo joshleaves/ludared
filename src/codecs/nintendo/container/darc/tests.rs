@@ -11,6 +11,7 @@ fn entry(kind: EntryKind, parent: &str, name: &str) -> EntryMetadata {
     name_offset: None,
     data_offset: None,
     size: None,
+    data_alignment: None,
   }
 }
 
@@ -87,6 +88,28 @@ fn encode(artifacts: &[DecodedArtifact]) -> Vec<u8> {
 
 fn decoded_metadata(artifacts: &[DecodedArtifact]) -> DarcMetadata {
   DarcMetadata::from_json(&artifacts[0].data).unwrap()
+}
+
+fn file_offset(source: &[u8], index: usize) -> u32 {
+  let table_offset = Endian::Little.read_u32(source, 0x10).unwrap() as usize;
+  Endian::Little
+    .read_u32(source, table_offset + index * ENTRY_SIZE + 4)
+    .unwrap()
+}
+
+fn source_with_extra_gap() -> Vec<u8> {
+  let mut artifacts = decode(&sample_source(Endian::Little, false));
+  let mut metadata = decoded_metadata(&artifacts);
+  for entry in &mut metadata.entries {
+    if entry.name != "hello.bin"
+      && let Some(offset) = entry.data_offset.as_mut()
+    {
+      *offset += 16;
+    }
+  }
+  metadata.data_size += 16;
+  artifacts[0] = metadata_artifact(&metadata);
+  encode(&artifacts)
 }
 
 #[test]
@@ -260,6 +283,7 @@ fn preserves_raw_utf16_names() {
     name_offset: None,
     data_offset: None,
     size: None,
+    data_alignment: None,
   });
   let artifacts = vec![
     metadata_artifact(&metadata),
@@ -389,6 +413,201 @@ fn recomputes_the_layout_when_a_file_grows() {
     .unwrap();
   assert_eq!(hello.data, b"hello and more");
   assert_eq!(encode(&decoded), rebuilt);
+}
+
+#[test]
+fn grows_into_available_zero_padding_without_moving_files() {
+  let source = source_with_extra_gap();
+  let mut artifacts = decode(&source);
+  let before: Vec<u32> = (1..=3).map(|index| file_offset(&source, index)).collect();
+  artifacts
+    .iter_mut()
+    .find(|artifact| artifact.name == "files/hello.bin")
+    .unwrap()
+    .data
+    .extend_from_slice(b"12345678");
+
+  let rebuilt = encode(&artifacts);
+  let after: Vec<u32> = (1..=3).map(|index| file_offset(&rebuilt, index)).collect();
+  assert_eq!(after, before);
+  assert_eq!(decode(&rebuilt)[1].data, b"hello12345678");
+}
+
+#[test]
+fn same_size_replacement_keeps_the_original_offset() {
+  let source = sample_source(Endian::Little, false);
+  let mut artifacts = decode(&source);
+  let original_offset = file_offset(&source, 1);
+  artifacts[1].data.copy_from_slice(b"HELLO");
+
+  let rebuilt = encode(&artifacts);
+  assert_eq!(file_offset(&rebuilt, 1), original_offset);
+  assert_eq!(decode(&rebuilt)[1].data, b"HELLO");
+}
+
+#[test]
+fn shrinking_a_file_keeps_unrelated_offsets() {
+  let source = sample_source(Endian::Little, false);
+  let mut artifacts = decode(&source);
+  let plain_offset = file_offset(&source, 3);
+  artifacts[1].data.truncate(2);
+
+  let rebuilt = encode(&artifacts);
+  assert_eq!(file_offset(&rebuilt, 3), plain_offset);
+  assert_eq!(decode(&rebuilt)[1].data, b"he");
+}
+
+#[test]
+fn handles_multiple_file_size_changes_in_one_relayout() {
+  let source = sample_source(Endian::Little, false);
+  let mut artifacts = decode(&source);
+  artifacts[1].data.extend_from_slice(&[0xAA; 96]);
+  artifacts[2].data.extend_from_slice(b"tail");
+
+  let rebuilt = encode(&artifacts);
+  let decoded = decode(&rebuilt);
+  assert_eq!(
+    decoded[1].data,
+    [
+      b"hello".as_slice(),
+      &[0xAA; 96]
+    ]
+    .concat()
+  );
+  assert_eq!(decoded[2].data, b"a plain filetail");
+  assert_eq!(encode(&decoded), rebuilt);
+}
+
+#[test]
+fn preserves_nonzero_padding_when_relayout_is_required() {
+  let mut artifacts = decode(&source_with_extra_gap());
+  let mut metadata = decoded_metadata(&artifacts);
+  let empty = metadata
+    .entries
+    .iter_mut()
+    .find(|entry| entry.name == "empty")
+    .unwrap();
+  *empty.data_offset.as_mut().unwrap() += 32;
+  metadata.data_size += 32;
+  artifacts[0] = metadata_artifact(&metadata);
+  let mut source = encode(&artifacts);
+  let artifacts = decode(&source);
+  let metadata = decoded_metadata(&artifacts);
+  let plain = metadata
+    .entries
+    .iter()
+    .find(|entry| entry.name == "plain.bin")
+    .unwrap();
+  let pad_offset = plain.data_offset.unwrap() as usize + plain.size.unwrap() as usize + 8;
+  source[pad_offset] = 0xA5;
+  let mut artifacts = decode(&source);
+  let mut metadata = decoded_metadata(&artifacts);
+  let hello = metadata
+    .entries
+    .iter_mut()
+    .find(|entry| entry.name == "hello.bin")
+    .unwrap();
+  hello.name = "a-much-longer-name-that-forces-a-table-relayout.bin".to_owned();
+  hello.name_offset = None;
+  artifacts[1].name = format!("files/{}", hello.name);
+  artifacts[0] = metadata_artifact(&metadata);
+
+  let rebuilt = encode(&artifacts);
+  let rebuilt_artifacts = decode(&rebuilt);
+  let rebuilt_metadata = decoded_metadata(&rebuilt_artifacts);
+  assert!(
+    rebuilt_metadata
+      .gaps
+      .iter()
+      .any(|gap| gap.data.contains("a5"))
+  );
+  assert_eq!(encode(&rebuilt_artifacts), rebuilt);
+}
+
+#[test]
+fn infers_repeated_mixed_alignment_constraints_on_relayout() {
+  let mut metadata = sample_metadata(Endian::Little, false);
+  metadata.entries = vec![
+    entry(EntryKind::File, "", "base"),
+    entry(EntryKind::File, "", "aligned-a"),
+    entry(EntryKind::File, "", "aligned-b"),
+    entry(EntryKind::File, "", "aligned-c"),
+    entry(EntryKind::File, "", "plain"),
+  ];
+  for entry in &mut metadata.entries[1..4] {
+    entry.data_alignment = Some(0x80);
+  }
+  let artifacts = vec![
+    metadata_artifact(&metadata),
+    file("", "base", b"base"),
+    file("", "aligned-a", b"a"),
+    file("", "aligned-b", b"b"),
+    file("", "aligned-c", b"c"),
+    file("", "plain", b"p"),
+  ];
+  let source = encode(&artifacts);
+  let decoded = decode(&source);
+  let source_metadata = decoded_metadata(&decoded);
+  for name in [
+    "aligned-a",
+    "aligned-b",
+    "aligned-c",
+  ] {
+    assert_eq!(
+      source_metadata
+        .entries
+        .iter()
+        .find(|entry| entry.name == name)
+        .unwrap()
+        .data_alignment,
+      Some(0x80)
+    );
+  }
+
+  let mut changed = decoded;
+  changed
+    .iter_mut()
+    .find(|artifact| artifact.name == "files/base")
+    .unwrap()
+    .data
+    .extend_from_slice(&[0; 0x200]);
+  let rebuilt = encode(&changed);
+  let rebuilt_metadata = decoded_metadata(&decode(&rebuilt));
+  for name in [
+    "aligned-a",
+    "aligned-b",
+    "aligned-c",
+  ] {
+    let entry = rebuilt_metadata
+      .entries
+      .iter()
+      .find(|entry| entry.name == name)
+      .unwrap();
+    assert_eq!(entry.data_offset.unwrap() % 0x80, 0);
+  }
+  let plain = rebuilt_metadata
+    .entries
+    .iter()
+    .find(|entry| entry.name == "plain")
+    .unwrap();
+  assert_eq!(plain.data_offset.unwrap() % 4, 0);
+}
+
+#[test]
+fn ignores_a_single_coincidental_high_alignment_gap() {
+  let entries = vec![
+    EntryMetadata {
+      data_offset: Some(0x100),
+      size: Some(1),
+      ..entry(EntryKind::File, "", "a")
+    },
+    EntryMetadata {
+      data_offset: Some(0x180),
+      size: Some(1),
+      ..entry(EntryKind::File, "", "b")
+    },
+  ];
+  assert_eq!(infer_data_alignments(&entries, 0x100), vec![None, None]);
 }
 
 #[test]

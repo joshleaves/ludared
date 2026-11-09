@@ -37,7 +37,7 @@ impl CodecE2E for DarcE2E {
           ExpectedArtifact {
             name: "DARC.json",
             size: 722,
-            sha256: "adf25448205de2de1da5838c71c2434abe2bc340e8a5a1c03ecc6ea6789ed1fb",
+            sha256: "28980a2df6586afc0411b0d82bf03f677c0be7f34c32dd2cf5dbdac75dc80ae1",
           },
           ExpectedArtifact {
             name: "files/hello.bin",
@@ -67,7 +67,7 @@ impl CodecE2E for DarcE2E {
       name: "synthetic DARC",
       artifacts,
       args: None,
-      expected_sha256: "8769c2df30843fb87ec4b7d660cf998ce03e99bd3a629fe2026dd8f486966fa0",
+      expected_sha256: "8a522fc25f21bf6d34d04779d36333cc9d4664bf575193f2e278d533262d9c12",
     })
   }
 }

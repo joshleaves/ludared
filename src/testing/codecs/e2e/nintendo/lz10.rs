@@ -67,7 +67,7 @@ impl CodecE2E for Lz10E2E {
           ExpectedArtifact {
             name: "DARC.json",
             size: 722,
-            sha256: "adf25448205de2de1da5838c71c2434abe2bc340e8a5a1c03ecc6ea6789ed1fb",
+            sha256: "28980a2df6586afc0411b0d82bf03f677c0be7f34c32dd2cf5dbdac75dc80ae1",
           },
           ExpectedArtifact {
             name: "files/hello.bin",

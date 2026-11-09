@@ -1,8 +1,8 @@
 //! Nintendo DARC (DS/3DS archive) codec.
 //!
 //! DARC is Nintendo's archive format for the DS and 3DS: a header, a flat
-//! folder/file table in depth-first order, a UTF-16 name area and a
-//! 0x20-aligned data area. The container can be big- or little-endian; the
+//! folder/file table in depth-first order, a UTF-16 name area and a data area.
+//! The container can be big- or little-endian; the
 //! byte-order marker selects which. Most 3DS archives are little-endian and
 //! are frequently stored LZ10/LZ11-compressed, so this codec is the natural
 //! target of the `darc` preset of those codecs.
@@ -13,9 +13,10 @@
 //!
 //! The rebuild preserves the decoded header fields, table order, name area and
 //! file offsets while they still describe the artifacts, so an unmodified
-//! rebuild is byte-identical. Once an entry changes size, or the table no
-//! longer fits before the data area, the data area is laid out again in table
-//! order on 0x20-byte boundaries.
+//! rebuild is byte-identical. Files that grow can use available padding. If a
+//! relayout is needed, repeated exact padding patterns in the source layout
+//! provide conservative per-file alignment evidence; otherwise files use a
+//! 4-byte fallback alignment.
 
 use super::super::n3ds::common::align_up;
 use super::{
@@ -46,9 +47,11 @@ Folders and the optional leading "." entry are described in DARC.json rather
 than emitted as artifacts, because they carry no data.
 
 Rebuilding preserves the decoded table order, name area and file offsets while
-they still fit the artifacts. Once a file changes size, or an edited table no
-longer fits before the data area, the data area is laid out again in table order
-on 0x20-byte boundaries. Names that are not valid UTF-16 keep their raw bytes in
+they still fit the artifacts. Files can grow into available padding. If an
+edited table no longer fits or file ranges conflict, the data area is relaid
+out using repeated padding patterns observed in the source archive; files
+without sufficient evidence use 4-byte alignment. Names that are not valid
+UTF-16 keep their raw bytes in
 DARC.json.
 
 No arguments.
@@ -59,7 +62,9 @@ const HEADER_SIZE: usize = 0x1C;
 const ENTRY_SIZE: usize = 12;
 const FOLDER_FLAG: u32 = 0x0100_0000;
 const NAME_MASK: u32 = 0x00FF_FFFF;
-const DATA_ALIGN: u64 = 0x20;
+const FALLBACK_DATA_ALIGN: u64 = 4;
+const MIN_ALIGNMENT_EVIDENCE: usize = 3;
+const MAX_INFERRED_ALIGNMENT: u64 = 1 << 31;
 const METADATA_NAME: &str = "DARC.json";
 
 pub(crate) struct Darc;
@@ -98,6 +103,9 @@ struct EntryMetadata {
   /// Size in bytes as decoded (files only).
   #[serde(default, skip_serializing_if = "Option::is_none")]
   size: Option<u32>,
+  /// Alignment supported by repeated padding evidence in the decoded layout.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  data_alignment: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -544,6 +552,149 @@ fn file_ranges(parsed: &ParsedDarc) -> Result<Vec<(usize, usize)>, CodecError> {
   Ok(ranges)
 }
 
+/// Infers per-file alignment only when the source repeatedly uses the exact
+/// padding needed to reach the same power-of-two boundary. A start offset
+/// being divisible by an alignment is not evidence by itself.
+fn infer_data_alignments(entries: &[EntryMetadata], data_offset: u64) -> Vec<Option<u32>> {
+  let mut ordered: Vec<(usize, u64, u64)> = entries
+    .iter()
+    .enumerate()
+    .filter_map(|(index, entry)| {
+      if entry.kind != EntryKind::File {
+        return None;
+      }
+      Some((index, u64::from(entry.data_offset?), u64::from(entry.size?)))
+    })
+    .filter(|(_, _, size)| *size > 0)
+    .collect();
+  ordered.sort_unstable_by_key(|(_, start, _)| *start);
+
+  let mut evidence = HashMap::<u64, usize>::new();
+  let mut candidates = Vec::with_capacity(ordered.len());
+  let mut previous_end = data_offset;
+  for &(index, start, size) in &ordered {
+    let candidate = if start > previous_end {
+      inferred_padding_alignment(previous_end, start)
+    } else {
+      None
+    };
+    if let Some(alignment) = candidate {
+      *evidence.entry(alignment).or_default() += 1;
+    }
+    candidates.push((index, candidate));
+    previous_end = start.saturating_add(size);
+  }
+
+  let mut alignments = vec![None; entries.len()];
+  for (index, candidate) in candidates {
+    if let Some(alignment) = candidate.filter(|alignment| {
+      *alignment == FALLBACK_DATA_ALIGN
+        || evidence.get(alignment).copied().unwrap_or_default() >= MIN_ALIGNMENT_EVIDENCE
+    }) && alignment > FALLBACK_DATA_ALIGN
+    {
+      alignments[index] = u32::try_from(alignment).ok();
+    }
+  }
+  alignments
+}
+
+fn inferred_padding_alignment(previous_end: u64, start: u64) -> Option<u64> {
+  let mut alignment = FALLBACK_DATA_ALIGN;
+  while alignment <= MAX_INFERRED_ALIGNMENT {
+    if align_up(previous_end, alignment) == Some(start) {
+      return Some(alignment);
+    }
+    alignment *= 2;
+  }
+  None
+}
+
+/// Moves preserved non-zero gap bytes with their nearest original file
+/// boundary during a full relayout. If the gap cannot fit without overlap,
+/// fail rather than discard or overwrite it.
+fn relocate_gaps(
+  metadata: &DarcMetadata,
+  entries: &[&EntryMetadata],
+  contents: &[&[u8]],
+  offsets: &[u32],
+  data_offset: u64,
+) -> Result<Vec<(u64, Vec<u8>)>, CodecError> {
+  let mut old_files: Vec<(u64, u64, usize)> = entries
+    .iter()
+    .enumerate()
+    .filter_map(|(index, entry)| {
+      let start = u64::from(entry.data_offset?);
+      let size = u64::from(entry.size?);
+      (size > 0).then_some((start, start + size, index))
+    })
+    .collect();
+  old_files.sort_unstable_by_key(|(start, _, _)| *start);
+
+  let new_files: Vec<(u64, u64)> = offsets
+    .iter()
+    .zip(contents)
+    .filter(|(_, bytes)| !bytes.is_empty())
+    .map(|(&start, bytes)| (u64::from(start), u64::from(start) + bytes.len() as u64))
+    .collect();
+  let mut relocated = Vec::with_capacity(metadata.gaps.len());
+  for gap in &metadata.gaps {
+    let bytes = decode_hex(&gap.data, "gap")?;
+    let old_start = u64::from(gap.offset);
+    let old_end = old_start
+      .checked_add(bytes.len() as u64)
+      .ok_or_else(|| CodecError::Message("DARC gap range overflows".to_owned()))?;
+    let recorded_end = u64::from(metadata.data_offset) + u64::from(metadata.data_size);
+    if old_start < u64::from(metadata.data_offset) || old_end > recorded_end {
+      return Err(CodecError::Message(
+        "DARC non-zero padding is outside the recorded data area".to_owned(),
+      ));
+    }
+
+    let next = old_files.iter().find(|(start, _, _)| *start >= old_end);
+    let relocated_start = if let Some((next_start, _, index)) = next {
+      let distance = next_start.checked_sub(old_start).ok_or_else(|| {
+        CodecError::Message("DARC gap is not before its following file".to_owned())
+      })?;
+      u64::from(offsets[*index])
+        .checked_sub(distance)
+        .ok_or_else(|| {
+          CodecError::Message("DARC gap cannot be relocated before its following file".to_owned())
+        })?
+    } else if let Some((_, previous_end, index)) =
+      old_files.iter().rev().find(|(_, end, _)| *end <= old_start)
+    {
+      let distance = old_start.checked_sub(*previous_end).ok_or_else(|| {
+        CodecError::Message("DARC gap is not after its preceding file".to_owned())
+      })?;
+      u64::from(offsets[*index])
+        .checked_add(contents[*index].len() as u64)
+        .and_then(|end| end.checked_add(distance))
+        .ok_or_else(|| CodecError::Message("DARC gap relocation overflows".to_owned()))?
+    } else {
+      return Err(CodecError::Message(
+        "DARC non-zero padding has no file boundary to preserve during relayout".to_owned(),
+      ));
+    };
+    let relocated_end = relocated_start
+      .checked_add(bytes.len() as u64)
+      .ok_or_else(|| CodecError::Message("DARC gap relocation overflows".to_owned()))?;
+    if relocated_start < data_offset
+      || new_files
+        .iter()
+        .any(|(start, end)| relocated_start < *end && *start < relocated_end)
+      || relocated.iter().any(|(start, other): &(u64, Vec<u8>)| {
+        relocated_start < *start + other.len() as u64 && *start < relocated_end
+      })
+    {
+      return Err(CodecError::Message(
+        "DARC non-zero padding cannot be preserved without overlapping relaid-out data".to_owned(),
+      ));
+    }
+    relocated.push((relocated_start, bytes));
+  }
+  Ok(relocated)
+}
+
 fn name_matches(name_area: &[u8], offset: u32, raw: &[u8], endian: Endian) -> bool {
   let offset = offset as usize;
   let Some(name) = name_area.get(offset..offset + raw.len()) else {
@@ -692,6 +843,7 @@ impl Codec for Darc {
           name_offset: Some(entry.name_offset),
           data_offset: None,
           size: None,
+          data_alignment: None,
         });
         continue;
       }
@@ -714,6 +866,7 @@ impl Codec for Darc {
         name_offset: Some(entry.name_offset),
         data_offset: Some(entry.second),
         size: Some(entry.third),
+        data_alignment: None,
       });
       artifacts.push(DecodedArtifact {
         name: format!("{FILES_PREFIX}{path}"),
@@ -724,6 +877,10 @@ impl Codec for Darc {
     let prefix = &data[HEADER_SIZE..header.table_offset as usize];
     let table_padding = &data[table_end..data_offset];
     let (trailing, trailing_zeros) = split_trailing(&data[file_size..]);
+    let inferred_alignments = infer_data_alignments(&entries, u64::from(header.data_offset));
+    for (entry, alignment) in entries.iter_mut().zip(inferred_alignments) {
+      entry.data_alignment = alignment;
+    }
     let metadata = DarcMetadata {
       endian: header.endian,
       header_size: header.header_size,
@@ -943,7 +1100,7 @@ impl Codec for Darc {
     let data_offset = if reuse_padding {
       recorded_data_offset
     } else {
-      align_up(table_end as u64, DATA_ALIGN)
+      align_up(table_end as u64, FALLBACK_DATA_ALIGN)
         .and_then(|offset| usize::try_from(offset).ok())
         .ok_or_else(|| CodecError::Message("DARC data offset overflows".to_owned()))?
     };
@@ -979,18 +1136,41 @@ impl Codec for Darc {
     let recorded_end = u64::from(metadata.data_offset)
       .checked_add(u64::from(metadata.data_size))
       .ok_or_else(|| CodecError::Message("DARC data area overflows".to_owned()))?;
+    let inferred_alignments =
+      infer_data_alignments(&metadata.entries, u64::from(metadata.data_offset));
+    let file_indices: Vec<usize> = metadata
+      .entries
+      .iter()
+      .enumerate()
+      .filter_map(|(index, entry)| (entry.kind == EntryKind::File).then_some(index))
+      .collect();
+    let alignments: Vec<u64> = file_entries
+      .iter()
+      .zip(&file_indices)
+      .map(|(entry, &index)| {
+        let alignment = entry
+          .data_alignment
+          .map(u64::from)
+          .or_else(|| inferred_alignments[index].map(u64::from))
+          .unwrap_or(FALLBACK_DATA_ALIGN);
+        if alignment < FALLBACK_DATA_ALIGN || !alignment.is_power_of_two() {
+          return Err(CodecError::Message(format!(
+            "DARC file {:?} has invalid data alignment {alignment:#x}",
+            entry.name
+          )));
+        }
+        Ok(alignment)
+      })
+      .collect::<Result<_, _>>()?;
     let mut file_offsets = Vec::with_capacity(file_entries.len());
     let mut reuse_layout = data_offset as u64 <= recorded_end;
     if reuse_layout {
-      for (entry, bytes) in file_entries.iter().zip(&contents) {
-        let (Some(offset), Some(size)) = (entry.data_offset, entry.size) else {
+      for entry in &file_entries {
+        let Some(offset) = entry.data_offset else {
           reuse_layout = false;
           break;
         };
-        let end = u64::from(offset)
-          .checked_add(u64::from(size))
-          .ok_or_else(|| CodecError::Message("DARC file range overflows".to_owned()))?;
-        if offset < data_offset_u32 || size as usize != bytes.len() || end > recorded_end {
+        if offset < data_offset_u32 {
           reuse_layout = false;
           break;
         }
@@ -1042,22 +1222,42 @@ impl Codec for Darc {
       }
     }
 
+    let mut relocated_gaps = Vec::new();
     let data_size = if reuse_layout {
-      u32::try_from(recorded_end - data_offset as u64)
+      let end = file_offsets
+        .iter()
+        .zip(&contents)
+        .map(|(offset, bytes)| u64::from(*offset) + bytes.len() as u64)
+        .max()
+        .unwrap_or(data_offset as u64)
+        .max(recorded_end);
+      u32::try_from(end - data_offset as u64)
         .map_err(|_| CodecError::Message("DARC data area does not fit the format".to_owned()))?
     } else {
       debug!("DARC data layout recomputed: the decoded offsets no longer fit");
-      file_offsets.clear();
+      file_offsets.resize(file_entries.len(), 0);
+      let mut order: Vec<usize> = (0..file_entries.len()).collect();
+      order.sort_by_key(|&index| file_entries[index].data_offset.unwrap_or(u32::MAX));
       let mut cursor = data_offset as u64;
-      for bytes in &contents {
-        let offset = align_up(cursor, DATA_ALIGN)
+      for index in order {
+        let offset = align_up(cursor, alignments[index])
           .ok_or_else(|| CodecError::Message("DARC data area overflows".to_owned()))?;
-        file_offsets.push(u32::try_from(offset).map_err(|_| {
+        file_offsets[index] = u32::try_from(offset).map_err(|_| {
           CodecError::Message("DARC file offset does not fit the format".to_owned())
-        })?);
+        })?;
         cursor = offset
-          .checked_add(bytes.len() as u64)
+          .checked_add(contents[index].len() as u64)
           .ok_or_else(|| CodecError::Message("DARC data area overflows".to_owned()))?;
+      }
+      relocated_gaps = relocate_gaps(
+        &metadata,
+        &file_entries,
+        &contents,
+        &file_offsets,
+        data_offset as u64,
+      )?;
+      for (offset, bytes) in &relocated_gaps {
+        cursor = cursor.max(*offset + bytes.len() as u64);
       }
       u32::try_from(cursor - data_offset as u64)
         .map_err(|_| CodecError::Message("DARC data area does not fit the format".to_owned()))?
@@ -1120,6 +1320,18 @@ impl Codec for Darc {
     let mut data = vec![0u8; data_size as usize];
     if reuse_layout {
       write_gaps(&mut data, data_offset_u32, &metadata.gaps)?;
+    } else {
+      for (offset, bytes) in relocated_gaps {
+        let start = usize::try_from(offset - u64::from(data_offset_u32))
+          .map_err(|_| CodecError::Message("DARC gap offset overflows".to_owned()))?;
+        let end = start
+          .checked_add(bytes.len())
+          .ok_or_else(|| CodecError::Message("DARC gap range overflows".to_owned()))?;
+        data
+          .get_mut(start..end)
+          .ok_or_else(|| CodecError::Message("DARC gap exceeds the data area".to_owned()))?
+          .copy_from_slice(&bytes);
+      }
     }
     for (offset, bytes) in file_offsets.iter().zip(&contents) {
       let start = (*offset as usize).checked_sub(data_offset).ok_or_else(|| {
