@@ -15,6 +15,9 @@
 //! and never verified or regenerated, so a rebuilt image is structurally valid
 //! but not guaranteed to boot on retail hardware.
 //!
+//! If rebuilt regions outgrow the declared NCCH content size, the size field is
+//! increased to cover the new layout. The existing header signature is kept.
+//!
 //! # Layout
 //!
 //! The header records where four regions sit, in media units, and fixes the
@@ -286,7 +289,7 @@ impl NcchEngine {
   ) -> Result<Vec<u8>, CodecError> {
     trace!("Encoding Nintendo 3DS NCCH image");
     let sorted = Self::sort_artifacts(artifacts)?;
-    let metadata = NcchMetadata::from_json(sorted.metadata)?;
+    let mut metadata = NcchMetadata::from_json(sorted.metadata)?;
     let metadata_variant = if metadata
       .fixed_sections
       .iter()
@@ -323,6 +326,14 @@ impl NcchEngine {
     } else {
       Self::layout_implicit(&named, &sorted)?
     };
+
+    let minimum_content_units = layout.image_len / unit + u64::from(layout.image_len % unit != 0);
+    let minimum_content_units = u32::try_from(minimum_content_units).map_err(|_| {
+      CodecError::Message(format!(
+        "NCCH image would require {minimum_content_units} media units, too many for the header's content-size field"
+      ))
+    })?;
+    metadata.content_size = metadata.content_size.max(minimum_content_units);
 
     Self::validate_geometry(&layout, &metadata, unit)?;
 

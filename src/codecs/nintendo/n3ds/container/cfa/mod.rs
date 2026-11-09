@@ -20,7 +20,9 @@ Uses the shared NCCH codec engine to decode and rebuild non-executable NCCH imag
 The header, ExeFS/RomFS regions, gaps and signatures are preserved under the
 shared engine's validation rules. Modified cleartext region hashes are updated;
 ciphertext modifications are rejected. RSA signatures are preserved but cannot
-be regenerated without Nintendo's private keys.
+be regenerated without Nintendo's private keys. If the rebuilt image grows, its
+content-size field is expanded automatically while the original signature is
+retained.
 
 No arguments.
 "#;

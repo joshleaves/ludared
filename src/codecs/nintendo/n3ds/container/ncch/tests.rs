@@ -397,13 +397,15 @@ fn implicit_growth_within_the_allocation_does_not_move_later_sections() {
 fn implicit_growth_beyond_the_allocation_moves_later_sections() {
   let input = image(true);
   let mut artifacts = decode(&input, None);
+  let original_signature = metadata_of(&artifacts).signature;
 
   replace(&mut artifacts, "plain_region.bin", pattern(0x55, 3 * UNIT));
-  update_metadata(&mut artifacts, |metadata| metadata.content_size += 1);
 
   let rebuilt = encode(&artifacts);
   assert_eq!(rebuilt.len(), input.len() + UNIT);
   let metadata = rebuilt_metadata(&rebuilt, None);
+  assert_eq!(metadata.content_size, (rebuilt.len() / UNIT) as u32);
+  assert_eq!(metadata.signature, original_signature);
 
   assert_eq!(
     section(&metadata, NcchVariableSectionKind::PlainRegion).size_available,

@@ -169,20 +169,20 @@ fn refuses_malformed_fixed_width_metadata_without_panicking() {
 fn recomputes_layout_and_hashes_after_a_region_grows() {
   let image = cxi();
   let mut artifacts = decode(&image);
+  let original_metadata = NcchMetadata::from_json(&artifacts[0].data).unwrap();
   let exefs = artifacts
     .iter_mut()
     .find(|a| a.name == "exefs.bin")
     .unwrap();
   exefs.data.extend_from_slice(&[0xAA; UNIT]);
-  let mut metadata = NcchMetadata::from_json(&artifacts[0].data).unwrap();
-  metadata.content_size += 1;
-  artifacts[0].data = metadata.to_json().unwrap();
 
   let rebuilt = N3dsCxi.encode(Vec::new(), &artifacts, None).unwrap();
   assert_eq!(rebuilt.len(), image.len() + UNIT);
   // The RomFS moved; the metadata of the rebuilt container shows it.
   let artifacts = decode(&rebuilt);
   let metadata = NcchMetadata::from_json(&artifacts[0].data).unwrap();
+  assert_eq!(metadata.content_size, (rebuilt.len() / UNIT) as u32);
+  assert_eq!(metadata.signature, original_metadata.signature);
   let romfs = metadata
     .variable_sections
     .iter()

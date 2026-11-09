@@ -20,7 +20,9 @@ Uses the shared NCCH codec engine to decode and rebuild executable NCCH images.
 The ExHeader, Access Descriptor, NCCH regions, gaps, signatures and hashes are
 preserved according to the shared engine's validation rules. Modified cleartext
 region hashes are updated; ciphertext modifications are rejected. RSA signatures
-are preserved but cannot be regenerated without Nintendo's private keys.
+are preserved but cannot be regenerated without Nintendo's private keys. If the
+rebuilt image grows, its content-size field is expanded automatically while the
+original signature is retained.
 
 No arguments.
 "#;
