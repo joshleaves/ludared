@@ -22,8 +22,8 @@ fn get_codec(_: &Lua, id: String) -> Result<LuaCodecHandle, mlua::Error> {
   clippy::needless_pass_by_value,
   reason = "Required by mlua::FromLuaMulti"
 )]
-fn sha256(lua: &Lua, input: String) -> Result<LuaString, mlua::Error> {
-  let hash = hex::encode(codec_sha256(input.as_bytes()));
+fn sha256(lua: &Lua, input: LuaString) -> Result<LuaString, mlua::Error> {
+  let hash = hex::encode(codec_sha256(&input.as_bytes()));
 
   lua.create_string(&hash)
 }
@@ -54,6 +54,24 @@ mod tests {
       hash,
       "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
     );
+
+    Ok(())
+  }
+
+  #[test]
+  fn sha256_accepts_binary_data() -> Result<(), mlua::Error> {
+    let lua = Lua::new();
+    let ludared = lua.create_table()?;
+
+    register_functions(&lua, &ludared)?;
+    lua.globals().set("LUDARED", ludared)?;
+
+    // Contains invalid UTF-8, a null byte, and a byte above 0x7F.
+    let hash: String = lua
+      .load(r#"LUDARED.sha256(string.char(0xFF, 0x00, 0x80))"#)
+      .eval()?;
+
+    assert_eq!(hash, crate::hash::sha256_bytes(&[0xFF, 0x00, 0x80]));
 
     Ok(())
   }
