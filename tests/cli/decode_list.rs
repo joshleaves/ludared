@@ -100,7 +100,10 @@ fn lists_only_direct_decodes_of_an_artifact() {
   assert_eq!(code, 0, "stderr: {stderr}");
   assert_eq!(
     stdout,
-    "head                  std/generic/extract\nvery_long_decode_name std/generic/extract\n"
+    format!(
+      "{:<21} std/generic/extract\n{:<21} std/generic/extract\n",
+      "head", "very_long_decode_name"
+    )
   );
 }
 

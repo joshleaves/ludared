@@ -26,9 +26,9 @@ ludared (LUDus ARchive EDitor) is a command-line tool to help build and maintain
   - [x] `test [PATH*]` - Run test scripts in a ludared environment
 
 - [x] `decode`
-  - [x] `add <PATH> <CODEC> [ARGS] [--name NAME]` - Add a decode step
-  - [x] `list <PATH>` - List decode steps on a node
-  - [x] `remove <PATH> [NAME] [--clean]` - Remove a terminal decode step
+  - [x] `add <PATH*> <CODEC> [ARGS] [--name NAME]` - Add a decode step
+  - [x] `list [PATH*]` - List decode steps on a node
+  - [x] `remove <PATH*> [NAME] [--clean]` - Remove a terminal decode step
 
 - [x] `unpack` - Execute the manifest's full decode pipeline
 
@@ -81,6 +81,7 @@ Globbing only triggers on those patterns.
 
 The commands allowing globs are:
 
+- [x] `decode list [PATH*]`
 - [x] `decode add <PATH*> <CODEC>`
 - [x] `decode remove <PATH*> [NAME]`
 - [x] `override add <PATH*>`
