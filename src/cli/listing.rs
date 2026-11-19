@@ -18,7 +18,8 @@ pub(crate) fn print(entries: &[VirtualPath], root: Option<&VirtualPath>, tree: b
       .collect::<Vec<_>>();
     let rendered = rendered.iter().map(String::as_str).collect::<Vec<_>>();
 
-    print!("{}", render(&rendered, root));
+    let tree = crate::cli::tree_formatter::build_path_tree(&rendered, root);
+    print!("{}", render(&tree));
 
     return;
   }

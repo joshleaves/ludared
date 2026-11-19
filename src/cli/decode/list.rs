@@ -5,6 +5,7 @@ use clap_complete::engine::ArgValueCompleter;
 
 use crate::cli::completions::artifacts::completion_artifacts_decoded;
 use crate::cli::path_glob::PathGlob;
+use crate::cli::tree_formatter;
 use ludared::errors::app_error::AppError;
 use ludared::project::Project;
 use ludared::virtual_path::VirtualPath;
@@ -14,6 +15,10 @@ pub(crate) struct DecodeListArgs {
   /// Virtual path or glob of artifacts whose decodes to list (defaults to all)
   #[arg(value_name = "PATH*", add = ArgValueCompleter::new(completion_artifacts_decoded))]
   virtual_path: Option<String>,
+
+  /// Display artifact paths and their decodes as a tree
+  #[arg(long)]
+  tree: bool,
 }
 
 pub(crate) fn command_decode_list(args: &DecodeListArgs) -> Result<(), AppError> {
@@ -40,6 +45,12 @@ pub(crate) fn command_decode_list(args: &DecodeListArgs) -> Result<(), AppError>
     return Err(AppError::NoGlobMatches(pattern.to_owned()));
   }
 
+  if args.tree {
+    let tree = build_decode_tree(&project, &matches)?;
+    print!("{}", tree_formatter::render(&tree));
+    return Ok(());
+  }
+
   for path in matches {
     let decodes = project.manifest.decodes_at(&path)?;
     let name_width = decodes
@@ -58,4 +69,26 @@ pub(crate) fn command_decode_list(args: &DecodeListArgs) -> Result<(), AppError>
   }
 
   Ok(())
+}
+
+fn build_decode_tree(
+  project: &Project,
+  paths: &[VirtualPath],
+) -> Result<tree_formatter::Tree, AppError> {
+  let mut tree = tree_formatter::Tree::new();
+
+  for path in paths {
+    let decodes = project.manifest.decodes_at(path)?;
+    if decodes.is_empty() {
+      continue;
+    }
+
+    let node = tree_formatter::insert_path(&mut tree, path.as_str());
+
+    for decode in decodes {
+      node.decode_child(format!("[decode] {} — {}", decode.name, decode.codec.id));
+    }
+  }
+
+  Ok(tree)
 }

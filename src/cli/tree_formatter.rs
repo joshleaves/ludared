@@ -2,92 +2,101 @@ use std::collections::BTreeMap;
 
 use ludared::virtual_path::VirtualPath;
 
-/// A virtual path component, with everything the hierarchy nests below it.
-///
-/// Children are ordered by name so that a rendering is stable between runs, and
-/// so that the branches of a level are laid out in the same order as the
-/// lexicographic order the paths themselves are enumerated in.
-struct Node {
-  name: String,
-  children: BTreeMap<String, Self>,
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum TreeNodeKind {
+  Decode,
+  Path,
 }
 
-/// Renders virtual paths as a tree.
-///
-/// The hierarchy is built from the `/`-separated components of the paths given
-/// and nothing else: whatever produced them, whether they are artifacts, cached
-/// entries or overrides, never enters into it. The parents a path implies are
-/// rendered as the branches leading to it, and are not paths in their own right.
-///
-/// `root` limits the rendering to a single branch, which is printed under its
-/// full virtual path; every path is rendered when it is absent. A root naming
-/// none of the paths and holding none below it renders as nothing at all, which
-/// is what an empty result looks like everywhere else.
-pub(crate) fn render(entries: &[&str], root: Option<&VirtualPath>) -> String {
+pub(crate) type Tree = BTreeMap<(TreeNodeKind, String), TreeNode>;
+
+pub(crate) struct TreeNode {
+  name: String,
+  pub(crate) children: Tree,
+}
+
+impl TreeNode {
+  pub(crate) fn new(name: impl Into<String>) -> Self {
+    Self {
+      name: name.into(),
+      children: Tree::new(),
+    }
+  }
+
+  pub(crate) fn child(&mut self, name: impl Into<String>) -> &mut Self {
+    self.child_with_kind(name.into(), TreeNodeKind::Path)
+  }
+
+  pub(crate) fn decode_child(&mut self, name: impl Into<String>) -> &mut Self {
+    self.child_with_kind(name.into(), TreeNodeKind::Decode)
+  }
+
+  fn child_with_kind(&mut self, name: String, kind: TreeNodeKind) -> &mut Self {
+    let key = (kind, name.clone());
+    self.children.entry(key).or_insert_with(|| Self::new(name))
+  }
+}
+
+pub(crate) fn insert_path<'tree>(tree: &'tree mut Tree, path: &str) -> &'tree mut TreeNode {
+  let mut components = path.split('/');
+  let name = components.next().unwrap_or_default().to_owned();
+  let mut node = tree
+    .entry((TreeNodeKind::Path, name.clone()))
+    .or_insert_with(|| TreeNode::new(name));
+
+  for component in components {
+    node = node.child(component);
+  }
+
+  node
+}
+
+/// Builds a tree from virtual paths, optionally rooted at a path.
+pub(crate) fn build_path_tree(entries: &[&str], root: Option<&VirtualPath>) -> Tree {
   let Some(root) = root else {
-    return render_roots(build(entries, "").values());
+    let mut tree = Tree::new();
+    for entry in entries {
+      insert_path(&mut tree, entry);
+    }
+    return tree;
   };
 
   let name = root.to_string();
-  let children = build(entries, &format!("{name}/"));
-
-  if children.is_empty() && !entries.contains(&name.as_str()) {
-    return String::new();
-  }
-
-  render_roots(std::iter::once(&Node { name, children }))
-}
-
-/// Builds the hierarchy of the virtual paths nested below `prefix`.
-///
-/// `prefix` is either empty, for the whole set, or a `/`-terminated virtual path.
-/// Terminating it is what keeps a component from matching the start of a longer
-/// one, so `game.sfc` never picks up entries under `game.sfcX`.
-fn build(entries: &[&str], prefix: &str) -> BTreeMap<String, Node> {
-  let mut nodes = BTreeMap::new();
+  let prefix = format!("{name}/");
+  let mut root_node = TreeNode::new(name.clone());
+  let mut found = entries.contains(&name.as_str());
 
   for entry in entries {
-    let Some(relative) = entry.strip_prefix(prefix) else {
-      continue;
-    };
-    if relative.is_empty() {
-      continue;
+    if let Some(relative) = entry.strip_prefix(&prefix) {
+      found = true;
+      insert_path(&mut root_node.children, relative);
     }
-
-    let name = relative.split_once('/').map_or(relative, |(name, _)| name);
-
-    nodes.entry(name.to_owned()).or_insert_with(|| Node {
-      name: name.to_owned(),
-      children: build(entries, &format!("{prefix}{name}/")),
-    });
   }
 
-  nodes
+  if !found {
+    return Tree::new();
+  }
+
+  BTreeMap::from([((TreeNodeKind::Path, name), root_node)])
 }
 
-/// Renders `nodes` as the roots of the hierarchy, one per line, with each root
-/// followed by its own subtree.
-fn render_roots<'n>(nodes: impl ExactSizeIterator<Item = &'n Node>) -> String {
+/// Renders an already-built tree with stable, lexicographic child ordering.
+pub(crate) fn render(tree: &Tree) -> String {
   let mut out = String::new();
 
-  for node in nodes {
+  for node in tree.values() {
     out.push_str(&node.name);
     out.push('\n');
-    render_children(node.children.values(), "", &mut out);
+    render_children(&node.children, "", &mut out);
   }
 
   out
 }
 
-/// Renders `nodes` as the branches hanging off the line above them.
-fn render_children<'n>(
-  nodes: impl ExactSizeIterator<Item = &'n Node>,
-  prefix: &str,
-  out: &mut String,
-) {
+fn render_children(nodes: &Tree, prefix: &str, out: &mut String) {
   let count = nodes.len();
 
-  for (index, node) in nodes.enumerate() {
+  for (index, node) in nodes.values().enumerate() {
     let last = index + 1 == count;
 
     out.push_str(prefix);
@@ -96,7 +105,7 @@ fn render_children<'n>(
     out.push('\n');
 
     let nested = format!("{prefix}{}", if last { "    " } else { "│   " });
-    render_children(node.children.values(), &nested, out);
+    render_children(&node.children, &nested, out);
   }
 }
 
@@ -104,9 +113,6 @@ fn render_children<'n>(
 mod tests {
   use super::*;
 
-  /// Paths for a project with two sources, listed out of order so that a rendering
-  /// taken from them cannot be confused with one taken in the order the paths
-  /// happen to be written down.
   const ENTRIES: [&str; 4] = [
     "other.sfc/head.bin",
     "game.sfc/tail.bin",
@@ -127,9 +133,13 @@ other.sfc
     VirtualPath::new(path).unwrap()
   }
 
+  fn render_paths(entries: &[&str], root: Option<&VirtualPath>) -> String {
+    render(&build_path_tree(entries, root))
+  }
+
   #[test]
   fn renders_the_hierarchy_of_the_whole_set() {
-    assert_eq!(render(&ENTRIES, None), HIERARCHY);
+    assert_eq!(render_paths(&ENTRIES, None), HIERARCHY);
   }
 
   #[test]
@@ -141,13 +151,13 @@ other.sfc
       "other.sfc/head.bin",
     ];
 
-    assert_eq!(render(&reversed, None), HIERARCHY);
+    assert_eq!(render_paths(&reversed, None), HIERARCHY);
   }
 
   #[test]
   fn renders_only_the_requested_subtree() {
     assert_eq!(
-      render(&ENTRIES, Some(&vpath("game.sfc"))),
+      render_paths(&ENTRIES, Some(&vpath("game.sfc"))),
       "\
 game.sfc
 ├── head.bin
@@ -160,7 +170,7 @@ game.sfc
   #[test]
   fn renders_a_subtree_rooted_at_a_path() {
     assert_eq!(
-      render(&ENTRIES, Some(&vpath("game.sfc/head.bin"))),
+      render_paths(&ENTRIES, Some(&vpath("game.sfc/head.bin"))),
       "\
 game.sfc/head.bin
 └── TITLE.txt
@@ -171,22 +181,20 @@ game.sfc/head.bin
   #[test]
   fn renders_a_path_nothing_is_nested_below() {
     assert_eq!(
-      render(&ENTRIES, Some(&vpath("other.sfc/head.bin"))),
+      render_paths(&ENTRIES, Some(&vpath("other.sfc/head.bin"))),
       "other.sfc/head.bin\n"
     );
   }
 
   #[test]
   fn renders_a_path_as_a_branch_when_it_is_both_a_path_and_a_parent() {
-    // The set may hold both `game.sfc/head.bin` and a path below it, in which
-    // case the root is a node rather than a leaf.
     let entries = [
       "game.sfc/head.bin",
       "game.sfc/head.bin/TITLE.txt",
     ];
 
     assert_eq!(
-      render(&entries, Some(&vpath("game.sfc/head.bin"))),
+      render_paths(&entries, Some(&vpath("game.sfc/head.bin"))),
       "\
 game.sfc/head.bin
 └── TITLE.txt
@@ -196,31 +204,26 @@ game.sfc/head.bin
 
   #[test]
   fn renders_nothing_for_an_empty_set() {
-    assert_eq!(render(&[], None), "");
+    assert_eq!(render_paths(&[], None), "");
   }
 
   #[test]
   fn renders_nothing_for_a_root_naming_no_path_at_all() {
     for root in [
-      // Never gathered, and nothing gathered below it.
       "game.sfc/missing.bin",
-      // Held under another source.
       "third.sfc/head.bin",
-      // A prefix of a path is not itself one.
       "game.sfc/head",
       "game.sfc/head.bin/TITLE",
-      // Not a prefix of any path, although it shares one with a source.
       "game.sfcX",
     ] {
-      assert_eq!(render(&ENTRIES, Some(&vpath(root))), "", "'{root}'");
+      assert_eq!(render_paths(&ENTRIES, Some(&vpath(root))), "", "'{root}'");
     }
 
-    assert_eq!(render(&[], Some(&vpath("game.sfc"))), "");
+    assert_eq!(render_paths(&[], Some(&vpath("game.sfc"))), "");
   }
 
   #[test]
   fn keeps_deeper_levels_of_one_branch_from_mixing_with_another() {
-    // `game.sfc` and `game.sfcX` share every character but the last one.
     let entries = [
       "game.sfc/head.bin",
       "game.sfc/head.bin/TITLE.txt",
@@ -228,7 +231,7 @@ game.sfc/head.bin
     ];
 
     assert_eq!(
-      render(&entries, Some(&vpath("game.sfc"))),
+      render_paths(&entries, Some(&vpath("game.sfc"))),
       "\
 game.sfc
 └── head.bin

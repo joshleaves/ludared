@@ -23,8 +23,9 @@ pub(crate) fn command_codecs_list(args: &CodecsListArgs) -> Result<(), AppError>
 
   if args.tree {
     let ids = codecs.iter().map(|codec| codec.id()).collect::<Vec<_>>();
+    let tree = tree_formatter::build_path_tree(&ids, None);
 
-    print!("{}", tree_formatter::render(&ids, None));
+    print!("{}", tree_formatter::render(&tree));
 
     return Ok(());
   }
